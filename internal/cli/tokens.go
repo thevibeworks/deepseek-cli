@@ -164,8 +164,9 @@ func renderTokens(rep *tokensReport, breakdown bool) string {
 			rep.Total.Tokens, rep.Total.Chars, ratio(rep.Total.Chars, rep.Total.Tokens), "total")
 		w.Flush()
 	} else {
-		fmt.Fprintf(&b, "%d tokens · %d chars · %s chars/token\n",
-			rep.Total.Tokens, rep.Total.Chars, ratio(rep.Total.Chars, rep.Total.Tokens))
+		fmt.Fprintf(&b, "%s · %s · %s chars/token\n",
+			plural(rep.Total.Tokens, "token"), plural(rep.Total.Chars, "char"),
+			ratio(rep.Total.Chars, rep.Total.Tokens))
 	}
 
 	// The number people actually want next: what a request carrying this

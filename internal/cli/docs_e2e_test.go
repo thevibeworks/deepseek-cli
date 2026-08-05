@@ -316,3 +316,26 @@ func TestStatusFailsLoudlyWhenUnreachable(t *testing.T) {
 		t.Errorf("a failure should still point at the incident page:\n%s", got.stdout)
 	}
 }
+
+// v0.3.0 shipped `docs show` printing the heading twice: the mirror's own
+// H1 is already the first line of the body, and the frontmatter title was
+// being prepended to it.
+func TestDocsShowDoesNotRepeatTheHeading(t *testing.T) {
+	got := runCLI(t, func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("docs show must answer offline; it called %s", r.URL.Path)
+	}, "docs", "show", "guides/kv_cache")
+	if got.err != nil {
+		t.Fatalf("docs show: %v", got.err)
+	}
+	if n := strings.Count(got.stdout, "# Context Caching"); n != 1 {
+		t.Errorf("the heading appears %d times, want 1:\n%s", n, firstLines(got.stdout, 6))
+	}
+}
+
+func firstLines(s string, n int) string {
+	lines := strings.SplitN(s, "\n", n+1)
+	if len(lines) > n {
+		lines = lines[:n]
+	}
+	return strings.Join(lines, "\n")
+}

@@ -143,9 +143,20 @@ is unambiguous.`),
 			// stdout stays the document, so it can be piped into a file
 			// or another tool unchanged.
 			fmt.Fprintln(o.stderr, o.dim(p.Source+" · fetched "+p.Fetched))
-			return o.emitValue(p, "# "+p.Title+"\n\n"+strings.TrimSpace(p.Body))
+			return o.emitValue(p, pageMarkdown(p))
 		},
 	}
+}
+
+// pageMarkdown renders a page for stdout. The mirror's own H1 is already
+// the first line of the body, so prepending the frontmatter title would
+// print the heading twice — which it did, in v0.3.0.
+func pageMarkdown(p *docs.Page) string {
+	body := strings.TrimSpace(p.Body)
+	if strings.HasPrefix(body, "# ") {
+		return body
+	}
+	return "# " + p.Title + "\n\n" + body
 }
 
 func newDocsAskCmd(o *Options) *cobra.Command {
