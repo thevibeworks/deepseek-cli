@@ -44,6 +44,11 @@ changelog:
       - "^chore:"
 
 release:
+  # Re-pushing a tag re-runs this workflow, and without it goreleaser
+  # fails on the first asset with "already_exists" -- leaving a red X on
+  # a release that is actually fine. Happened once, when v0.1.0 was
+  # re-tagged to correct its tagger identity.
+  replace_existing_artifacts: true
   footer: |
     ---
     ```bash
