@@ -283,7 +283,7 @@ rather than hides:
 ```bash
 make            # build
 make check      # fmt + vet + test + build
-make test       # 69 tests, no network required
+make test       # 71 tests, no network required
 ```
 
 Zero runtime dependencies beyond `cobra` and `golang.org/x/term`; the API
