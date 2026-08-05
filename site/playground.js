@@ -11,7 +11,7 @@
 (function () {
   'use strict';
 
-  var DEFAULT_GATEWAY = 'https://free.deepseek.lroolle.com';
+  var DEFAULT_GATEWAY = 'https://freeseek.1lm.io';
 
   // The page lives at /playground/ and this script at the site root, so
   // a bare 'pow-worker.js' would resolve against the wrong directory.

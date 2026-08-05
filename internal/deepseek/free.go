@@ -35,7 +35,7 @@ import (
 // DefaultGatewayURL is the hosted free tier. Override it with
 // DEEPSEEK_FREE_URL to point at your own deployment — the gateway is in
 // this repository and is meant to be runnable by anyone.
-const DefaultGatewayURL = "https://free.deepseek.lroolle.com"
+const DefaultGatewayURL = "https://freeseek.1lm.io"
 
 // FreeTier is a saved enrolment.
 type FreeTier struct {
