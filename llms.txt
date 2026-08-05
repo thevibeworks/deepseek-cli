@@ -1,0 +1,33 @@
+# deepseek-cli
+
+> The whole DeepSeek API from the command line. One Go binary speaking all
+> four of DeepSeek's wire formats (OpenAI chat, OpenAI Responses, Anthropic
+> Messages, FIM), plus models and balance. Keeps multi-turn conversations
+> correct across DeepSeek's reasoning_content replay rule, and prices every
+> call from the published rate card into a local ledger.
+
+Install: `go install github.com/thevibeworks/deepseek-cli/cmd/deepseek@latest`
+Auth: `DEEPSEEK_API_KEY`, or `~/.config/deepseek/api_key`.
+Contract: stdout is data, stderr is status. `--json` prints the API's own
+response body unmodified. Exit codes: 0 ok, 1 error, 2 auth, 3 no balance,
+4 rate limited, 130 interrupted.
+
+## Docs
+
+- [README](README.md): what it is, install, every command with examples, cost model, configuration, and the API behaviours that surprise people
+- [AGENTS.md](AGENTS.md): the scripting contract — commands, flags, JSON response shapes per format, exit-code semantics, and cautions. Start here when driving the tool from code
+- [skill/SKILL.md](skill/SKILL.md): drop-in agent skill; the same contract as an operational procedure
+- [TASTE.md](TASTE.md): design rejections and their reasons — why one command per format rather than one `--api` flag, why `--json` is never wrapped, why announced-but-undated pricing is not applied, why tool calls are printed and not executed
+- [SECURITY.md](SECURITY.md): what touches your key, prompts and disk; reporting
+
+## Source
+
+- [internal/deepseek](internal/deepseek): the API client. `client.go` transport, auth, retry policy; `chat.go` `responses.go` `anthropic.go` `fim.go` `meta.go` one file per endpoint; `sse.go` streaming for both SSE dialects; `pricing.go` the rate card and cost/cache-savings arithmetic; `errors.go` error envelope and exit-code classification
+- [internal/cli](internal/cli): command tree. One file per command, plus `output.go` (the stdout/stderr contract) and `input.go` (prompt assembly from args, files and stdin)
+- [internal/session](internal/session): stored conversations and the reasoning_content replay rule
+- [internal/ledger](internal/ledger): append-only usage log and its reports
+
+## Reference
+
+- [DeepSeek API docs](https://api-docs.deepseek.com/): the upstream API this wraps
+- [Models & pricing](https://api-docs.deepseek.com/quick_start/pricing): the rate card `pricing.go` encodes

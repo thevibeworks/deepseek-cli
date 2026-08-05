@@ -1,0 +1,51 @@
+version: 2
+
+project_name: deepseek-cli
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: deepseek
+    main: ./cmd/deepseek
+    binary: deepseek
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+
+archives:
+  - id: default
+    # deepseek_darwin_arm64.tar.gz — the names the README's curl lines use.
+    name_template: "deepseek_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE
+      - README.md
+      - AGENTS.md
+      - skill/SKILL.md
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - "^chore:"
+
+release:
+  footer: |
+    ---
+    ```bash
+    go install github.com/thevibeworks/deepseek-cli/cmd/deepseek@{{ .Tag }}
+    ```
