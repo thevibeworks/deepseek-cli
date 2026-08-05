@@ -347,8 +347,10 @@ func (s *Server) writeLimit(w http.ResponseWriter, err error) {
 
 	switch lim.Reason {
 	case quota.ReasonCredits:
+		// Setting a key is the whole fix: it takes precedence over the
+		// enrolment automatically, so there is nothing to unset.
 		writeError(w, http.StatusPaymentRequired, typeExhausted,
-			"the free tier has run out of credit. Bring your own key — https://platform.deepseek.com/api_keys — and unset DEEPSEEK_FREE, or watch the repo for the hosted plan")
+			"the free tier has run out of credit. Set DEEPSEEK_API_KEY to your own key — https://platform.deepseek.com/api_keys — and it will be used instead")
 	case quota.ReasonRevoked:
 		writeError(w, http.StatusForbidden, typeAuth,
 			"this free-tier token has been revoked")
