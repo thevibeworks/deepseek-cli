@@ -1,0 +1,373 @@
+package server
+
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/thevibeworks/deepseek-cli/gateway/internal/meter"
+	"github.com/thevibeworks/deepseek-cli/gateway/internal/mint"
+	"github.com/thevibeworks/deepseek-cli/gateway/internal/policy"
+	"github.com/thevibeworks/deepseek-cli/gateway/internal/quota"
+)
+
+// Response headers carrying what is left of the caller's day. They are
+// set from the snapshot taken just before the request is forwarded, so
+// they do not include the request they are attached to.
+const (
+	headerRequestsLeft = "X-Free-Requests-Remaining"
+	headerInputLeft    = "X-Free-Input-Tokens-Remaining"
+	headerOutputLeft   = "X-Free-Output-Tokens-Remaining"
+	headerResets       = "X-Free-Resets-At"
+)
+
+// maxMeterBuffer bounds how much of a non-streamed response is held in
+// order to read its usage. A chat completion is a few kilobytes; nothing
+// legitimate approaches this.
+const maxMeterBuffer = 4 << 20
+
+func (s *Server) handleProxy(w http.ResponseWriter, r *http.Request) {
+	route, ok := policy.Lookup(r.Method, r.URL.Path)
+	if !ok {
+		writeError(w, http.StatusNotFound, typeRejected, fmt.Sprintf(
+			"the free tier does not carry %s %s — it serves /chat/completions, /beta/completions, /anthropic/v1/messages, /responses and /models",
+			r.Method, r.URL.Path))
+		return
+	}
+
+	ip := s.clientIP(r)
+	if ok, wait := s.limiter.Allow("api:" + mint.RequestBucket(ip)); !ok {
+		retryAfter(w, wait)
+		writeError(w, http.StatusTooManyRequests, typeQuota,
+			fmt.Sprintf("slow down — retry in %s", wait.Round(time.Second)))
+		return
+	}
+
+	tok, err := s.authenticate(r)
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, typeAuth, err.Error())
+		return
+	}
+	subject := tok.Subject.String()
+
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, s.cfg.MaxBodyBytes))
+	if err != nil {
+		writeError(w, http.StatusRequestEntityTooLarge, typeRejected, fmt.Sprintf(
+			"request body is larger than the free tier's %d byte limit — bring your own key for prompts this size",
+			s.cfg.MaxBodyBytes))
+		return
+	}
+
+	decision, err := policy.Apply(route, body, subject, policy.Limits{
+		MaxTokens: s.cfg.MaxTokens,
+		Model:     s.cfg.Model,
+	})
+	if err != nil {
+		var rej *policy.Reject
+		msg := err.Error()
+		if errors.As(err, &rej) && rej.Hint != "" {
+			msg += " — " + rej.Hint
+		}
+		writeError(w, http.StatusBadRequest, typeRejected, msg)
+		return
+	}
+
+	// Routes that cannot generate tokens are not charged. That keeps
+	// `deepseek status` free and safe in a loop against the free tier,
+	// exactly as it is against the real API.
+	billable := route.Format != policy.FormatNone
+	if billable {
+		if err := s.ledger.Admit(subject); err != nil {
+			s.writeLimit(w, err)
+			return
+		}
+	}
+
+	status := s.ledger.Status(subject, tok.Tier.String())
+	setQuotaHeaders(w, status)
+
+	if err := s.acquire(r); err != nil {
+		if billable {
+			s.ledger.Refund(subject)
+		}
+		w.Header().Set("Retry-After", "5")
+		writeError(w, http.StatusServiceUnavailable, typeQuota,
+			"the free tier is busy; retry shortly")
+		return
+	}
+	defer func() { <-s.inflight }()
+
+	s.forward(w, r, route, decision, subject, billable)
+}
+
+// acquire takes an in-flight slot, or gives up.
+//
+// The cap exists twice over: it keeps a 1 GiB box from being asked to
+// hold hundreds of ten-minute connections, and it bounds how far the
+// budget can overshoot, since every admitted request is unbilled until
+// it finishes.
+func (s *Server) acquire(r *http.Request) error {
+	select {
+	case s.inflight <- struct{}{}:
+		return nil
+	case <-r.Context().Done():
+		return r.Context().Err()
+	case <-time.After(30 * time.Second):
+		return errors.New("busy")
+	}
+}
+
+func (s *Server) forward(w http.ResponseWriter, r *http.Request, route policy.Route, d *policy.Decision, subject string, billable bool) {
+	url := strings.TrimRight(s.cfg.UpstreamBaseURL, "/") + route.Upstream
+
+	var payload io.Reader
+	if route.Method == http.MethodPost {
+		payload = bytes.NewReader(d.Body)
+	}
+	up, err := http.NewRequestWithContext(r.Context(), route.Method, url, payload)
+	if err != nil {
+		if billable {
+			s.ledger.Refund(subject)
+		}
+		writeError(w, http.StatusInternalServerError, typeInternal, "could not build the upstream request")
+		return
+	}
+
+	// Only headers this gateway chose reach DeepSeek. Nothing the client
+	// sent is forwarded except the media types, because a header we did
+	// not think about is a header we cannot vouch for — and because our
+	// key is on this request.
+	if payload != nil {
+		up.Header.Set("Content-Type", "application/json")
+	}
+	if accept := r.Header.Get("Accept"); accept != "" {
+		up.Header.Set("Accept", accept)
+	}
+	up.Header.Set("Authorization", "Bearer "+s.cfg.UpstreamKey)
+	if route.AnthropicAuth {
+		up.Header.Set("x-api-key", s.cfg.UpstreamKey)
+		version := r.Header.Get("anthropic-version")
+		if version == "" {
+			version = "2023-06-01"
+		}
+		up.Header.Set("anthropic-version", version)
+	}
+	up.Header.Set("User-Agent", "dsgate")
+
+	resp, err := s.http.Do(up)
+	if err != nil {
+		// Never reached the model, so it cost nothing and the caller keeps
+		// their request allowance.
+		if billable {
+			s.ledger.Refund(subject)
+		}
+		if r.Context().Err() != nil {
+			return // the caller hung up; there is nobody to tell
+		}
+		writeError(w, http.StatusBadGateway, typeUpstream, "could not reach DeepSeek: "+err.Error())
+		return
+	}
+	defer resp.Body.Close()
+
+	if route.Name == "models" && resp.StatusCode == http.StatusOK {
+		s.relayModels(w, resp)
+		return
+	}
+
+	streaming := strings.Contains(resp.Header.Get("Content-Type"), "text/event-stream")
+
+	if ct := resp.Header.Get("Content-Type"); ct != "" {
+		w.Header().Set("Content-Type", ct)
+	}
+	// Length is deliberately not copied: the body is relayed as it
+	// arrives, and a declared length that a dropped upstream connection
+	// then fails to deliver is worse than no length at all.
+	w.WriteHeader(resp.StatusCode)
+
+	sniffer := &meter.Sniffer{}
+	var buffered bytes.Buffer
+	var tee io.Writer = sniffer
+	if !streaming {
+		tee = &capWriter{buf: &buffered, limit: maxMeterBuffer}
+	}
+	relay(w, resp.Body, tee)
+
+	if !billable {
+		return
+	}
+
+	// Upstream refusals that the caller could not have provoked cost
+	// nothing and are refunded. A 4xx is the caller's own request coming
+	// back, and is not refunded: refunding on client-controlled failures
+	// would turn the request counter into an unlimited retry loop.
+	upstreamFault := resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500
+
+	var usage meter.Usage
+	var model string
+	if streaming {
+		usage, model = sniffer.Result()
+	} else {
+		usage, model = meter.FromBody(buffered.Bytes())
+	}
+	if model == "" {
+		model = d.Model
+	}
+
+	if !usage.Found {
+		if upstreamFault || resp.StatusCode >= 400 {
+			// No tokens were generated. Give the request allowance back
+			// only when the fault was not the caller's.
+			if upstreamFault {
+				s.ledger.Refund(subject)
+			}
+			return
+		}
+		// A 2xx we could not read. Charge the most it could have cost:
+		// unbillable must never mean free, or it becomes the way in.
+		cost := meter.Estimate(model, len(d.Body), d.MaxTokens)
+		s.ledger.Charge(subject, route.Name, model, len(d.Body)/4+1, 0, d.MaxTokens, cost, true)
+		return
+	}
+
+	s.ledger.Charge(subject, route.Name, model,
+		usage.InputTokens, usage.CacheHitTokens, usage.OutputTokens,
+		meter.Cost(model, usage), false)
+}
+
+// relayModels forwards the model list, minus the models this gateway
+// will not serve.
+//
+// This is the one place the proxy edits a response, and it earns the
+// exception: /models exists to answer "what can I use here", and through
+// the free tier the honest answer is one model. Left unfiltered, any
+// client that picks a model off this list has a 50% chance of choosing
+// the one that is then refused.
+//
+// The call still goes upstream rather than being answered locally, so
+// `deepseek status` keeps telling you whether DeepSeek itself is
+// reachable — which is the question it exists to answer. Anything
+// unparseable is passed through untouched.
+func (s *Server) relayModels(w http.ResponseWriter, resp *http.Response) {
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		writeError(w, http.StatusBadGateway, typeUpstream, "could not read the model list")
+		return
+	}
+
+	var list struct {
+		Object string           `json:"object"`
+		Data   []map[string]any `json:"data"`
+	}
+	if err := json.Unmarshal(raw, &list); err != nil || len(list.Data) == 0 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(resp.StatusCode)
+		w.Write(raw)
+		return
+	}
+
+	kept := list.Data[:0]
+	for _, m := range list.Data {
+		if id, _ := m["id"].(string); id == s.cfg.Model {
+			kept = append(kept, m)
+		}
+	}
+	list.Data = kept
+	out, err := json.Marshal(list)
+	if err != nil {
+		out = raw
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(out)
+}
+
+// relay copies the upstream body to the client and to the meter,
+// flushing as it goes.
+//
+// io.Copy would be shorter and wrong: it would let a streamed answer sit
+// in a buffer until it filled, and DeepSeek's keep-alive traffic — empty
+// lines on a non-streamed request, ": keep-alive" comments on a streamed
+// one, for up to ten minutes before inference starts — exists precisely
+// so that intermediaries do not time the connection out. An intermediary
+// that then holds those bytes has defeated their purpose.
+func relay(w http.ResponseWriter, src io.Reader, tee io.Writer) {
+	flusher, _ := w.(http.Flusher)
+	if flusher != nil {
+		flusher.Flush()
+	}
+	buf := make([]byte, 16<<10)
+	for {
+		n, err := src.Read(buf)
+		if n > 0 {
+			tee.Write(buf[:n])
+			if _, werr := w.Write(buf[:n]); werr != nil {
+				return // the caller hung up; upstream is still metered
+			}
+			if flusher != nil {
+				flusher.Flush()
+			}
+		}
+		if err != nil {
+			return
+		}
+	}
+}
+
+// capWriter accumulates up to limit bytes and silently drops the rest.
+// Dropping is safe here because the only reader is the meter, and a
+// response too big to buffer is one whose usage object we will not find
+// anyway — which the estimate path already handles.
+type capWriter struct {
+	buf   *bytes.Buffer
+	limit int
+}
+
+func (c *capWriter) Write(p []byte) (int, error) {
+	if room := c.limit - c.buf.Len(); room > 0 {
+		if len(p) > room {
+			p = p[:room]
+		}
+		c.buf.Write(p)
+	}
+	return len(p), nil
+}
+
+func (s *Server) writeLimit(w http.ResponseWriter, err error) {
+	var lim *quota.LimitError
+	if !errors.As(err, &lim) {
+		writeError(w, http.StatusInternalServerError, typeInternal, err.Error())
+		return
+	}
+
+	switch lim.Reason {
+	case quota.ReasonCredits:
+		writeError(w, http.StatusPaymentRequired, typeExhausted,
+			"the free tier has run out of credit. Bring your own key — https://platform.deepseek.com/api_keys — and unset DEEPSEEK_FREE, or watch the repo for the hosted plan")
+	case quota.ReasonRevoked:
+		writeError(w, http.StatusForbidden, typeAuth,
+			"this free-tier token has been revoked")
+	case quota.ReasonDailyBudget:
+		retryAfter(w, lim.RetryAfter(time.Now()))
+		writeError(w, http.StatusTooManyRequests, typeQuota,
+			"the free tier has spent today's budget across all users. It resets at 00:00 UTC — or bring your own key: https://platform.deepseek.com/api_keys")
+	default:
+		retryAfter(w, lim.RetryAfter(time.Now()))
+		writeError(w, http.StatusTooManyRequests, typeQuota, fmt.Sprintf(
+			"%s. It resets at 00:00 UTC — or bring your own key: https://platform.deepseek.com/api_keys",
+			lim.Error()))
+	}
+}
+
+func setQuotaHeaders(w http.ResponseWriter, st quota.Status) {
+	h := w.Header()
+	h.Set(headerRequestsLeft, strconv.Itoa(max(0, st.Limits.Requests-st.Used.Requests)))
+	h.Set(headerInputLeft, strconv.Itoa(max(0, st.Limits.InputTokens-st.Used.InputTokens)))
+	h.Set(headerOutputLeft, strconv.Itoa(max(0, st.Limits.OutputTokens-st.Used.OutputTokens)))
+	h.Set(headerResets, st.ResetsAt.UTC().Format(time.RFC3339))
+}

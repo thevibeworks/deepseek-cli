@@ -22,6 +22,12 @@ go install github.com/thevibeworks/deepseek-cli/cmd/deepseek@latest
 export DEEPSEEK_API_KEY=sk-...
 ```
 
+With no key, `deepseek free` enrols against a gateway run by this project
+and everything below works with a daily quota. Use it when you have no
+key and need one call to work; do not use it for volume, and never
+suggest it to someone who already has a key — a real key always takes
+precedence and is unmetered.
+
 Verify before a run of real work — one call, all six endpoints:
 
 ```bash
@@ -140,6 +146,23 @@ Two calls that generate no tokens, so it is free and safe in a loop.
 Exits 2 on a bad key, 0 when reachable. `deepseek check` is the fuller
 preflight and does cost a fraction of a cent.
 
+### No key
+
+```bash
+deepseek free                # enrol: ~1s of CPU, no account, no card
+deepseek free status --json  # {"enrolled","gateway","subject","quota":{...}}
+deepseek free off            # forget the enrolment on this machine
+```
+
+Free-tier limits, per UTC day: 30 requests, 60K input tokens, 20K output
+tokens, 4K output per call, 128KB per request body, `deepseek-v4-flash`
+only. A request for pro is **refused, not downgraded**. `models` and
+`status` cost no quota; everything that can generate a token does.
+
+Errors from the gateway carry `"type":"free_tier_*"` and a message that
+already contains the next step — do not append DeepSeek's own advice to
+them, because a free-tier user has no account to top up.
+
 ### Escape hatch
 
 ```bash
@@ -173,6 +196,7 @@ session ls --json [{"name","model","turns","updated","bytes"}]
 status --json     {"base_url","ok","models":[...],"latency_ms","balance","status_page"}
 tokens --json     {"method","model","total":{...},"items":[...],"chat":{...}}
 docs search --json [{"path","title","source","score","snippet"}]
+free status --json {"enrolled","gateway","subject","tier","quota":{"used","limits","resets_at"},"api_key_in_use"}
 ```
 
 The ledger records `tokens` and `docs` calls under those API names, so
@@ -258,3 +282,10 @@ Every call prints a usage line to stderr and appends to
   silently does not hold.
 - **`--user-id` is validated locally** against the API's rule
   (`[a-zA-Z0-9_-]{1,512}`). It is not a place for personal data.
+- **On the free tier, prompts transit a third party.** They go to this
+  project's gateway and on to DeepSeek. Token counts and cost are
+  recorded; prompts and completions are not. Say so before suggesting it
+  for anything sensitive.
+- **The free tier can run out mid-task.** A 402 means the shared credit
+  pool is empty and will not recover today; a 429 with `free_tier_quota`
+  resets at 00:00 UTC. Neither is worth retrying — switch to a key.

@@ -1,0 +1,83 @@
+name: gateway image
+
+# The free-tier gateway ships as a container because its only deploy
+# target is a 1 GiB box that cannot spare the memory to compile Go.
+#
+# Built on every push so the Dockerfile cannot rot unnoticed, and pushed
+# to the registry only on a tag or a manual run. Building is verification;
+# publishing a package under the org is a decision, and an unreleased
+# service should not be making it on every commit.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+    paths:
+      - "gateway/**"
+      - ".github/workflows/gateway-image.yml"
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE: ${{ github.repository_owner }}/dsgate
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # The gateway's tests include one that runs the real CLI binary
+      # against a real gateway. An image that shipped without that
+      # passing would be an image whose enrolment protocol might not
+      # match the client's.
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+          cache: true
+
+      - name: build the CLI for the interop test
+        run: make build
+
+      - name: test
+        run: cd gateway && go test ./... -count=1
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,format=long
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: gateway
+          file: gateway/Dockerfile
+          # arm64 because the target might be an Ampere box; amd64
+          # because this one is not.
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.ref_type == 'tag' || github.event_name == 'workflow_dispatch' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ github.ref_type == 'tag' && github.ref_name || format('main-{0}', github.sha) }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

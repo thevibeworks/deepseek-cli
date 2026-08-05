@@ -34,6 +34,7 @@ NAV = [
     ("formats/", "formats"),
     ("cost/", "cost"),
     ("agents/", "agents"),
+    ("playground/", "playground"),
 ]
 
 # Theme. The default is whatever the OS says; the toggle overrides it and
@@ -216,7 +217,7 @@ FOOT = """  </div>
 <script>
 {toggle}
 </script>
-</body>
+{extra}</body>
 </html>
 """
 
@@ -236,7 +237,12 @@ def render(page):
     body += crumb(page.get("crumb", ""), root)
     body += page["body"].replace("{{root}}", root or "./").replace("{{repo}}", REPO).replace("{{docs}}", DOCS)
     body += pager(slug, root)
-    body += FOOT.format(repo=REPO, site=SITE, toggle=THEME_TOGGLE)
+    body += FOOT.format(
+        repo=REPO, site=SITE, toggle=THEME_TOGGLE,
+        # Pages that ship an app rather than prose load it here, after the
+        # theme script, so the markup it wires up already exists.
+        extra=page.get("scripts", "").replace("{{root}}", root or "./"),
+    )
     return body
 
 
@@ -308,8 +314,8 @@ what each call cost.</p>
 <p class="badges">
 <img src="https://img.shields.io/github/v/release/thevibeworks/deepseek-cli?color=00c2e9&labelColor=0d0d0d&label=release" alt="Latest release" width="104" height="20" loading="lazy">
 <img src="https://img.shields.io/badge/API%20coverage-6%2F6%20endpoints-00ff41?labelColor=0d0d0d" alt="API coverage: 6 of 6 endpoints" width="188" height="20" loading="lazy">
-<img src="https://img.shields.io/badge/tests-103%20%C2%B7%2068%25%20covered-00ff41?labelColor=0d0d0d" alt="103 tests, 68 percent covered" width="166" height="20" loading="lazy">
-<img src="https://img.shields.io/badge/DeepSeek%20API%20docs-2026--08--02-bf00ff?labelColor=0d0d0d" alt="Built against the DeepSeek API docs of 2026-08-02" width="196" height="20" loading="lazy">
+<img src="https://img.shields.io/badge/tests-302%20%C2%B7%2070%25%20covered-00ff41?labelColor=0d0d0d" alt="302 tests, 70 percent covered" width="166" height="20" loading="lazy">
+<img src="https://img.shields.io/badge/DeepSeek%20API%20docs-2026--08--05-bf00ff?labelColor=0d0d0d" alt="Built against the DeepSeek API docs of 2026-08-05" width="196" height="20" loading="lazy">
 <img src="https://img.shields.io/badge/models-v4--flash%20%7C%20v4--pro-00c2e9?labelColor=0d0d0d" alt="Models: deepseek-v4-flash and deepseek-v4-pro" width="164" height="20" loading="lazy">
 </p>
 
@@ -323,10 +329,49 @@ retrying 4xx responses &mdash; those would fail identically on a second try.</sp
 
 <div class="cta">
 <a class="btn" href="{{root}}install/">install</a>
+<a class="btn alt" href="{{root}}playground/">try it, no key</a>
 <a class="btn alt" href="{{root}}commands/">commands</a>
 <a class="btn alt" href="{{repo}}">source</a>
 </div>
 </section>
+
+<h2 id="no-key">You do not need an API key to start</h2>
+<p class="lede">Most tools open with "get an API key". This one opens with an
+answer.</p>
+
+<div class="term">
+<div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="title">~/work</span></div>
+<pre><code><span class="p">$</span> deepseek free
+<span class="o">The free tier relays your prompts to DeepSeek through a gateway run by
+this project. No account, no API key.</span>
+
+<span class="c">  gateway   https://free.deepseek.lroolle.com
+  model     deepseek-v4-flash
+  per day   30 requests &middot; 60k input &middot; 20k output tokens
+  privacy   prompts are relayed, not stored; only token counts are recorded</span>
+
+<span class="o">Minting an anonymous token (20 bits of proof-of-work)&hellip;</span>
+<span class="c">  solved 20 bits in 0.4s (1.0M hashes)</span>
+
+<span class="o">Enrolled.</span>
+
+<span class="p">$</span> deepseek chat <span class="w">"why is the sky blue"</span>
+<span class="o">Sunlight is scattered by the atmosphere, and shorter wavelengths scatter
+far more &mdash; Rayleigh scattering.</span>
+<span class="c">&middot; flash &middot; 93 in &middot; 46 out (7 think) &middot; ~$0.000026 &middot; 1.56s</span></code></pre>
+</div>
+
+<p>About a second of CPU stands in for the signup &mdash; a proof-of-work
+puzzle, which is the whole enrolment. No email, no card, no dashboard. There is
+a <a href="{{root}}playground/">browser playground</a> on the same free tier
+that shows you the equivalent command for whatever you set up in it.</p>
+
+<p>A real API key always takes precedence, so this is a fallback for not having
+one rather than a way around having one. The gateway is
+<a href="{{repo}}/tree/main/gateway">in the repository</a> and meant to be
+self-hostable; its <a href="{{repo}}/blob/main/gateway/DESIGN.md">design
+notes</a> include the part most services leave out &mdash; why per-user quota
+is <em>not</em> what keeps it solvent, and what is.</p>
 
 <h2 id="why">Why this exists</h2>
 <p>Wrapping six HTTP endpoints is not interesting on its own. Two things are,
@@ -1157,6 +1202,160 @@ the rules that matter for autonomous use:</p>
 """,
 ))
 
+
+PLAYGROUND_BODY = """
+<h1>playground</h1>
+<p class="lede">The DeepSeek API in a browser, with no API key. Enrolling costs
+about a second of CPU and nothing else &mdash; no account, no email, no card.</p>
+
+<div id="pg-enrol" class="pg-enrol">
+  <p><strong>What this is.</strong> A gateway run by this project holds a real
+  DeepSeek API key and relays your requests, metered and capped. To stop one
+  person draining it for everyone, enrolling asks your browser to solve a small
+  proof-of-work puzzle. That puzzle is the whole signup.</p>
+  <ul class="pg-terms">
+    <li><span>model</span> deepseek-v4-flash</li>
+    <li><span>per day</span> 30 requests &middot; 60k input &middot; 20k output tokens</li>
+    <li><span>privacy</span> prompts are relayed to DeepSeek and are not stored or
+        logged by the gateway; only token counts and cost are recorded</li>
+    <li><span>when it runs out</span> the quota resets at 00:00 UTC, and the
+        <a href="{{root}}install/">CLI with your own key</a> has no limits at all</li>
+  </ul>
+  <button id="pg-enrolBtn" class="pg-primary" type="button">Enrol this browser</button>
+  <p id="pg-enrolStatus" class="pg-status" hidden></p>
+  <noscript><p class="pg-status">This page needs JavaScript. The
+  <a href="{{root}}install/">command-line tool</a> does not:
+  <code>deepseek free</code> does the same thing in a shell.</p></noscript>
+</div>
+
+<div id="pg-app" class="pg-app" hidden>
+  <div class="pg-main">
+    <div id="pg-log" class="pg-log term" aria-live="polite" aria-label="Conversation"></div>
+    <div id="pg-error" class="pg-error" role="alert" hidden></div>
+
+    <div id="pg-composer" class="pg-composer">
+      <div id="pg-chatFields">
+        <label class="pg-sr" for="pg-prompt">Message</label>
+        <textarea id="pg-prompt" rows="3" placeholder="why is the sky blue&#10;&#10;Enter to send, Shift+Enter for a newline"></textarea>
+      </div>
+      <div id="pg-fimFields" hidden>
+        <label class="pg-sr" for="pg-suffix">Suffix</label>
+        <input id="pg-suffix" type="text" placeholder="text after the gap, e.g.     return c">
+      </div>
+      <div class="pg-actions">
+        <button id="pg-send" class="pg-primary" type="button">Send</button>
+        <button id="pg-stop" type="button" hidden>Stop</button>
+        <button id="pg-clear" type="button">Clear</button>
+        <span id="pg-usage" class="pg-usage"></span>
+      </div>
+    </div>
+  </div>
+
+  <aside class="pg-side">
+    <h2>request</h2>
+    <label for="pg-format">format</label>
+    <select id="pg-format">
+      <option value="chat">chat &mdash; OpenAI</option>
+      <option value="anthropic">anthropic &mdash; Messages</option>
+      <option value="responses">responses &mdash; OpenAI Responses</option>
+      <option value="fim">fim &mdash; fill in the middle</option>
+    </select>
+    <p id="pg-formatNote" class="pg-note"></p>
+
+    <label for="pg-think">thinking</label>
+    <select id="pg-think">
+      <option value="">on (the API's default)</option>
+      <option value="off">off</option>
+    </select>
+
+    <label for="pg-effort">effort</label>
+    <select id="pg-effort">
+      <option value="">default</option>
+      <option value="minimal">minimal</option>
+      <option value="low">low</option>
+      <option value="medium">medium</option>
+      <option value="high">high</option>
+      <option value="max">max</option>
+    </select>
+
+    <label for="pg-maxTokens">max tokens</label>
+    <input id="pg-maxTokens" type="number" min="1" max="4096" value="1024">
+
+    <label for="pg-temperature">temperature</label>
+    <input id="pg-temperature" type="number" min="0" max="2" step="0.1" placeholder="default">
+
+    <label for="pg-system">system prompt</label>
+    <textarea id="pg-system" rows="2" placeholder="optional"></textarea>
+
+    <h2>the same thing, in a shell</h2>
+    <pre id="pg-command" class="pg-command"></pre>
+    <button id="pg-copy" type="button">copy</button>
+
+    <h2>free tier</h2>
+    <p id="pg-quota" class="pg-note"></p>
+    <label for="pg-gateway">gateway</label>
+    <input id="pg-gateway" type="url" spellcheck="false">
+    <button id="pg-reset" type="button">Forget this browser's token</button>
+  </aside>
+</div>
+
+<h2>Why the puzzle</h2>
+<p>Because the alternative is a signup form. Every request here spends real
+money on a real API key, so something has to stop one script taking the lot.
+An account would do it and would also be the thing that stops most people
+trying at all &mdash; so instead your browser burns about a second of CPU, once,
+and that is the account.</p>
+<p>It is not a security boundary and is not pretending to be one. Identities can
+be farmed; a daily budget cap cannot be. That cap is what actually protects the
+service, which is why the puzzle can stay small enough not to matter to you.
+The reasoning is written out in
+<a href="{{repo}}/blob/main/gateway/DESIGN.md">gateway/DESIGN.md</a>.</p>
+
+<h2>The command panel is the point</h2>
+<p>Whatever you set on the right, the panel shows the <code>deepseek</code>
+invocation that does the same thing. Get the request right here, take the line
+away with you. Everything on this page works from a terminal, and from a
+terminal it also streams to stdout, keeps a usage ledger, and remembers the
+conversation.</p>
+
+<pre class="term"><code><span class="c">$</span> go install github.com/thevibeworks/deepseek-cli/cmd/deepseek@latest
+<span class="c">$</span> deepseek free
+<span class="c">$</span> deepseek chat "why is the sky blue"</code></pre>
+
+<p>The CLI and this page enrol against the same gateway with the same protocol
+and get the same quota &mdash; but they are separate implementations of it, in
+different languages, pinned to a shared table of test vectors.</p>
+
+<h2>What it will not do</h2>
+<ul>
+<li><strong>deepseek-v4-pro.</strong> Three times the price. The free tier serves
+flash and refuses pro outright rather than quietly downgrading it, because an
+answer you attribute to the wrong model is worse than no answer.</li>
+<li><strong>Long prompts.</strong> Bodies are capped at 128KB, output at 4K
+tokens per call.</li>
+<li><strong>Tools.</strong> They are forwarded, but this page does not run them.
+Neither does the CLI &mdash; it prints them.</li>
+</ul>
+<p>All of those limits disappear the moment you use your own key, which costs
+about a third of a cent for a thousand ordinary turns. That is the honest pitch:
+this exists so you can find out whether the API is worth a key, without needing
+one first.</p>
+"""
+
+PAGES.append(dict(
+    slug="playground/",
+    crumb="playground",
+    title="DeepSeek playground — try the API with no key",
+    description="Use the DeepSeek API in your browser without an API key or a signup. Chat, Anthropic Messages, Responses and FIM formats, streaming, with the equivalent deepseek CLI command shown for every request.",
+    keywords="deepseek playground, deepseek api free, deepseek without api key, try deepseek api, deepseek chat online, deepseek api demo, free deepseek api",
+    jsonld=tech_article(
+        "DeepSeek playground",
+        "Try the DeepSeek API in a browser with no API key, and see the equivalent command-line invocation for every request.",
+        "playground/",
+    ),
+    body=PLAYGROUND_BODY,
+    scripts='<script src="{{root}}playground.js"></script>\n',
+))
 
 def build(check_only=False):
     written, stale = [], []

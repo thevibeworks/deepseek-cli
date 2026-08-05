@@ -789,3 +789,284 @@ td code {
         --term-yellow: #7a5200;
     }
 }
+
+/* ---------- playground ----------
+ *
+ * The one page that is an application rather than prose. It borrows the
+ * .term palette for the transcript — a terminal should look like a
+ * terminal in either theme — and follows the page theme for everything
+ * the reader types into.
+ *
+ * The layout is two columns that collapse to one below 60rem. There is
+ * no breakpoint tuning beyond that: the controls are a stack either way,
+ * they just move.
+ */
+
+.pg-enrol {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    padding: 1.25rem var(--gutter);
+    margin: 0 0 2rem;
+}
+
+.pg-enrol p {
+    max-width: var(--measure);
+}
+
+.pg-terms {
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0 1.25rem;
+    font-size: 0.9rem;
+}
+
+.pg-terms li {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.35rem 0;
+    border-top: 1px solid var(--line);
+}
+
+.pg-terms li span:first-child {
+    flex: none;
+    width: 9rem;
+    color: var(--muted);
+}
+
+.pg-status {
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin: 0.75rem 0 0;
+    min-height: 1.2em;
+}
+
+/* Buttons and fields. The site has no form controls anywhere else, so
+ * these are defined here rather than globally. */
+.pg-enrol button,
+.pg-app button {
+    font: inherit;
+    font-size: 0.85rem;
+    color: var(--text);
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    padding: 0.45rem 0.9rem;
+    cursor: pointer;
+}
+
+.pg-enrol button:hover,
+.pg-app button:hover {
+    border-color: var(--cyan);
+    color: var(--cyan);
+}
+
+.pg-enrol button:disabled,
+.pg-app button:disabled {
+    opacity: 0.5;
+    cursor: default;
+    border-color: var(--line);
+    color: var(--muted);
+}
+
+.pg-primary {
+    border-color: var(--cyan) !important;
+    color: var(--cyan) !important;
+}
+
+.pg-app input,
+.pg-app select,
+.pg-app textarea {
+    font: inherit;
+    font-size: 0.85rem;
+    width: 100%;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    padding: 0.4rem 0.55rem;
+}
+
+.pg-app textarea {
+    resize: vertical;
+}
+
+.pg-app input:focus,
+.pg-app select:focus,
+.pg-app textarea:focus {
+    outline: 2px solid var(--cyan);
+    outline-offset: -2px;
+}
+
+.pg-app label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin: 0.9rem 0 0.25rem;
+}
+
+/* Visually hidden, still announced. The composer's label is obvious to
+ * anyone who can see the placeholder and invisible to anyone who cannot. */
+.pg-sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+.pg-app {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 19rem;
+    gap: var(--gutter);
+    margin: 0 0 2.5rem;
+    align-items: start;
+}
+
+@media (max-width: 60rem) {
+    .pg-app {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.pg-log {
+    min-height: 20rem;
+    max-height: 55vh;
+    overflow-y: auto;
+    padding: 1rem;
+    font-size: 0.85rem;
+    line-height: 1.55;
+}
+
+.pg-log:empty::before {
+    content: 'ready. ask it something.';
+    color: var(--term-muted);
+}
+
+.pg-turn {
+    margin: 0 0 1.1rem;
+}
+
+.pg-turn:last-child {
+    margin-bottom: 0;
+}
+
+.pg-role {
+    color: var(--term-cyan);
+    font-size: 0.75rem;
+    margin-bottom: 0.2rem;
+}
+
+.pg-user .pg-role {
+    color: var(--term-green);
+}
+
+.pg-body {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.pg-user .pg-body {
+    color: var(--term-text);
+}
+
+/* Reasoning is collapsed by default. It is often longer than the answer
+ * and is rarely what the reader came for — but hiding it entirely would
+ * misrepresent what the model charged for. */
+.pg-reasoning {
+    margin: 0 0 0.4rem;
+    font-size: 0.8rem;
+    color: var(--term-muted);
+}
+
+.pg-reasoning summary {
+    cursor: pointer;
+    color: var(--term-yellow);
+}
+
+.pg-reasoning pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    margin: 0.4rem 0 0;
+    padding-left: 0.8rem;
+    border-left: 1px solid var(--term-line);
+    color: var(--term-muted);
+    font-size: 0.78rem;
+    max-height: 14rem;
+    overflow-y: auto;
+}
+
+.pg-footer {
+    color: var(--term-muted);
+    font-size: 0.75rem;
+    margin-top: 0.35rem;
+}
+
+.pg-composer {
+    margin-top: 0.75rem;
+}
+
+.pg-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.pg-usage {
+    color: var(--muted);
+    font-size: 0.75rem;
+    margin-left: auto;
+}
+
+.pg-error {
+    border: 1px solid var(--pink);
+    color: var(--pink);
+    background: var(--surface);
+    padding: 0.6rem 0.8rem;
+    margin-top: 0.75rem;
+    font-size: 0.85rem;
+}
+
+.pg-side {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    padding: 0.25rem 1rem 1rem;
+}
+
+.pg-side h2 {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin: 1.4rem 0 0;
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--line);
+}
+
+.pg-side h2:first-child {
+    border-top: 0;
+    margin-top: 0.9rem;
+    padding-top: 0;
+}
+
+.pg-note {
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin: 0.4rem 0 0;
+}
+
+/* The command panel. This is the page's argument, so it gets the
+ * terminal treatment rather than looking like another field. */
+.pg-command {
+    color-scheme: only dark;
+    background: #0d0d0d;
+    border: 1px solid #262626;
+    color: #e8e8e8;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    padding: 0.7rem 0.8rem;
+    margin: 0.5rem 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-x: auto;
+}

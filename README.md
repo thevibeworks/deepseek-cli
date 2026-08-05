@@ -11,7 +11,7 @@
   <a href="https://github.com/thevibeworks/deepseek-cli/releases"><img src="https://img.shields.io/github/v/release/thevibeworks/deepseek-cli?color=blue&label=release" alt="Release"></a>
   <a href="https://github.com/thevibeworks/deepseek-cli/actions/workflows/ci.yml"><img src="https://github.com/thevibeworks/deepseek-cli/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="#commands"><img src="https://img.shields.io/badge/API%20coverage-6%2F6%20endpoints-brightgreen" alt="API coverage: 6 of 6 endpoints"></a>
-  <a href="#development"><img src="https://img.shields.io/badge/tests-174%20%C2%B7%2069%25%20covered-brightgreen" alt="174 tests, 69% statement coverage"></a>
+  <a href="#development"><img src="https://img.shields.io/badge/tests-302%20%C2%B7%2070%25%20covered-brightgreen" alt="302 tests, 70% statement coverage"></a>
   <br>
   <a href="https://api-docs.deepseek.com"><img src="https://img.shields.io/badge/DeepSeek%20API%20docs-2026--08--05-8a2be2" alt="Implemented against the DeepSeek API docs of 2026-08-05"></a>
   <a href="https://api-docs.deepseek.com/quick_start/pricing"><img src="https://img.shields.io/badge/models-v4--flash%20%7C%20v4--pro-0ea5e9" alt="Models: deepseek-v4-flash and deepseek-v4-pro"></a>
@@ -120,6 +120,43 @@ deepseek check                          # is everything reachable?
 deepseek chat "why is the sky blue"
 ```
 
+### Or without a key at all
+
+```console
+$ deepseek free
+The free tier relays your prompts to DeepSeek through a gateway run by
+this project. No account, no API key.
+
+  gateway   https://free.deepseek.lroolle.com
+  model     deepseek-v4-flash
+  per day   30 requests · 60k input · 20k output tokens
+  privacy   prompts and completions are relayed to DeepSeek and are not
+            stored or logged by this gateway; only token counts and cost
+            are recorded
+
+Minting an anonymous token (20 bits of proof-of-work)…
+  solved 20 bits in 0.4s (1.0M hashes)
+
+Enrolled. Saved to ~/.config/deepseek/free.json
+
+$ deepseek chat "why is the sky blue"
+The sky is blue because sunlight is scattered by the atmosphere…
+· flash · 93 in · 46 out (7 think) · ~$0.000026 · 1.56s
+```
+
+No email, no card, no dashboard — about a second of CPU stands in for the
+signup. Every command then works as normal, and `deepseek free status`
+shows what is left of the day. A real API key always takes precedence,
+so this is a fallback for not having one, never a way around having one.
+
+The gateway is in this repository under [`gateway/`](gateway/) and is
+meant to be self-hostable; [`gateway/DESIGN.md`](gateway/DESIGN.md) is
+the reasoning, including the part where per-user quota is explicitly *not*
+what keeps it solvent. There is also a
+[browser playground](https://thevibeworks.github.io/deepseek-cli/playground/)
+on the same free tier, which shows you the equivalent `deepseek` command
+for whatever you set up in it.
+
 `check` calls all six endpoints once and reports which answered. Run it
 first when something is wrong and you do not yet know whether the problem
 is the key, the balance, the network, a proxy, or one endpoint:
@@ -156,6 +193,7 @@ One command per endpoint, named for what it does.
 | `session` | *(local)* | The conversations `chat --continue` replays. |
 | `status` | `GET /models`, `/user/balance` | Is it up, for this key, from here. Costs nothing. |
 | `check` | *(all six)* | Preflight. |
+| `free` | *(gateway)* | Use the API with no key: enrol, check quota, opt out. |
 | `raw` | *(anything)* | Escape hatch — any path, with auth and retries. |
 
 ### Talking to models
@@ -390,6 +428,22 @@ printf 'sk-...' > ~/.config/deepseek/api_key && chmod 600 ~/.config/deepseek/api
 Global flags: `--api-key` `--base-url` `--json` `--jq` `--timeout`
 `--verbose/-v` (`-vv` adds bodies) `--no-stats` `--no-ledger`.
 
+### The free tier
+
+| | |
+| --- | --- |
+| `deepseek free` | enrol this machine (about a second of CPU) |
+| `deepseek free status` | requests, tokens and spend left today |
+| `deepseek free off` | forget the enrolment on this machine |
+| `DEEPSEEK_FREE_URL` | point at a different gateway — yours, or a local one |
+| `~/.config/deepseek/free.json` | where the token is kept, mode 0600 |
+
+Resolution order for a credential is: `--api-key`, then
+`DEEPSEEK_API_KEY`, then the key file, then the free-tier enrolment. The
+free tier is only reached when there is no key at all, and it is skipped
+entirely if `--base-url` or `DEEPSEEK_BASE_URL` is set — a token minted
+for our gateway is not something to send somewhere else.
+
 ## Good to know
 
 Things the API does that surprise people, and that this tool surfaces
@@ -424,15 +478,25 @@ rather than hides:
 ## Development
 
 ```bash
-make            # build
-make check      # fmt + vet + test + corpus + build
-make test       # 174 tests, no network required
-make cover-gate # fails under the coverage floor
-make corpus     # repack the embedded DeepSeek docs from the mirror
+make              # build
+make check        # everything below, plus fmt, vet and the site
+make test         # 190 tests, no network required
+make cover-gate   # fails under the coverage floor
+make corpus       # repack the embedded DeepSeek docs from the mirror
+make gateway      # build the free-tier gateway
+make gateway-test # 112 tests, including the CLI against a real gateway
+make price-check  # the rate card lives in two modules; catch drift
+make site-check   # the site, and the playground's three-way puzzle vectors
 ```
 
 Zero runtime dependencies beyond `cobra` and `golang.org/x/term`; the API
 client is hand-rolled. `--jq` shells out to `jq` if you use it.
+
+The [gateway](gateway/) is a **separate Go module with no dependencies at
+all**, so `go install .../cmd/deepseek@latest` never pulls a line of
+server code. The two halves share a documented wire format and no source,
+which is why `make gateway-test` runs the real `deepseek` binary through
+a real gateway rather than trusting that they agree.
 
 Design rulings and the reasons behind them: [TASTE.md](TASTE.md).
 

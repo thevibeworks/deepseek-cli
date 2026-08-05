@@ -9,7 +9,9 @@
 > the API it talks to — offline, with a citation per claim.
 
 Install: `go install github.com/thevibeworks/deepseek-cli/cmd/deepseek@latest`
-Auth: `DEEPSEEK_API_KEY`, or `~/.config/deepseek/api_key`.
+Auth: `DEEPSEEK_API_KEY`, or `~/.config/deepseek/api_key`, or `deepseek free`
+for a keyless metered tier (no signup; ~1s of proof-of-work stands in for
+the account).
 Contract: stdout is data, stderr is status. `--json` prints the API's own
 response body unmodified. Exit codes: 0 ok, 1 error, 2 auth, 3 no balance,
 4 rate limited, 130 interrupted.
@@ -21,6 +23,8 @@ response body unmodified. Exit codes: 0 ok, 1 error, 2 auth, 3 no balance,
 - [skill/SKILL.md](skill/SKILL.md): drop-in agent skill; the same contract as an operational procedure
 - [TASTE.md](TASTE.md): design rejections and their reasons — why one command per format rather than one `--api` flag, why `--json` is never wrapped, why announced-but-undated pricing is not applied, why tool calls are printed and not executed
 - [SECURITY.md](SECURITY.md): what touches your key, prompts and disk; reporting
+- [gateway/DESIGN.md](gateway/DESIGN.md): why the free tier is shaped as it is — why a global budget breaker rather than per-user quota is what bounds the spend, why proof-of-work is not claimed to be a security boundary, why unmeterable responses are charged an over-estimate
+- [gateway/deploy/README.md](gateway/deploy/README.md): running your own gateway
 
 ## Source
 
@@ -29,6 +33,8 @@ response body unmodified. Exit codes: 0 ok, 1 error, 2 auth, 3 no balance,
 - [internal/session](internal/session): stored conversations and the reasoning_content replay rule
 - [internal/docs](internal/docs): DeepSeek's own documentation compiled into the binary — `docs.go` the embedded corpus and its cache, `search.go` BM25-with-IDF ranking over 67 pages
 - [internal/ledger](internal/ledger): append-only usage log and its reports
+- [gateway](gateway): the free-tier gateway, a separate Go module with no dependencies — `internal/token` credential codec, `internal/mint` proof-of-work issuance and per-address difficulty escalation, `internal/quota` budgets and the spend journal, `internal/meter` usage extraction across all four wire formats, `internal/policy` the request allowlist and rewrites, `internal/server` the HTTP surface
+- [site/playground.js](site/playground.js): the browser playground — the same free tier, and it shows the equivalent `deepseek` command for every request
 
 ## Reference
 

@@ -10,7 +10,9 @@
 
 Install: `curl -sL https://github.com/thevibeworks/deepseek-cli/raw/main/install.sh | sh`
 Binary: `deepseek`, also answers to `ds` and `dscli`.
-Auth: `DEEPSEEK_API_KEY`, or `~/.config/deepseek/api_key`.
+Auth: `DEEPSEEK_API_KEY`, or `~/.config/deepseek/api_key`, or `deepseek free`
+for a keyless metered tier (no signup; ~1s of proof-of-work stands in for
+the account). A real key always takes precedence.
 Contract: stdout is data, stderr is status. `--json` prints the API's own
 response body unmodified. Exit codes: 0 ok, 1 error, 2 auth, 3 no balance,
 4 rate limited, 130 interrupted.
@@ -21,18 +23,20 @@ response body unmodified. Exit codes: 0 ok, 1 error, 2 auth, 3 no balance,
 - [Install](https://thevibeworks.github.io/deepseek-cli/install/): one-line installer, release binaries, go install, the ds/dscli aliases, API key and environment configuration, shell completion
 - [Commands](https://thevibeworks.github.io/deepseek-cli/commands/): every command and flag — chat (with --interactive), anthropic, respond, fim, tokens, docs, models, balance, usage, session, status, check, raw — plus global flags and exit codes
 - [Formats](https://thevibeworks.github.io/deepseek-cli/formats/): DeepSeek's four wire formats compared — auth, thinking controls, tool support, Claude model remapping, and the token-accounting convention that differs between them
-- [Cost](https://thevibeworks.github.io/deepseek-cli/cost/): the rate card, what the context cache is worth, the flat 79-token thinking surcharge, the local usage ledger, and the caveats on every figure
+- [Cost](https://thevibeworks.github.io/deepseek-cli/cost/): the rate card, what the context cache is worth, the thinking surcharge and how it varies by effort level, the local usage ledger, and the caveats on every figure
 - [Agents](https://thevibeworks.github.io/deepseek-cli/agents/): the scripting contract — output streams, JSON response shapes per format, exit-code semantics, retry behaviour
+- [Playground](https://thevibeworks.github.io/deepseek-cli/playground/): the DeepSeek API in a browser with no API key — all four wire formats, streaming, and the equivalent deepseek command for every request
 
 ## Key facts
 
 - Endpoints: POST /chat/completions, POST /anthropic/v1/messages, POST /responses, POST /beta/completions (FIM), GET /models, GET /user/balance
 - Models: deepseek-v4-flash and deepseek-v4-pro only. Claude model names sent to the Anthropic endpoint are remapped server-side (claude-opus* to pro, claude-sonnet*/claude-haiku* to flash, unrecognised to flash)
 - Token accounting differs by format: on /anthropic/v1/messages, usage.input_tokens EXCLUDES cache reads, so the full prompt is input_tokens + cache_read_input_tokens. The chat and Responses formats include cached tokens in their input count
-- Thinking mode is on by default and adds a flat 79 input tokens per request for its template, independent of prompt length
+- Thinking mode is on by default and adds a fixed input-token template whose size depends on --effort, not on prompt length. Measured 2026-08-05 on flash: none/minimal/low +0, medium/high/xhigh +79, max +92. On pro: +0 except max, which is +79. So --effort low on flash removes the surcharge entirely and still reasons
 - A cached input token costs about 1/50th of an uncached one ($0.0028 vs $0.14 per 1M on flash)
 - Text only: image, document and search-result content blocks are rejected in every format
 - Tool calls are printed, never executed
+- A free tier exists: `deepseek free` enrols with a proof-of-work puzzle instead of a signup, then relays through a gateway run by the project. Flash only, 30 requests and 20K output tokens per UTC day, 4K output per call. A pro request is refused rather than downgraded. Prompts transit the gateway; token counts and cost are recorded, prompts and completions are not
 
 ## Source
 
@@ -40,6 +44,7 @@ response body unmodified. Exit codes: 0 ok, 1 error, 2 auth, 3 no balance,
 - [AGENTS.md](https://github.com/thevibeworks/deepseek-cli/blob/main/AGENTS.md): the scripting contract in the repo
 - [skill/SKILL.md](https://github.com/thevibeworks/deepseek-cli/blob/main/skill/SKILL.md): drop-in agent skill
 - [TASTE.md](https://github.com/thevibeworks/deepseek-cli/blob/main/TASTE.md): design rejections and their reasons
+- [gateway/DESIGN.md](https://github.com/thevibeworks/deepseek-cli/blob/main/gateway/DESIGN.md): why the free tier is shaped as it is, and what bounds its spend
 
 ## Reference
 

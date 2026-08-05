@@ -1,0 +1,65 @@
+name: ${COMPOSE_PROJECT_NAME:-dsgate}
+
+services:
+  dsgate:
+    image: ${DSGATE_IMAGE:-ghcr.io/thevibeworks/dsgate:latest}
+    restart: unless-stopped
+
+    # Loopback only. DSGATE_TRUST_PROXY below makes X-Forwarded-For
+    # authoritative for identity, which is safe exactly as long as
+    # nothing can reach this port without going through the proxy that
+    # sets it.
+    ports:
+      - "127.0.0.1:${DSGATE_PORT:-8787}:8787"
+
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+    # This box is 1 GiB and shared with other people's production. The
+    # gateway idles around 20 MB; the limit is here so that a bug in it
+    # cannot be what takes the host down.
+    mem_limit: ${DSGATE_MEM_LIMIT:-192m}
+    pids_limit: 256
+
+    environment:
+      DSGATE_UPSTREAM_KEY: ${DSGATE_UPSTREAM_KEY:?set it in .env}
+      DSGATE_ANNOUNCE: ${DSGATE_ANNOUNCE:-}
+      DSGATE_ORIGINS: ${DSGATE_ORIGINS:-}
+      DSGATE_ADMIN_TOKEN: ${DSGATE_ADMIN_TOKEN:-}
+      DSGATE_TRUST_PROXY: ${DSGATE_TRUST_PROXY:-1}
+
+      DSGATE_DAILY_BUDGET_USD: ${DSGATE_DAILY_BUDGET_USD:-1.00}
+      DSGATE_TOTAL_BUDGET_USD: ${DSGATE_TOTAL_BUDGET_USD:-20.00}
+      DSGATE_ANON_DAILY_REQUESTS: ${DSGATE_ANON_DAILY_REQUESTS:-30}
+      DSGATE_ANON_DAILY_INPUT_TOKENS: ${DSGATE_ANON_DAILY_INPUT_TOKENS:-60000}
+      DSGATE_ANON_DAILY_OUTPUT_TOKENS: ${DSGATE_ANON_DAILY_OUTPUT_TOKENS:-20000}
+      DSGATE_ANON_MAX_TOKENS: ${DSGATE_ANON_MAX_TOKENS:-4096}
+      DSGATE_MAX_INFLIGHT: ${DSGATE_MAX_INFLIGHT:-8}
+      DSGATE_POW_BITS: ${DSGATE_POW_BITS:-20}
+      DSGATE_MINT_DAILY_PER_IP: ${DSGATE_MINT_DAILY_PER_IP:-3}
+
+    # The signing secret and the spend journal. Losing the first
+    # invalidates every enrolment; losing the second refunds the credit
+    # pool. This is the only state there is, and it must outlive the
+    # container.
+    volumes:
+      - ./volumes/state:/var/lib/dsgate
+
+    healthcheck:
+      # The binary answers its own health check: distroless has no shell
+      # and no curl, and adding either to reach a JSON endpoint would be
+      # a worse trade than this.
+      test: ["CMD", "/usr/local/bin/dsgate", "--version"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "${DSGATE_LOG_MAX_SIZE:-10m}"
+        max-file: "${DSGATE_LOG_MAX_FILE:-3}"

@@ -66,6 +66,7 @@
       <a href="formats/">formats</a>
       <a href="cost/">cost</a>
       <a href="agents/">agents</a>
+      <a href="playground/">playground</a>
       <a href="https://github.com/thevibeworks/deepseek-cli">github&nbsp;&#8599;</a>
       <button class="themetoggle" id="theme-toggle" type="button" hidden
               aria-label="Theme: auto. Click to change.">theme:&nbsp;<span class="val">auto</span></button>
@@ -85,8 +86,8 @@ what each call cost.</p>
 <p class="badges">
 <img src="https://img.shields.io/github/v/release/thevibeworks/deepseek-cli?color=00c2e9&labelColor=0d0d0d&label=release" alt="Latest release" width="104" height="20" loading="lazy">
 <img src="https://img.shields.io/badge/API%20coverage-6%2F6%20endpoints-00ff41?labelColor=0d0d0d" alt="API coverage: 6 of 6 endpoints" width="188" height="20" loading="lazy">
-<img src="https://img.shields.io/badge/tests-103%20%C2%B7%2068%25%20covered-00ff41?labelColor=0d0d0d" alt="103 tests, 68 percent covered" width="166" height="20" loading="lazy">
-<img src="https://img.shields.io/badge/DeepSeek%20API%20docs-2026--08--02-bf00ff?labelColor=0d0d0d" alt="Built against the DeepSeek API docs of 2026-08-02" width="196" height="20" loading="lazy">
+<img src="https://img.shields.io/badge/tests-302%20%C2%B7%2070%25%20covered-00ff41?labelColor=0d0d0d" alt="302 tests, 70 percent covered" width="166" height="20" loading="lazy">
+<img src="https://img.shields.io/badge/DeepSeek%20API%20docs-2026--08--05-bf00ff?labelColor=0d0d0d" alt="Built against the DeepSeek API docs of 2026-08-05" width="196" height="20" loading="lazy">
 <img src="https://img.shields.io/badge/models-v4--flash%20%7C%20v4--pro-00c2e9?labelColor=0d0d0d" alt="Models: deepseek-v4-flash and deepseek-v4-pro" width="164" height="20" loading="lazy">
 </p>
 
@@ -100,10 +101,49 @@ retrying 4xx responses &mdash; those would fail identically on a second try.</sp
 
 <div class="cta">
 <a class="btn" href="./install/">install</a>
+<a class="btn alt" href="./playground/">try it, no key</a>
 <a class="btn alt" href="./commands/">commands</a>
 <a class="btn alt" href="https://github.com/thevibeworks/deepseek-cli">source</a>
 </div>
 </section>
+
+<h2 id="no-key">You do not need an API key to start</h2>
+<p class="lede">Most tools open with "get an API key". This one opens with an
+answer.</p>
+
+<div class="term">
+<div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="title">~/work</span></div>
+<pre><code><span class="p">$</span> deepseek free
+<span class="o">The free tier relays your prompts to DeepSeek through a gateway run by
+this project. No account, no API key.</span>
+
+<span class="c">  gateway   https://free.deepseek.lroolle.com
+  model     deepseek-v4-flash
+  per day   30 requests &middot; 60k input &middot; 20k output tokens
+  privacy   prompts are relayed, not stored; only token counts are recorded</span>
+
+<span class="o">Minting an anonymous token (20 bits of proof-of-work)&hellip;</span>
+<span class="c">  solved 20 bits in 0.4s (1.0M hashes)</span>
+
+<span class="o">Enrolled.</span>
+
+<span class="p">$</span> deepseek chat <span class="w">"why is the sky blue"</span>
+<span class="o">Sunlight is scattered by the atmosphere, and shorter wavelengths scatter
+far more &mdash; Rayleigh scattering.</span>
+<span class="c">&middot; flash &middot; 93 in &middot; 46 out (7 think) &middot; ~$0.000026 &middot; 1.56s</span></code></pre>
+</div>
+
+<p>About a second of CPU stands in for the signup &mdash; a proof-of-work
+puzzle, which is the whole enrolment. No email, no card, no dashboard. There is
+a <a href="./playground/">browser playground</a> on the same free tier
+that shows you the equivalent command for whatever you set up in it.</p>
+
+<p>A real API key always takes precedence, so this is a fallback for not having
+one rather than a way around having one. The gateway is
+<a href="https://github.com/thevibeworks/deepseek-cli/tree/main/gateway">in the repository</a> and meant to be
+self-hostable; its <a href="https://github.com/thevibeworks/deepseek-cli/blob/main/gateway/DESIGN.md">design
+notes</a> include the part most services leave out &mdash; why per-user quota
+is <em>not</em> what keeps it solvent, and what is.</p>
 
 <h2 id="why">Why this exists</h2>
 <p>Wrapping six HTTP endpoints is not interesting on its own. Two things are,

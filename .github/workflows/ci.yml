@@ -49,6 +49,48 @@ jobs:
       - name: site is up to date with its generator
         run: python3 site/build.py --check
 
+      # The playground is an application, not a page. These check that its
+      # script and its markup still agree, that it still behaves when
+      # driven, and that the browser's proof-of-work solver still produces
+      # the same answers as the CLI's and the gateway's.
+      - name: playground
+        run: |
+          node site/pow.test.js
+          node site/playground.test.js
+          node site/playground.dom.test.js
+
+      # The rate card exists in two modules that cannot import each other.
+      - name: rate cards have not drifted
+        run: make price-check
+
+  gateway:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+          cache: true
+
+      - name: gofmt
+        run: test -z "$(cd gateway && gofmt -l .)" || { echo "needs gofmt:"; cd gateway && gofmt -l .; exit 1; }
+
+      - name: vet
+        run: cd gateway && go vet ./...
+
+      # The interop test runs the real CLI binary against a real gateway,
+      # which is the only thing that proves the two independent
+      # implementations of the enrolment protocol actually agree.
+      - name: build the CLI for the interop test
+        run: make build
+
+      - name: test
+        run: cd gateway && go test ./... -race -count=1
+
+      - name: build
+        run: make gateway
+
   cross-build:
     runs-on: ubuntu-latest
     strategy:

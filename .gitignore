@@ -1,5 +1,11 @@
 /deepseek
+/dsgate
 /dist/
 /completions/
 *.out
 .env
+
+# gateway state: signing secret and spend journal, never committed
+/gateway/state/
+/gateway/deploy/.env
+/gateway/deploy/volumes/

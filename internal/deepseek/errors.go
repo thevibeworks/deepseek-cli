@@ -14,7 +14,11 @@ import (
 // ErrNoKey is returned when no API key could be resolved. It carries its
 // own fix instructions because "unauthorized" with no next step is the
 // least useful error a CLI can print.
-var ErrNoKey = errors.New("no API key — set DEEPSEEK_API_KEY, pass --api-key, or write one to " + KeyFile())
+//
+// The free tier is offered first on purpose: it is the only one of these
+// that works for someone who does not yet have a DeepSeek account.
+var ErrNoKey = errors.New("no API key — run `deepseek free` to use the free tier (no signup), " +
+	"or set DEEPSEEK_API_KEY, pass --api-key, or write one to " + KeyFile())
 
 // APIError is a 4xx/5xx response from DeepSeek. Every endpoint, in every
 // wire format, returns the same envelope:
@@ -45,9 +49,27 @@ func (e *APIError) Error() string {
 	return fmt.Sprintf("%s (HTTP %d)", msg, e.StatusCode)
 }
 
+// FreeTierErrorPrefix marks an error raised by the free-tier gateway
+// rather than by DeepSeek. The gateway matches DeepSeek's error envelope
+// exactly so that unmodified clients report its refusals properly, and
+// this is what distinguishes the two once they have.
+const FreeTierErrorPrefix = "free_tier_"
+
+// FromFreeTier reports whether this error came from the gateway.
+func (e *APIError) FromFreeTier() bool {
+	return len(e.Type) >= len(FreeTierErrorPrefix) && e.Type[:len(FreeTierErrorPrefix)] == FreeTierErrorPrefix
+}
+
 // Hint maps DeepSeek's documented error codes to the action that fixes
 // them. The API's own message says what went wrong; this says what to do.
 func (e *APIError) Hint() string {
+	// The gateway writes its own next step into the message — "resets at
+	// 00:00 UTC", "bring your own key" — because only it knows which
+	// limit was hit. Appending DeepSeek's advice for the same status code
+	// would tell a free-tier user to top up an account they do not have.
+	if e.FromFreeTier() {
+		return ""
+	}
 	switch e.StatusCode {
 	case http.StatusUnauthorized:
 		return "check your key: deepseek check — or set DEEPSEEK_API_KEY from https://platform.deepseek.com/api_keys"

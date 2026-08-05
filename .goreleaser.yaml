@@ -17,8 +17,23 @@ builds:
     ldflags:
       - -s -w -X main.version={{.Version}}
 
+  # The free-tier gateway. A separate Go module, hence `dir`, and Linux
+  # only: it is a server, and nobody is running one from a laptop except
+  # to test it -- for which `make gateway` is right there.
+  - id: dsgate
+    dir: gateway
+    main: ./cmd/dsgate
+    binary: dsgate
+    env:
+      - CGO_ENABLED=0
+    goos: [linux]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+
 archives:
   - id: default
+    ids: [deepseek]
     # deepseek_darwin_arm64.tar.gz — the names the README's curl lines use.
     name_template: "deepseek_{{ .Os }}_{{ .Arch }}"
     formats: [tar.gz]
@@ -30,6 +45,17 @@ archives:
       - README.md
       - AGENTS.md
       - skill/SKILL.md
+
+  - id: gateway
+    ids: [dsgate]
+    name_template: "dsgate_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    files:
+      - LICENSE
+      - src: gateway/DESIGN.md
+        dst: DESIGN.md
+      - src: gateway/deploy/README.md
+        dst: DEPLOY.md
 
 checksum:
   name_template: checksums.txt

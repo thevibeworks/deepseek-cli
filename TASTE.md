@@ -233,3 +233,115 @@ word: a button reading `theme: auto` that cycles auto → light → dark and
 names the state it is in. Three states, no legend, no icon vocabulary to
 learn. It ships `hidden` and JS unhides it, because a control that cannot
 work without JS should not take up space when there is none.
+## 2026-08-05 rejected: making per-user quota the thing that protects the free tier
+
+**Why.** The obvious design for a keyless free tier is a good identity
+system: proof-of-work tokens, IP buckets, escalating difficulty, maybe a
+GitHub sign-in — and then a generous per-user quota enforced against it.
+Every one of those pieces is worth having and not one of them bounds the
+loss. Identity on the open internet is not something you win. A rented
+box farms proof-of-work overnight, a $5 proxy pool defeats IP bucketing,
+and both are cheaper than the credits they drain. A design whose spending
+limit is `per_user_quota × number_of_identities` has no limit, because
+the right-hand term is chosen by the attacker.
+
+**Reuse.** A global daily budget that does not care who you are. It fires
+on total spend and refuses everyone, including users who have used
+nothing. Per-user quota stays, demoted to what it is good at — fairness
+between honest people — and the identity layer only has to be good enough
+to stop casual abuse, which is exactly what proof-of-work is good enough
+for. The honest cost is stated where it lands: a determined attacker can
+burn the day's budget in an hour and everyone else gets "come back
+tomorrow". We can survive a bad day; we cannot survive a bad invoice.
+
+**Expires.** If the free tier ever gets an identity with real cost behind
+it — a payment method on file, a verified account — the per-identity
+limit becomes load-bearing and the breaker can be raised.
+
+---
+
+## 2026-08-05 rejected: charging nothing for a response we could not meter
+
+**Why.** The gateway reads token counts out of DeepSeek's responses to
+bill the budget. The natural failure branch is "no usage object found →
+charge zero", and it is a hole straight to the credit pool: whatever
+makes a response unparseable becomes the cheapest way to use the service,
+and it is not a hole an attacker has to find deliberately. A new field,
+a truncated stream, a format we have not seen — each one silently turns
+into free inference.
+
+**Reuse.** Unbillable is charged a deliberate over-estimate: the request
+body at four bytes per token, plus the full `max_tokens` ceiling the
+gateway already clamped it to. It is provably above what the request
+could have cost, and the journal marks the row `estimated` so an operator
+can tell defensive spend from real spend when the two diverge. The same
+rule decides the rate card for an unknown model — pro's, the expensive
+one, so a model we have not priced over-charges our own budget rather
+than under-charging it.
+
+**Expires.** Never, while we are the ones paying.
+
+---
+
+## 2026-08-05 rejected: silently downgrading a pro request to flash
+
+**Why.** The free tier serves flash. A request for `deepseek-v4-pro`
+could be quietly answered by flash, which keeps the request working and
+costs us a third as much — and that is the trap. The user compares what
+came back against pro's reputation and concludes the model is worse than
+it is. We would have spent their trust in DeepSeek to save our own money,
+which is a bad trade at any exchange rate.
+
+**Reuse.** Refuse it, name the model that was asked for, and say where a
+key that can serve it comes from. The one adjacent case where a default
+is changed rather than refused is `deepseek fim`, whose *own* default is
+pro: there the user did not ask for anything, so the CLI moves its
+default to what the transport serves and says so on stderr. The rule is
+that an explicit choice is never overridden, only a default the user
+never made.
+
+**Expires.** If the free tier ever carries pro, this goes away with it.
+
+---
+
+## 2026-08-05 rejected: answering /models locally on the gateway
+
+**Why.** The gateway is a transparent proxy, so the tidy version of
+"only advertise the model we serve" is to answer `GET /models` from
+config and never call upstream. It saves a round trip and it breaks
+`deepseek status`, whose entire job is answering "is DeepSeek reachable
+from here" — against a locally-answered `/models` it would report the
+gateway's health and call it the API's.
+
+**Reuse.** Proxy the call, filter the response. It is the one place the
+gateway edits a body, and it earns the exception because `/models`
+exists to answer "what can I use here" and an unfiltered list gives any
+client picking off it even odds of choosing the model that is then
+refused. Anything unparseable passes through untouched.
+
+**Expires.** If the free tier ever serves every model, the filter becomes
+a no-op and should be deleted rather than left to rot.
+
+---
+
+## 2026-08-05 rejected: sharing the proof-of-work code between the client and the gateway
+
+**Why.** The same puzzle is solved by the CLI, solved again by the
+browser playground, and verified by the gateway. Three implementations of
+one hash construction is exactly the duplication a shared package exists
+to remove — and the package would have to be imported by a Go module
+whose two-dependency footprint is part of its pitch, by a second Go
+module that deliberately has none, and by a browser that cannot import Go
+at all. The only version that works for all three is vendored copies
+pretending to be a library.
+
+**Reuse.** Three independent implementations, one shared table of test
+vectors, checked into all three test suites: the smallest nonce solving a
+fixed challenge at a fixed difficulty. A change to any hash construction
+fails on every side at once, which is the property the shared package was
+wanted for. The browser copy additionally checks itself against node's
+`crypto`, because "internally consistent but wrong" would pass the
+vectors by coincidence and fail against the gateway every time.
+
+**Expires.** If the CLI and the gateway ever merge into one module, the
+Go halves should share code and only the browser stays separate.

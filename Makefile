@@ -18,7 +18,7 @@ test-cover:
 # The README carries a coverage badge. This is what keeps it from
 # quietly becoming a lie: CI fails if coverage drops below the floor.
 # Raise COVERAGE_FLOOR (and the badge) when coverage improves.
-COVERAGE_FLOOR=65
+COVERAGE_FLOOR=68
 .PHONY: cover-gate
 cover-gate:
 	@go test ./... -coverprofile=cover.out -covermode=atomic >/dev/null
@@ -55,6 +55,62 @@ corpus:
 corpus-check:
 	@go test ./internal/docs/ -run TestEmbeddedCorpusLoads -count=1
 
+# The free-tier gateway. A separate Go module on purpose: the CLI's
+# dependency list is part of its pitch, and a server has no business
+# widening it. See gateway/DESIGN.md.
+GATEWAY_BINARY=dsgate
+
+.PHONY: gateway
+gateway:
+	cd gateway && go build -o ../$(GATEWAY_BINARY) -ldflags "-s -w -X main.version=$(VERSION)" ./cmd/dsgate
+
+# Needs the CLI binary: the interop test runs the real `deepseek` against
+# a real gateway, which is the only thing that proves the two independent
+# implementations of the enrolment protocol actually agree.
+.PHONY: gateway-test
+gateway-test: build
+	cd gateway && go test ./... -race -count=1
+
+.PHONY: gateway-check
+gateway-check: gateway-test
+	@test -z "$$(cd gateway && gofmt -l .)" || { echo "gateway needs gofmt:"; cd gateway && gofmt -l .; exit 1; }
+	cd gateway && go vet ./...
+	$(MAKE) gateway
+
+# The rate card exists twice — internal/deepseek/pricing.go for the CLI's
+# cost estimates, gateway/internal/meter/meter.go for the gateway's
+# budget — because they are separate modules and neither can import the
+# other. Drift would mean the gateway believed it had spent a different
+# amount than it had. This is what catches that.
+.PHONY: price-check
+price-check:
+	@pattern='CacheHitInput: [0-9.]+, CacheMissInput: [0-9.]+, Output: [0-9.]+'; \
+	 cli=$$(grep -oE "$$pattern" internal/deepseek/pricing.go | sort); \
+	 gw=$$(grep -oE "$$pattern" gateway/internal/meter/meter.go | sort); \
+	 if [ -z "$$cli" ] || [ -z "$$gw" ]; then \
+	   echo "FAIL: could not find a rate card in one of the two files"; exit 1; \
+	 fi; \
+	 if [ "$$cli" != "$$gw" ]; then \
+	   echo "FAIL: the CLI and gateway rate cards have drifted"; \
+	   echo "  cli:     $$cli"; echo "  gateway: $$gw"; exit 1; \
+	 fi; \
+	 echo "rate cards match:"; echo "$$cli" | sed 's/^/  /'
+
+# The site is generated HTML plus one page that is an application. The
+# generator has its own --check; these cover the parts it cannot see —
+# that the playground's script and markup still agree, and that all three
+# implementations of the enrolment puzzle still produce the same answers.
+.PHONY: site-check
+site-check:
+	python3 site/build.py --check
+	node site/pow.test.js
+	node site/playground.test.js
+	node site/playground.dom.test.js
+
+.PHONY: site
+site:
+	python3 site/build.py
+
 .PHONY: vet
 vet:
 	go vet ./...
@@ -68,7 +124,7 @@ fmt-check:
 	@test -z "$$(gofmt -l .)" || { echo "needs gofmt:"; gofmt -l .; exit 1; }
 
 .PHONY: check
-check: fmt-check vet test corpus-check build
+check: fmt-check vet test corpus-check price-check build gateway-check site-check
 	@echo "All checks passed"
 
 # Live smoke test against the real API. Needs DEEPSEEK_API_KEY and costs

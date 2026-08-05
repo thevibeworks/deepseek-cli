@@ -1,6 +1,6 @@
 ---
 name: deepseek
-description: Call the DeepSeek API from the shell — chat completions in OpenAI, Anthropic Messages or OpenAI Responses format, FIM completion, model list, account balance, and local cost accounting. Use when the task needs a DeepSeek model answer, needs to verify a DeepSeek API key or endpoint, needs structured or JSON output from a model, or asks what DeepSeek usage has cost. Triggers on deepseek, deepseek-v4, flash, pro, "ask the model", "check my API key", token cost, context cache.
+description: Call the DeepSeek API from the shell — chat completions in OpenAI, Anthropic Messages or OpenAI Responses format, FIM completion, model list, account balance, and local cost accounting. Use when the task needs a DeepSeek model answer, needs to verify a DeepSeek API key or endpoint, needs structured or JSON output from a model, or asks what DeepSeek usage has cost. Triggers on deepseek, deepseek-v4, flash, pro, "ask the model", "check my API key", token cost, context cache, "deepseek without an API key", free tier.
 ---
 
 # deepseek
@@ -19,6 +19,11 @@ retrying, and both need the human.
 
 If the binary is missing:
 `go install github.com/thevibeworks/deepseek-cli/cmd/deepseek@latest`
+
+If there is no API key, `deepseek free` enrols against a metered gateway
+run by the project — about a second of CPU, no account. Use it to get one
+call working; tell the human it is capped, that their prompts transit a
+third party, and that a real key removes both facts.
 
 ## Ask a model
 
@@ -165,6 +170,22 @@ deepseek status --json    # free: two calls that generate no tokens
 Answers whether the API is reachable with this key from this machine.
 That is not the same as DeepSeek's incident page, which the output links.
 
+## Without an API key
+
+```bash
+deepseek free                # enrol; prints what leaves the machine first
+deepseek free status --json  # what is left of today
+```
+
+Then every command works as normal. Limits per UTC day: 30 requests, 60K
+input, 20K output tokens, flash only. A pro request is refused, not
+downgraded — if the task needs pro, it needs a key.
+
+Errors carrying `"type":"free_tier_*"` came from the gateway, not from
+DeepSeek. Their message already contains the next step; pass it through
+rather than adding DeepSeek's advice, which assumes an account the user
+does not have. A `free_tier_exhausted` 402 will not recover today.
+
 ## Rules
 
 - Report costs as estimates, never as billed amounts.
@@ -173,3 +194,5 @@ That is not the same as DeepSeek's incident page, which the output links.
   exit means your own retry loop probably will not help either.
 - The API is text-only: no images, no documents.
 - Slow starts up to ten minutes are normal under load, not a failure.
+- Never suggest the free tier to someone who already has a key: a key is
+  unmetered, private, and always takes precedence anyway.

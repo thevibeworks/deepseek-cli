@@ -42,11 +42,11 @@ type Options struct {
 
 // client builds an API client from the resolved options.
 func (o *Options) client() (*deepseek.Client, error) {
-	key, err := deepseek.ResolveKey(o.APIKey)
+	key, base, free, err := o.resolveAuth()
 	if err != nil {
 		return nil, err
 	}
-	c := deepseek.New(key, o.baseURL(), o.Timeout)
+	c := deepseek.New(key, base, o.Timeout)
 	if o.Verbose > 0 {
 		c.Verbose = o.stderr
 		// -vv adds bodies. They are off by default because a chat body is
@@ -54,7 +54,52 @@ func (o *Options) client() (*deepseek.Client, error) {
 		c.VerboseBody = o.Verbose > 1
 	}
 	c.UserAgent = "deepseek-cli/" + Version
+	if free != nil {
+		// Worth saying out loud exactly once per run: this request is
+		// leaving the machine by a different road than the user's own key
+		// would have taken.
+		o.verbosef("free tier via %s (subject %s)", free.BaseURL, free.Subject)
+	}
 	return c, nil
+}
+
+// resolveAuth decides which credential this run uses, and where it goes.
+//
+// A real key always wins. The free tier is the fallback for someone who
+// has not got one yet, never an upgrade over one they have — silently
+// routing a paying user's prompts through our relay would be a
+// surprising thing for a CLI to do.
+func (o *Options) resolveAuth() (key, base string, free *deepseek.FreeTier, err error) {
+	key, err = deepseek.ResolveKey(o.APIKey)
+	if err == nil {
+		return key, o.baseURL(), nil, nil
+	}
+	if !errors.Is(err, deepseek.ErrNoKey) {
+		return "", "", nil, err
+	}
+
+	// An explicitly chosen base URL is not somewhere to send a credential
+	// minted for our gateway. Someone running their own gateway points
+	// DEEPSEEK_FREE_URL at it and enrols there instead.
+	if o.baseURL() != "" {
+		return "", "", nil, err
+	}
+	f, ok := deepseek.LoadFree()
+	if !ok {
+		return "", "", nil, err
+	}
+	return f.Token, f.BaseURL, f, nil
+}
+
+// usingFree reports whether this run would go through the free tier,
+// without building a client. Commands use it to phrase their output for
+// someone who has no key at all.
+func (o *Options) usingFree() *deepseek.FreeTier {
+	_, _, free, err := o.resolveAuth()
+	if err != nil {
+		return nil
+	}
+	return free
 }
 
 func (o *Options) baseURL() string {
@@ -230,6 +275,7 @@ stdout is the answer; reasoning, usage and errors go to stderr.`),
 		newDocsCmd(opts),
 		newStatusCmd(opts),
 		newCheckCmd(opts),
+		newFreeCmd(opts),
 		newRawCmd(opts),
 	)
 	cmd.SetVersionTemplate("deepseek {{.Version}}\n")

@@ -68,6 +68,10 @@ func runFIM(cmd *cobra.Command, o *Options, f *fimFlags, args []string) error {
 		ctx = context.Background()
 	}
 
+	// This is the one command whose default model is pro, which the free
+	// tier does not carry.
+	o.useFreeModel(cmd, &f.model)
+
 	stream := f.stream
 	if !cmd.Flags().Changed("stream") && (o.JSON || o.JQ != "") {
 		stream = false
