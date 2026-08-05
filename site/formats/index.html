@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The four DeepSeek API formats, compared — deepseek-cli</title>
+<meta name="description" content="DeepSeek exposes the same two models through four API formats. What differs between /chat/completions, /anthropic/v1/messages, /responses and FIM: auth, thinking controls, tools, and the token-accounting convention that trips up cost tracking.">
+<meta name="keywords" content="deepseek anthropic api, deepseek openai compatible, deepseek responses api, deepseek claude code, deepseek codex, deepseek api format comparison, deepseek cache_read_input_tokens, deepseek model mapping">
+<meta name="author" content="thevibeworks">
+<meta name="theme-color" content="#000000">
+<link rel="canonical" href="https://thevibeworks.github.io/deepseek-cli/formats/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="deepseek-cli">
+<meta property="og:title" content="The four DeepSeek API formats, compared — deepseek-cli">
+<meta property="og:description" content="DeepSeek exposes the same two models through four API formats. What differs between /chat/completions, /anthropic/v1/messages, /responses and FIM: auth, thinking controls, tools, and the token-accounting convention that trips up cost tracking.">
+<meta property="og:url" content="https://thevibeworks.github.io/deepseek-cli/formats/">
+<meta property="og:image" content="https://thevibeworks.github.io/deepseek-cli/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="deepseek-cli — the whole DeepSeek API from the terminal">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="The four DeepSeek API formats, compared — deepseek-cli">
+<meta name="twitter:description" content="DeepSeek exposes the same two models through four API formats. What differs between /chat/completions, /anthropic/v1/messages, /responses and FIM: auth, thinking controls, tools, and the token-accounting convention that trips up cost tracking.">
+<meta name="twitter:image" content="https://thevibeworks.github.io/deepseek-cli/og.png">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="../style.css">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Which DeepSeek API format should I use?","acceptedAnswer":{"@type":"Answer","text":"Use the OpenAI /chat/completions format unless you have a reason not to: it is the most widely supported and the only one with chat prefix completion. Use /anthropic/v1/messages when the surrounding tooling speaks Anthropic Messages, such as Claude Code. Use /responses when you need JSON Schema structured output or DeepSeek's server-side web search, or when the tool is Codex. Use FIM only for fill-in-the-middle code completion."}},{"@type":"Question","name":"Does DeepSeek's Anthropic endpoint count tokens the same way?","acceptedAnswer":{"@type":"Answer","text":"No. On /anthropic/v1/messages the usage.input_tokens field excludes cache reads, so the full prompt is input_tokens plus cache_read_input_tokens. The OpenAI chat and Responses formats use the opposite convention, where the input count already includes cached tokens. Treating them the same misprices every cached call."}},{"@type":"Question","name":"What happens if I send a Claude model name to DeepSeek?","acceptedAnswer":{"@type":"Answer","text":"It is remapped server-side. Model names starting with claude-opus map to deepseek-v4-pro; claude-sonnet and claude-haiku map to deepseek-v4-flash; anything unrecognised also falls back to deepseek-v4-flash."}},{"@type":"Question","name":"Can DeepSeek accept images?","acceptedAnswer":{"@type":"Answer","text":"No. DeepSeek is text only. Image, document and search-result content blocks are rejected or replaced with placeholder text in every format."}}]}
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"deepseek-cli","item":"https://thevibeworks.github.io/deepseek-cli/"},{"@type":"ListItem","position":2,"name":"formats","item":"https://thevibeworks.github.io/deepseek-cli/formats/"}]}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">skip to content</a>
+<header class="masthead">
+  <div class="wrap">
+    <a class="brand" href="../">
+      <span class="caret">&gt;</span><span class="org">thevibeworks/</span><span class="name">deepseek-cli</span>
+    </a>
+    <nav class="sitenav" aria-label="Sections">
+      <a href="../">overview</a>
+      <a href="../install/">install</a>
+      <a href="../commands/">commands</a>
+      <a href="../formats/" aria-current="page">formats</a>
+      <a href="../cost/">cost</a>
+      <a href="../agents/">agents</a>
+      <a href="https://github.com/thevibeworks/deepseek-cli">github&nbsp;&#8599;</a>
+    </nav>
+  </div>
+</header>
+<main id="main">
+  <div class="wrap">
+<nav class="crumb" aria-label="Breadcrumb"><a href="../">deepseek-cli</a><span class="sep">/</span>formats</nav>
+
+<h1>Four wire formats</h1>
+<p class="lede">DeepSeek exposes the same two models &mdash;
+<code>deepseek-v4-flash</code> and <code>deepseek-v4-pro</code> &mdash; through
+four different request shapes, so that existing ecosystems can point at it
+without code changes. They are not interchangeable.</p>
+
+<h2 id="which">Which one to use</h2>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Format</th><th>Path</th><th>Reach for it when</th></tr></thead>
+<tbody>
+<tr><td><strong>OpenAI chat</strong><br><code>ds chat</code></td><td><code>/chat/completions</code></td><td>Default. Widest tool support, and the only format with chat prefix completion.</td></tr>
+<tr><td><strong>Anthropic Messages</strong><br><code>ds anthropic</code></td><td><code>/anthropic/v1/messages</code></td><td>The surrounding tooling speaks Anthropic &mdash; Claude Code, the Anthropic SDKs, the Claude desktop app.</td></tr>
+<tr><td><strong>OpenAI Responses</strong><br><code>ds respond</code></td><td><code>/responses</code></td><td>You need JSON Schema output or server-side web search. Also what Codex speaks.</td></tr>
+<tr><td><strong>FIM</strong><br><code>ds fim</code></td><td><code>/beta/completions</code></td><td>Fill-in-the-middle code completion. No chat structure at all.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2 id="differences">What actually differs</h2>
+<div class="tablewrap">
+<table>
+<thead><tr><th></th><th>chat</th><th>anthropic</th><th>respond</th><th>fim</th></tr></thead>
+<tbody>
+<tr><th>Auth header</th><td>Bearer</td><td><code>x-api-key</code></td><td>Bearer</td><td>Bearer</td></tr>
+<tr><th><code>max_tokens</code></th><td>optional</td><td><strong>required</strong></td><td>optional</td><td>optional</td></tr>
+<tr><th>Thinking toggle</th><td><code>thinking.type</code></td><td><code>thinking.type</code></td><td><code>reasoning.effort: none</code></td><td>never thinks</td></tr>
+<tr><th>Effort control</th><td><code>reasoning_effort</code></td><td><code>output_config.effort</code></td><td><code>reasoning.effort</code></td><td>&mdash;</td></tr>
+<tr><th>JSON Schema output</th><td>&mdash;</td><td>&mdash;</td><td><strong>yes</strong></td><td>&mdash;</td></tr>
+<tr><th>Server-side web search</th><td>&mdash;</td><td>&mdash;</td><td><strong>yes</strong></td><td>&mdash;</td></tr>
+<tr><th>Prefix completion</th><td><strong>yes</strong> (beta path)</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td></tr>
+<tr><th>Models</th><td>both</td><td>both</td><td>flash only</td><td>both</td></tr>
+<tr><th>Stream terminator</th><td><code>data: [DONE]</code></td><td><code>message_stop</code></td><td><code>response.completed</code></td><td><code>data: [DONE]</code></td></tr>
+</tbody>
+</table>
+</div>
+
+<h2 id="tokens">The token-accounting trap</h2>
+<p>This is the one that silently corrupts cost tracking, and it is not stated
+in the published docs. The formats disagree about what
+<code>input_tokens</code> means.</p>
+
+<div class="note">
+<span class="tag">verified against the live API</span>
+<p>The same prompt, sent both ways. <code>/chat/completions</code> reported
+<code>prompt_tokens: 289</code>. <code>/anthropic/v1/messages</code> reported
+<code>input_tokens: 33</code> with
+<code>cache_read_input_tokens: 256</code>.</p>
+<p><strong>33 + 256 = 289.</strong> On the Anthropic endpoint,
+<code>input_tokens</code> <em>excludes</em> cache reads. On the OpenAI chat and
+Responses endpoints, the input count <em>includes</em> them.</p>
+</div>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th>Format</th><th>Full prompt is</th><th>Cached portion</th></tr></thead>
+<tbody>
+<tr><td>chat</td><td><code>prompt_tokens</code></td><td><code>prompt_cache_hit_tokens</code></td></tr>
+<tr><td>anthropic</td><td><code>input_tokens</code> <strong>+</strong> <code>cache_read_input_tokens</code></td><td><code>cache_read_input_tokens</code></td></tr>
+<tr><td>respond</td><td><code>input_tokens</code></td><td><code>input_tokens_details.cached_tokens</code></td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Get it backwards and a heavily-cached Anthropic call looks 8&times; cheaper
+than it was. <code>deepseek-cli</code> normalises all three into one shape
+before pricing anything, and
+<a href="https://github.com/thevibeworks/deepseek-cli/blob/main/internal/deepseek/usage_test.go">pins the
+difference in tests</a> using those exact numbers.</p>
+
+<h2 id="mapping">Claude model names</h2>
+<p>The Anthropic endpoint accepts Claude model names and remaps them
+server-side, which is what lets tools with hard-coded model lists work:</p>
+<div class="tablewrap">
+<table>
+<thead><tr><th>You send</th><th>You get</th></tr></thead>
+<tbody>
+<tr><td><code>claude-opus-*</code></td><td><code>deepseek-v4-pro</code></td></tr>
+<tr><td><code>claude-sonnet-*</code>, <code>claude-haiku-*</code></td><td><code>deepseek-v4-flash</code></td></tr>
+<tr><td>anything unrecognised</td><td><code>deepseek-v4-flash</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Because billing follows the model that actually ran, the usage line prints
+both names:</p>
+<pre><code>$ ds anthropic "hello" --model claude-opus-4-1
+&middot; claude-opus-4-1&rarr;pro &middot; 10 in &middot; 8 out &middot; ~$0.000011 &middot; 0.9s</code></pre>
+
+<h2 id="reasoning">The reasoning round-trip</h2>
+<p>In thinking mode the chain of thought comes back alongside the answer. What
+you do with it on the next turn is not optional:</p>
+<ul>
+<li>If the request carried <code>tools</code>, every assistant message's
+<code>reasoning_content</code> <strong>must</strong> be sent back on every
+later request. Omit it and the API answers <code>400</code>.</li>
+<li>If it did not, the field is ignored server-side &mdash; so replaying it
+spends input tokens on text the model discards.</li>
+</ul>
+<p>Sessions in this CLI keep the reasoning stored either way, and decide per
+request whether to put it on the wire.</p>
+
+<h2 id="limits">Shared limits</h2>
+<ul>
+<li><strong>Text only.</strong> Image, document and search-result blocks are
+rejected or replaced with placeholder text in every format.</li>
+<li><strong>Thinking is on by default</strong> and costs a flat 79 extra input
+tokens for its template &mdash; measured, and constant regardless of prompt
+length &mdash; before a single reasoning token is generated.</li>
+<li><strong>Slow starts are normal.</strong> The API holds the connection with
+<code>: keep-alive</code> comments for up to ten minutes before inference
+begins under load.</li>
+<li><strong>One error envelope</strong> across all four:
+<code>{"error":{"message","type","param","code"}}</code>.</li>
+</ul>
+<nav class="pager" aria-label="Pagination">
+<a href="../commands/"><span class="lbl">&larr; previous</span>commands</a>
+<a href="../cost/" style="text-align:right"><span class="lbl">next &rarr;</span>cost</a>
+</nav>  </div>
+</main>
+<footer class="foot">
+  <div class="wrap">
+    <span>
+      <a href="https://github.com/thevibeworks/deepseek-cli">source</a> &middot;
+      <a href="https://github.com/thevibeworks/deepseek-cli/blob/main/LICENSE">MIT</a> &middot;
+      <a href="https://thevibeworks.github.io/deepseek-cli/llms.txt">llms.txt</a> &middot;
+      <a href="https://thevibeworks.github.io/">thevibeworks</a>
+    </span>
+    <span>unofficial &mdash; not affiliated with DeepSeek</span>
+  </div>
+</footer>
+</body>
+</html>

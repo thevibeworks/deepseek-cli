@@ -13,6 +13,8 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -70,6 +72,27 @@ func (o *Options) verbosef(format string, args ...any) {
 // Version is set at build time via -ldflags.
 var Version = "dev"
 
+// aliases are the extra names the binary answers to, installed as
+// symlinks beside it. `deepseek` is eight characters to type at a prompt
+// many times a day; `ds` is two.
+var aliases = []string{"deepseek", "ds", "dscli"}
+
+// invokedAs returns the name the binary was actually called by, so usage
+// lines say `ds ...` when the user typed `ds`. Anything unrecognised —
+// including a test binary — falls back to the canonical name.
+func invokedAs() string {
+	base := filepath.Base(os.Args[0])
+	if runtime.GOOS == "windows" {
+		base = strings.TrimSuffix(base, ".exe")
+	}
+	for _, name := range aliases {
+		if base == name {
+			return base
+		}
+	}
+	return "deepseek"
+}
+
 // Execute runs the CLI and returns the process exit code.
 func Execute(version string) int {
 	Version = version
@@ -84,6 +107,7 @@ func Execute(version string) int {
 	defer stop()
 
 	root := newRootCmd(opts, version)
+	root.Use = invokedAs() + " [command]"
 	if err := root.ExecuteContext(ctx); err != nil {
 		if errors.Is(err, context.Canceled) || ctx.Err() != nil {
 			fmt.Fprintln(os.Stderr, opts.dim("interrupted"))

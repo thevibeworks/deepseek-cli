@@ -12,8 +12,19 @@ test:
 
 .PHONY: test-cover
 test-cover:
-	go test ./... -coverprofile=cover.out
+	go test ./... -coverprofile=cover.out -covermode=atomic
 	go tool cover -func=cover.out | tail -1
+
+# The README carries a coverage badge. This is what keeps it from
+# quietly becoming a lie: CI fails if coverage drops below the floor.
+# Raise COVERAGE_FLOOR (and the badge) when coverage improves.
+COVERAGE_FLOOR=65
+.PHONY: cover-gate
+cover-gate:
+	@go test ./... -coverprofile=cover.out -covermode=atomic >/dev/null
+	@total=$$(go tool cover -func=cover.out | awk '/^total:/ {gsub(/%/,"",$$3); print $$3}'); \
+	 echo "coverage: $$total% (floor $(COVERAGE_FLOOR)%)"; \
+	 awk -v t=$$total -v f=$(COVERAGE_FLOOR) 'BEGIN { if (t+0 < f+0) { print "FAIL: coverage below floor"; exit 1 } }'
 
 .PHONY: vet
 vet:
@@ -38,11 +49,16 @@ check: fmt-check vet test build
 smoke: build
 	./$(BINARY_NAME) check
 
+# Aliases: the binary answers to whichever name invoked it, so these are
+# symlinks rather than copies — one binary, three ways to type it.
+ALIASES=ds dscli
+
 .PHONY: install
 install: build
-	@mkdir -p $${GOPATH:-$$HOME/go}/bin
-	@cp $(BINARY_NAME) $${GOPATH:-$$HOME/go}/bin/$(BINARY_NAME)
-	@echo "Installed as '$(BINARY_NAME)'"
+	@bindir=$${GOPATH:-$$HOME/go}/bin; mkdir -p $$bindir; \
+	 cp $(BINARY_NAME) $$bindir/$(BINARY_NAME); \
+	 for a in $(ALIASES); do ln -sf $(BINARY_NAME) $$bindir/$$a; done; \
+	 echo "Installed $(BINARY_NAME) (aliases: $(ALIASES)) in $$bindir"
 
 .PHONY: completions
 completions: build

@@ -10,8 +10,22 @@
 <p align="center">
   <a href="https://github.com/thevibeworks/deepseek-cli/releases"><img src="https://img.shields.io/github/v/release/thevibeworks/deepseek-cli?color=blue&label=release" alt="Release"></a>
   <a href="https://github.com/thevibeworks/deepseek-cli/actions/workflows/ci.yml"><img src="https://github.com/thevibeworks/deepseek-cli/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="#commands"><img src="https://img.shields.io/badge/API%20coverage-6%2F6%20endpoints-brightgreen" alt="API coverage: 6 of 6 endpoints"></a>
+  <a href="#development"><img src="https://img.shields.io/badge/tests-102%20%C2%B7%2068%25%20covered-brightgreen" alt="102 tests, 68% statement coverage"></a>
+  <br>
+  <a href="https://api-docs.deepseek.com"><img src="https://img.shields.io/badge/DeepSeek%20API%20docs-2026--08--02-8a2be2" alt="Implemented against the DeepSeek API docs of 2026-08-02"></a>
+  <a href="https://api-docs.deepseek.com/quick_start/pricing"><img src="https://img.shields.io/badge/models-v4--flash%20%7C%20v4--pro-0ea5e9" alt="Models: deepseek-v4-flash and deepseek-v4-pro"></a>
   <a href="https://go.dev"><img src="https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go&logoColor=white" alt="Go"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT License"></a>
+</p>
+
+<p align="center">
+  <sub>
+    Badges that could rot are held down by tests:
+    <a href="internal/cli/e2e_test.go"><code>TestCheckCoversEveryEndpoint</code></a> fails if an
+    endpoint is added without <code>deepseek check</code> probing it, and
+    <code>make cover-gate</code> fails CI if coverage drops below its floor.
+  </sub>
 </p>
 
 <div align="center">
@@ -48,7 +62,14 @@ The patch swaps the retry loop for exponential backoff...
 
 ## Install
 
-**Download a binary** from [Releases](https://github.com/thevibeworks/deepseek-cli/releases):
+**One line** — detects your platform, installs the binary and both
+aliases:
+
+```bash
+curl -sL https://raw.githubusercontent.com/thevibeworks/deepseek-cli/main/install.sh | sh
+```
+
+**Or download a binary** from [Releases](https://github.com/thevibeworks/deepseek-cli/releases):
 
 ```bash
 # macOS (Apple Silicon)
@@ -66,11 +87,26 @@ sudo mv deepseek /usr/local/bin/
 go install github.com/thevibeworks/deepseek-cli/cmd/deepseek@latest
 ```
 
-`deepseek` is eight characters. Most people alias it:
+### `ds` and `dscli`
+
+`deepseek` is eight characters to type many times a day. The binary
+answers to `ds` and `dscli` as well — not shell aliases, but symlinks to
+the same binary, so they work in scripts, `cron`, `Makefile`s and
+anywhere a shell alias would not:
 
 ```bash
-echo "alias ds=deepseek" >> ~/.zshrc
+ds chat "why is the sky blue"
+ds usage --since 7d
 ```
+
+`install.sh` and `make install` create them. If you installed by hand:
+
+```bash
+sudo ln -sf deepseek /usr/local/bin/ds
+sudo ln -sf deepseek /usr/local/bin/dscli
+```
+
+The binary notices which name invoked it, so `ds --help` says `ds`.
 
 ## Quick start
 
@@ -283,7 +319,8 @@ rather than hides:
 ```bash
 make            # build
 make check      # fmt + vet + test + build
-make test       # 71 tests, no network required
+make test       # 102 tests, no network required
+make cover-gate # fails under the coverage floor
 ```
 
 Zero runtime dependencies beyond `cobra` and `golang.org/x/term`; the API

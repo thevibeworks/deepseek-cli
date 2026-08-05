@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>deepseek-cli — the whole DeepSeek API from the terminal</title>
+<meta name="description" content="A single Go binary for every DeepSeek API: chat completions in OpenAI, Anthropic and Responses formats, FIM, models and balance — with multi-turn that survives the reasoning round-trip and per-call cost accounting.">
+<meta name="keywords" content="deepseek cli, deepseek api, deepseek command line, deepseek-v4-flash, deepseek-v4-pro, deepseek anthropic api, deepseek responses api, deepseek context cache, deepseek pricing, llm cli">
+<meta name="author" content="thevibeworks">
+<meta name="theme-color" content="#000000">
+<link rel="canonical" href="https://thevibeworks.github.io/deepseek-cli/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="deepseek-cli">
+<meta property="og:title" content="deepseek-cli — the whole DeepSeek API from the terminal">
+<meta property="og:description" content="A single Go binary for every DeepSeek API: chat completions in OpenAI, Anthropic and Responses formats, FIM, models and balance — with multi-turn that survives the reasoning round-trip and per-call cost accounting.">
+<meta property="og:url" content="https://thevibeworks.github.io/deepseek-cli/">
+<meta property="og:image" content="https://thevibeworks.github.io/deepseek-cli/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="deepseek-cli — the whole DeepSeek API from the terminal">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="deepseek-cli — the whole DeepSeek API from the terminal">
+<meta name="twitter:description" content="A single Go binary for every DeepSeek API: chat completions in OpenAI, Anthropic and Responses formats, FIM, models and balance — with multi-turn that survives the reasoning round-trip and per-call cost accounting.">
+<meta name="twitter:image" content="https://thevibeworks.github.io/deepseek-cli/og.png">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="style.css">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "deepseek-cli",
+  "alternateName": ["deepseek", "ds", "dscli"],
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "macOS, Linux, Windows",
+  "description": "Command-line client for the whole DeepSeek API: chat completions in OpenAI, Anthropic Messages and OpenAI Responses formats, FIM completion, models and balance, with per-call cost and context-cache accounting.",
+  "url": "https://thevibeworks.github.io/deepseek-cli/",
+  "downloadUrl": "https://github.com/thevibeworks/deepseek-cli/releases",
+  "codeRepository": "https://github.com/thevibeworks/deepseek-cli",
+  "programmingLanguage": "Go",
+  "license": "https://opensource.org/licenses/MIT",
+  "isAccessibleForFree": true,
+  "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"},
+  "author": {"@type": "Organization", "name": "thevibeworks", "url": "https://github.com/thevibeworks"}
+}
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"deepseek-cli","item":"https://thevibeworks.github.io/deepseek-cli/"}]}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">skip to content</a>
+<header class="masthead">
+  <div class="wrap">
+    <a class="brand" href="./">
+      <span class="caret">&gt;</span><span class="org">thevibeworks/</span><span class="name">deepseek-cli</span>
+    </a>
+    <nav class="sitenav" aria-label="Sections">
+      <a href="./" aria-current="page">overview</a>
+      <a href="install/">install</a>
+      <a href="commands/">commands</a>
+      <a href="formats/">formats</a>
+      <a href="cost/">cost</a>
+      <a href="agents/">agents</a>
+      <a href="https://github.com/thevibeworks/deepseek-cli">github&nbsp;&#8599;</a>
+    </nav>
+  </div>
+</header>
+<main id="main">
+  <div class="wrap">
+
+<section class="hero">
+<h1><span class="caret">&gt;</span> deepseek-cli</h1>
+<p class="lede">DeepSeek serves the same two models through four different wire
+formats. Every other client picks one. This speaks all four &mdash; from one
+binary, with the multi-turn bookkeeping kept straight and a running tally of
+what each call cost.</p>
+
+<p class="badges">
+<img src="https://img.shields.io/github/v/release/thevibeworks/deepseek-cli?color=00c2e9&labelColor=0d0d0d&label=release" alt="Latest release" width="104" height="20" loading="lazy">
+<img src="https://img.shields.io/badge/API%20coverage-6%2F6%20endpoints-00ff41?labelColor=0d0d0d" alt="API coverage: 6 of 6 endpoints" width="188" height="20" loading="lazy">
+<img src="https://img.shields.io/badge/tests-102%20%C2%B7%2068%25%20covered-00ff41?labelColor=0d0d0d" alt="102 tests, 68 percent covered" width="166" height="20" loading="lazy">
+<img src="https://img.shields.io/badge/DeepSeek%20API%20docs-2026--08--02-bf00ff?labelColor=0d0d0d" alt="Built against the DeepSeek API docs of 2026-08-02" width="196" height="20" loading="lazy">
+<img src="https://img.shields.io/badge/models-v4--flash%20%7C%20v4--pro-00c2e9?labelColor=0d0d0d" alt="Models: deepseek-v4-flash and deepseek-v4-pro" width="164" height="20" loading="lazy">
+</p>
+
+<div class="term">
+<div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="title">~/work</span></div>
+<pre><code><span class="p">$</span> ds chat <span class="w">"explain this diff"</span> <span class="k">--file</span> changes.patch
+<span class="o">The patch swaps the retry loop for exponential backoff, and stops
+retrying 4xx responses &mdash; those would fail identically on a second try.</span>
+<span class="c">&middot; flash &middot; 3.2k in (87% cached) &middot; 412 out (180 think) &middot; ~$0.000178 &middot; 2.1s</span></code></pre>
+</div>
+
+<div class="cta">
+<a class="btn" href="./install/">install</a>
+<a class="btn alt" href="./commands/">commands</a>
+<a class="btn alt" href="https://github.com/thevibeworks/deepseek-cli">source</a>
+</div>
+</section>
+
+<h2 id="why">Why this exists</h2>
+<p>Wrapping six HTTP endpoints is not interesting on its own. Two things are,
+and they are the reason this is not a shell function around <code>curl</code>.</p>
+
+<ul class="grid">
+<li class="card">
+<h3>Multi-turn that does not 400</h3>
+<p>With tools in play, DeepSeek rejects any request that fails to replay every
+assistant <code>reasoning_content</code>. Without tools it ignores the same
+field &mdash; so sending it just burns input tokens. <strong>Sessions get both
+halves right</strong>, and you never think about it.</p>
+</li>
+<li class="card">
+<h3>Cost you can actually see</h3>
+<p>A cached input token is <strong>50&times; cheaper</strong> than an uncached
+one. That split is invisible unless something reads
+<code>prompt_cache_hit_tokens</code> and does the arithmetic. This does, on
+every call, and keeps a <a href="./cost/">local ledger</a>.</p>
+</li>
+<li class="card">
+<h3>Four formats, one binary</h3>
+<p>Send the same prompt through the OpenAI, Anthropic and Responses formats and
+<a href="./formats/">see what differs</a>. Useful when you are pointing
+Claude Code or Codex at DeepSeek and something behaves oddly.</p>
+</li>
+<li class="card">
+<h3>Built for scripts and agents</h3>
+<p>stdout is data, stderr is status, <code>--json</code> is the API's own
+response body unwrapped. Exit codes separate <em>bad key</em> from <em>no
+balance</em> from <em>rate limited</em>. <a href="./agents/">The
+contract</a>.</p>
+</li>
+</ul>
+
+<h2 id="quickstart">Quick start</h2>
+<pre><code>curl -sL https://github.com/thevibeworks/deepseek-cli/raw/main/install.sh | sh
+
+export DEEPSEEK_API_KEY=sk-...
+ds check                      # is everything reachable?
+ds chat "why is the sky blue"</code></pre>
+
+<p><code>check</code> calls all six endpoints once and reports which answered.
+It is the first thing to run when something is wrong and you do not yet know
+whether the problem is the key, the balance, the network, a proxy in between,
+or one specific endpoint.</p>
+
+<div class="term">
+<div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="title">ds check</span></div>
+<pre><code><span class="c">https://api.deepseek.com</span>
+
+<span class="p">ok</span>    GET /models                  141ms  deepseek-v4-flash, deepseek-v4-pro
+<span class="p">ok</span>    GET /user/balance            126ms  18.48 CNY
+<span class="p">ok</span>    POST /chat/completions       651ms  5 in / 1 out
+<span class="p">ok</span>    POST /anthropic/v1/messages  590ms  5 in / 1 out
+<span class="p">ok</span>    POST /responses              595ms  5 in / 9 out
+<span class="p">ok</span>    POST /beta/completions       379ms  4 in / 1 out
+
+<span class="c">all endpoints reachable</span></code></pre>
+</div>
+
+<h2 id="commands">The commands</h2>
+<p>One per endpoint, named for what it does rather than for its path.
+Full reference on the <a href="./commands/">commands page</a>.</p>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th>Command</th><th>Endpoint</th><th>What it is for</th></tr></thead>
+<tbody>
+<tr><td><code>chat</code></td><td><code>POST /chat/completions</code></td><td>The default. OpenAI format, the one most tools speak.</td></tr>
+<tr><td><code>anthropic</code></td><td><code>POST /anthropic/v1/messages</code></td><td>What Claude Code and the Anthropic SDKs speak.</td></tr>
+<tr><td><code>respond</code></td><td><code>POST /responses</code></td><td>What Codex speaks. JSON Schema output and server-side web search live only here.</td></tr>
+<tr><td><code>fim</code></td><td><code>POST /beta/completions</code></td><td>Fill in the middle &mdash; the shape editors use for inline completion.</td></tr>
+<tr><td><code>models</code></td><td><code>GET /models</code></td><td>Available models, joined with the published rate card.</td></tr>
+<tr><td><code>balance</code></td><td><code>GET /user/balance</code></td><td>What is left, per currency.</td></tr>
+<tr><td><code>usage</code></td><td><em>local</em></td><td>What this CLI has spent, from its own ledger.</td></tr>
+<tr><td><code>session</code></td><td><em>local</em></td><td>The conversations <code>chat --continue</code> replays.</td></tr>
+<tr><td><code>check</code></td><td><em>all six</em></td><td>Preflight.</td></tr>
+<tr><td><code>raw</code></td><td><em>anything</em></td><td>Escape hatch &mdash; any path, with auth and retries.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2 id="honest">What it does not do</h2>
+<p>Worth knowing before you install it:</p>
+<ul>
+<li><strong>It does not run tool calls.</strong> It prints the calls a model
+wants to make, which is what you need to develop a tool schema. Executing
+model-chosen commands is an agent runtime and a much larger set of safety
+questions.</li>
+<li><strong>It is not a coding agent.</strong> No file editing, no repo
+awareness, no loop. It sends a request and shows you the response.</li>
+<li><strong>Costs are estimates.</strong> Computed from DeepSeek's published
+USD rate card, not from your invoice. Token counts are exact, and they are what
+gets stored, so old calls can be repriced when the card changes.</li>
+<li><strong>Text only.</strong> DeepSeek rejects image, document and
+search-result content blocks in every format &mdash; that is the API, not a
+gap here.</li>
+</ul>
+<nav class="pager" aria-label="Pagination">
+<span></span>
+<a href="install/" style="text-align:right"><span class="lbl">next &rarr;</span>install</a>
+</nav>  </div>
+</main>
+<footer class="foot">
+  <div class="wrap">
+    <span>
+      <a href="https://github.com/thevibeworks/deepseek-cli">source</a> &middot;
+      <a href="https://github.com/thevibeworks/deepseek-cli/blob/main/LICENSE">MIT</a> &middot;
+      <a href="https://thevibeworks.github.io/deepseek-cli/llms.txt">llms.txt</a> &middot;
+      <a href="https://thevibeworks.github.io/">thevibeworks</a>
+    </span>
+    <span>unofficial &mdash; not affiliated with DeepSeek</span>
+  </div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>deepseek-cli for agents and scripts — the output contract</title>
+<meta name="description" content="How to drive the deepseek CLI from code: stdout/stderr split, unwrapped --json responses, per-format JSON shapes, meaningful exit codes, retry semantics, and a drop-in agent skill.">
+<meta name="keywords" content="deepseek cli scripting, deepseek cli json output, deepseek agent skill, deepseek cli exit codes, llm cli automation, deepseek jq">
+<meta name="author" content="thevibeworks">
+<meta name="theme-color" content="#000000">
+<link rel="canonical" href="https://thevibeworks.github.io/deepseek-cli/agents/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="deepseek-cli">
+<meta property="og:title" content="deepseek-cli for agents and scripts — the output contract">
+<meta property="og:description" content="How to drive the deepseek CLI from code: stdout/stderr split, unwrapped --json responses, per-format JSON shapes, meaningful exit codes, retry semantics, and a drop-in agent skill.">
+<meta property="og:url" content="https://thevibeworks.github.io/deepseek-cli/agents/">
+<meta property="og:image" content="https://thevibeworks.github.io/deepseek-cli/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="deepseek-cli — the whole DeepSeek API from the terminal">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="deepseek-cli for agents and scripts — the output contract">
+<meta name="twitter:description" content="How to drive the deepseek CLI from code: stdout/stderr split, unwrapped --json responses, per-format JSON shapes, meaningful exit codes, retry semantics, and a drop-in agent skill.">
+<meta name="twitter:image" content="https://thevibeworks.github.io/deepseek-cli/og.png">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="../style.css">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "deepseek-cli for agents and scripts",
+  "description": "The scripting contract for the deepseek CLI.",
+  "url": "https://thevibeworks.github.io/deepseek-cli/agents/",
+  "isPartOf": {"@type": "WebSite", "name": "deepseek-cli", "url": "https://thevibeworks.github.io/deepseek-cli/"},
+  "author": {"@type": "Organization", "name": "thevibeworks"},
+  "inLanguage": "en"
+}
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"deepseek-cli","item":"https://thevibeworks.github.io/deepseek-cli/"},{"@type":"ListItem","position":2,"name":"agents","item":"https://thevibeworks.github.io/deepseek-cli/agents/"}]}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">skip to content</a>
+<header class="masthead">
+  <div class="wrap">
+    <a class="brand" href="../">
+      <span class="caret">&gt;</span><span class="org">thevibeworks/</span><span class="name">deepseek-cli</span>
+    </a>
+    <nav class="sitenav" aria-label="Sections">
+      <a href="../">overview</a>
+      <a href="../install/">install</a>
+      <a href="../commands/">commands</a>
+      <a href="../formats/">formats</a>
+      <a href="../cost/">cost</a>
+      <a href="../agents/" aria-current="page">agents</a>
+      <a href="https://github.com/thevibeworks/deepseek-cli">github&nbsp;&#8599;</a>
+    </nav>
+  </div>
+</header>
+<main id="main">
+  <div class="wrap">
+<nav class="crumb" aria-label="Breadcrumb"><a href="../">deepseek-cli</a><span class="sep">/</span>agents</nav>
+
+<h1>For agents</h1>
+<p class="lede">Built to be driven by other programs. The contract below is
+stable and tested; the same text ships in the repo as
+<a href="https://github.com/thevibeworks/deepseek-cli/blob/main/AGENTS.md">AGENTS.md</a> and as a drop-in
+<a href="https://github.com/thevibeworks/deepseek-cli/blob/main/skill/SKILL.md">agent skill</a>.</p>
+
+<h2 id="contract">The output contract</h2>
+<ul>
+<li><strong>stdout is data.</strong> The answer text, or with
+<code>--json</code> the API's own response body.</li>
+<li><strong>stderr is status.</strong> Chain of thought, the usage line,
+truncation warnings, verbose HTTP, errors.</li>
+<li><code>ds chat "..." &gt; answer.txt</code> writes the answer and nothing
+else.</li>
+</ul>
+
+<h2 id="json">--json is not wrapped</h2>
+<p><code>--json</code> prints the API's response byte-for-byte: no envelope, no
+injected fields. jq recipes written against the OpenAI or Anthropic APIs keep
+working unchanged.</p>
+<pre><code>ds chat "..." --json | jq -r '.choices[0].message.content'
+ds chat "..." --jq '.usage'
+ds models --json | jq -r '.data[].id'</code></pre>
+<p>Cost deliberately does not appear there &mdash; it would have meant wrapping
+the response. It goes to stderr and to the
+<a href="../cost/">ledger</a> instead.</p>
+
+<h2 id="shapes">Response shapes</h2>
+<p>From the API, so they are the documented DeepSeek shapes:</p>
+<pre><code>chat       {"id","object","created","model",
+            "choices":[{"message":{"content","reasoning_content","tool_calls"},
+                        "finish_reason"}],"usage":{...}}
+anthropic  {"id","type","role","model","content":[{"type","text"}],
+            "stop_reason","usage":{...}}
+respond    {"id","object","status","model",
+            "output":[{"type","content":[{"type","text"}]}],"usage":{...}}
+fim        {"id","object","model","choices":[{"text","finish_reason"}],"usage":{...}}
+models     {"object":"list","data":[{"id","object","owned_by"}]}
+balance    {"is_available","balance_infos":[{"currency","total_balance",...}]}</code></pre>
+<p>Computed locally, not from the API:</p>
+<pre><code>usage      {"since","total":{...},"by_model":{...},"by_api":{...}}
+check      {"base_url","key_set","ok",
+            "probes":[{"name","path","ok","detail","error","ms"}]}
+session ls [{"name","model","turns","updated","bytes"}]</code></pre>
+<p>Note that usage field names differ per format, exactly as the API sends
+them. See <a href="../formats/#tokens">the token-accounting trap</a>.</p>
+
+<h2 id="exit">Exit codes carry meaning</h2>
+<pre><code>0   success
+1   error            read stderr
+2   auth             key missing or rejected  &rarr; do not retry
+3   no balance       top up                   &rarr; do not retry
+4   rate limited     back off, then retry
+130 interrupted</code></pre>
+<p>Transport failures and 429/5xx are already retried internally with
+exponential backoff, honouring <code>Retry-After</code>. A non-zero exit means
+your own retry loop probably will not help either. Requests that reached the
+model are never retried &mdash; a second call would be billed twice.</p>
+
+<h2 id="preflight">Preflight</h2>
+<pre><code>ds check --json
+# {"base_url":"...","key_set":true,"probes":[...],"ok":true}</code></pre>
+<p>One command, six endpoints, a fraction of a cent. If <code>ok</code> is
+false, read <code>probes[].error</code>.</p>
+
+<h2 id="errors">Errors say what to do</h2>
+<pre><code>$ ds chat hi
+Error: Insufficient Balance (HTTP 402)
+  out of balance: deepseek balance &mdash; top up at https://platform.deepseek.com/top_up</code></pre>
+
+<h2 id="quiet">Quiet mode</h2>
+<pre><code>ds chat "..." --no-stats --no-ledger --json</code></pre>
+<p>Use both when the usage line would pollute captured output, or when a batch
+run should not land in the ledger.</p>
+
+<h2 id="skill">As an agent skill</h2>
+<p><a href="https://github.com/thevibeworks/deepseek-cli/blob/main/skill/SKILL.md">skill/SKILL.md</a> ships in every
+release archive. It carries the same contract as an operational procedure, with
+the rules that matter for autonomous use:</p>
+<ul>
+<li>Report costs as estimates, never as billed amounts.</li>
+<li>Do not retry on exit 2 or 3 &mdash; bring them to the human.</li>
+<li>The API is text-only: no images, no documents.</li>
+<li>Slow starts of up to ten minutes are normal under load, not a failure.</li>
+</ul>
+<nav class="pager" aria-label="Pagination">
+<a href="../cost/"><span class="lbl">&larr; previous</span>cost</a>
+</nav>  </div>
+</main>
+<footer class="foot">
+  <div class="wrap">
+    <span>
+      <a href="https://github.com/thevibeworks/deepseek-cli">source</a> &middot;
+      <a href="https://github.com/thevibeworks/deepseek-cli/blob/main/LICENSE">MIT</a> &middot;
+      <a href="https://thevibeworks.github.io/deepseek-cli/llms.txt">llms.txt</a> &middot;
+      <a href="https://thevibeworks.github.io/">thevibeworks</a>
+    </span>
+    <span>unofficial &mdash; not affiliated with DeepSeek</span>
+  </div>
+</footer>
+</body>
+</html>

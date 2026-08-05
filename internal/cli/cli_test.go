@@ -357,3 +357,23 @@ func TestBriefErrorOnPlainError(t *testing.T) {
 		t.Errorf("got %q, want the first line", got)
 	}
 }
+
+func TestInvokedAsRecognisesAliases(t *testing.T) {
+	// ds and dscli are symlinks to the same binary; usage lines should
+	// say whichever name the user typed.
+	orig := os.Args[0]
+	defer func() { os.Args[0] = orig }()
+
+	for arg, want := range map[string]string{
+		"/usr/local/bin/deepseek": "deepseek",
+		"/usr/local/bin/ds":       "ds",
+		"/opt/bin/dscli":          "dscli",
+		"/tmp/cli.test":           "deepseek", // anything unrecognised
+		"deepseek":                "deepseek",
+	} {
+		os.Args[0] = arg
+		if got := invokedAs(); got != want {
+			t.Errorf("invokedAs() with argv0 %q = %q, want %q", arg, got, want)
+		}
+	}
+}

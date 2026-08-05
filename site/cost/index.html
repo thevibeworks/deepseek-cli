@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What DeepSeek actually costs — cache math and a local usage ledger</title>
+<meta name="description" content="DeepSeek&#x27;s context cache makes a cached input token 50x cheaper than an uncached one. How the deepseek CLI prices every call, what the local usage ledger records, and the caveats on every figure it prints.">
+<meta name="keywords" content="deepseek pricing, deepseek api cost, deepseek context cache, deepseek cache hit tokens, deepseek token cost calculator, deepseek v4 flash price, deepseek usage tracking">
+<meta name="author" content="thevibeworks">
+<meta name="theme-color" content="#000000">
+<link rel="canonical" href="https://thevibeworks.github.io/deepseek-cli/cost/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="deepseek-cli">
+<meta property="og:title" content="What DeepSeek actually costs — cache math and a local usage ledger">
+<meta property="og:description" content="DeepSeek&#x27;s context cache makes a cached input token 50x cheaper than an uncached one. How the deepseek CLI prices every call, what the local usage ledger records, and the caveats on every figure it prints.">
+<meta property="og:url" content="https://thevibeworks.github.io/deepseek-cli/cost/">
+<meta property="og:image" content="https://thevibeworks.github.io/deepseek-cli/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="deepseek-cli — the whole DeepSeek API from the terminal">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="What DeepSeek actually costs — cache math and a local usage ledger">
+<meta name="twitter:description" content="DeepSeek&#x27;s context cache makes a cached input token 50x cheaper than an uncached one. How the deepseek CLI prices every call, what the local usage ledger records, and the caveats on every figure it prints.">
+<meta name="twitter:image" content="https://thevibeworks.github.io/deepseek-cli/og.png">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="../style.css">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "What DeepSeek actually costs",
+  "description": "Pricing, context-cache savings, and the deepseek CLI usage ledger.",
+  "url": "https://thevibeworks.github.io/deepseek-cli/cost/",
+  "isPartOf": {"@type": "WebSite", "name": "deepseek-cli", "url": "https://thevibeworks.github.io/deepseek-cli/"},
+  "author": {"@type": "Organization", "name": "thevibeworks"},
+  "inLanguage": "en"
+}
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"deepseek-cli","item":"https://thevibeworks.github.io/deepseek-cli/"},{"@type":"ListItem","position":2,"name":"cost","item":"https://thevibeworks.github.io/deepseek-cli/cost/"}]}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">skip to content</a>
+<header class="masthead">
+  <div class="wrap">
+    <a class="brand" href="../">
+      <span class="caret">&gt;</span><span class="org">thevibeworks/</span><span class="name">deepseek-cli</span>
+    </a>
+    <nav class="sitenav" aria-label="Sections">
+      <a href="../">overview</a>
+      <a href="../install/">install</a>
+      <a href="../commands/">commands</a>
+      <a href="../formats/">formats</a>
+      <a href="../cost/" aria-current="page">cost</a>
+      <a href="../agents/">agents</a>
+      <a href="https://github.com/thevibeworks/deepseek-cli">github&nbsp;&#8599;</a>
+    </nav>
+  </div>
+</header>
+<main id="main">
+  <div class="wrap">
+<nav class="crumb" aria-label="Breadcrumb"><a href="../">deepseek-cli</a><span class="sep">/</span>cost</nav>
+
+<h1>Cost</h1>
+<p class="lede">DeepSeek's headline feature is a disk-backed context cache that
+makes a repeated prompt prefix roughly fifty times cheaper. That saving is
+invisible unless something is counting &mdash; so this counts.</p>
+
+<h2 id="card">The rate card</h2>
+<p>USD per 1M tokens, as published on 2026-08-02:</p>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Model</th><th class="num">Input (cached)</th><th class="num">Input (miss)</th><th class="num">Output</th></tr></thead>
+<tbody>
+<tr><td><code>deepseek-v4-flash</code></td><td class="num">$0.0028</td><td class="num">$0.14</td><td class="num">$0.28</td></tr>
+<tr><td><code>deepseek-v4-pro</code></td><td class="num">$0.003625</td><td class="num">$0.435</td><td class="num">$0.87</td></tr>
+</tbody>
+</table>
+</div>
+<p><code>ds models</code> prints this next to the live model list, so the price
+is on screen when you pick.</p>
+
+<h2 id="cache">What the cache is worth</h2>
+<p>On flash, a cache hit costs <strong>1/50th</strong> of a miss. The same
+3,200-token prompt, sent twice:</p>
+<div class="term">
+<div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="title">measured, not illustrative</span></div>
+<pre><code><span class="p">$</span> ds chat <span class="w">"..."</span> <span class="k">--system</span> @prefix.txt
+<span class="o">one</span>
+<span class="c">&middot; flash &middot; 3.2k in &middot; 1 out &middot; ~$0.000450 &middot; 0.84s</span>
+
+<span class="p">$</span> ds chat <span class="w">"..."</span> <span class="k">--system</span> @prefix.txt
+<span class="o">two</span>
+<span class="c">&middot; flash &middot; 3.2k in (100% cached) &middot; 1 out &middot; ~$0.000011 &middot; 1.04s</span></code></pre>
+</div>
+<p>A 40&times; drop, for changing nothing but sending the same prefix again.
+The practical rule: <strong>put the stable part of a prompt first</strong>
+&mdash; same system prompt, same files, in the same order &mdash; and let the
+variable part come last.</p>
+
+<h2 id="thinking">The thinking surcharge</h2>
+<p>Thinking mode is on by default and costs a <strong>flat 79 extra input
+tokens</strong> per request for its template, before generating a single
+reasoning token. Measured across prompts of very different lengths:</p>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Prompt</th><th class="num">--think off</th><th class="num">--think on</th><th class="num">difference</th></tr></thead>
+<tbody>
+<tr><td><code>"hi"</code></td><td class="num">5</td><td class="num">84</td><td class="num">+79</td></tr>
+<tr><td>9-token question</td><td class="num">11</td><td class="num">90</td><td class="num">+79</td></tr>
+<tr><td>14-token question</td><td class="num">16</td><td class="num">95</td><td class="num">+79</td></tr>
+</tbody>
+</table>
+</div>
+<p>On a short factual lookup that surcharge is most of the bill, and the
+reasoning tokens it then generates are the rest. <code>--think off</code>
+removes both.</p>
+
+<h2 id="ledger">The ledger</h2>
+<p>Every call prints one line to stderr and appends one row to
+<code>~/.local/state/deepseek/usage.jsonl</code>:</p>
+<pre><code>{"ts":"2026-08-05T05:18:12Z","api":"chat","model":"deepseek-v4-flash",
+ "in":3242,"cache_hit":3200,"cache_miss":42,"out":1,
+ "cost_usd":0.0000109,"saved_usd":0.000439,"ms":1041}</code></pre>
+<p>Token counts are exact and are what gets stored; the cost field is a
+convenience. That is deliberate &mdash; when DeepSeek changes the rate card,
+every historical row can be repriced.</p>
+
+<pre><code>ds usage                  # today
+ds usage --since 7d
+ds usage --since all --json
+ds usage --entries        # individual calls</code></pre>
+
+<div class="term">
+<div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="title">ds usage --since 7d</span></div>
+<pre><code>                   CALLS  IN     CACHED  OUT    COST
+deepseek-v4-flash  184    2.1M   78%     94k    $0.19
+deepseek-v4-pro    12     88k    41%     11k    $0.03
+total              196    2.2M   77%     105k   $0.22
+
+<span class="c">by format: chat 170, anthropic 14, responses 8, fim 4</span>
+<span class="c">context cache saved ~$0.23 (1.7M of 2.2M prompt tokens replayed)</span>
+<span class="c">costs are estimates from the published USD rate card, not billed amounts</span></code></pre>
+</div>
+
+<p>The savings line is the one worth watching. It is what the cached tokens
+<em>would</em> have cost at the miss rate, minus what they did cost &mdash;
+which is the number that tells you whether prompt structuring is paying off.</p>
+
+<h2 id="caveats">What these numbers are not</h2>
+<div class="note warn">
+<span class="tag">read this before quoting a figure</span>
+<ul>
+<li><strong>Estimates, not invoices.</strong> Computed from the published USD
+rate card. Your account may bill in another currency &mdash;
+<code>ds balance</code> shows which.</li>
+<li><strong>Peak pricing is not applied.</strong> DeepSeek has announced a 2&times;
+multiplier for 09:00&ndash;12:00 and 14:00&ndash;18:00 Beijing time, with no
+effective date. Applying it now would double every estimate on a guess, so it
+is deliberately left out until the date is announced.</li>
+<li><strong>Local only.</strong> The ledger records calls made by this CLI on
+this machine. It knows nothing about your other clients.</li>
+</ul>
+</div>
+<p><code>--no-ledger</code> skips the write, <code>--no-stats</code> hides the
+line, and neither ever fails the command that produced it &mdash; you asked for
+a completion, not for bookkeeping.</p>
+<nav class="pager" aria-label="Pagination">
+<a href="../formats/"><span class="lbl">&larr; previous</span>formats</a>
+<a href="../agents/" style="text-align:right"><span class="lbl">next &rarr;</span>agents</a>
+</nav>  </div>
+</main>
+<footer class="foot">
+  <div class="wrap">
+    <span>
+      <a href="https://github.com/thevibeworks/deepseek-cli">source</a> &middot;
+      <a href="https://github.com/thevibeworks/deepseek-cli/blob/main/LICENSE">MIT</a> &middot;
+      <a href="https://thevibeworks.github.io/deepseek-cli/llms.txt">llms.txt</a> &middot;
+      <a href="https://thevibeworks.github.io/">thevibeworks</a>
+    </span>
+    <span>unofficial &mdash; not affiliated with DeepSeek</span>
+  </div>
+</footer>
+</body>
+</html>

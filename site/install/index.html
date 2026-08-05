@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Install deepseek-cli — binaries, Go, and the ds alias</title>
+<meta name="description" content="Install the deepseek CLI on macOS, Linux or Windows: one-line installer, release binaries, or go install. Covers the ds and dscli aliases, API key configuration, and shell completion.">
+<meta name="keywords" content="install deepseek cli, deepseek cli download, deepseek cli macos, deepseek cli linux, go install deepseek, deepseek api key setup, ds alias">
+<meta name="author" content="thevibeworks">
+<meta name="theme-color" content="#000000">
+<link rel="canonical" href="https://thevibeworks.github.io/deepseek-cli/install/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="deepseek-cli">
+<meta property="og:title" content="Install deepseek-cli — binaries, Go, and the ds alias">
+<meta property="og:description" content="Install the deepseek CLI on macOS, Linux or Windows: one-line installer, release binaries, or go install. Covers the ds and dscli aliases, API key configuration, and shell completion.">
+<meta property="og:url" content="https://thevibeworks.github.io/deepseek-cli/install/">
+<meta property="og:image" content="https://thevibeworks.github.io/deepseek-cli/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="deepseek-cli — the whole DeepSeek API from the terminal">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Install deepseek-cli — binaries, Go, and the ds alias">
+<meta name="twitter:description" content="Install the deepseek CLI on macOS, Linux or Windows: one-line installer, release binaries, or go install. Covers the ds and dscli aliases, API key configuration, and shell completion.">
+<meta name="twitter:image" content="https://thevibeworks.github.io/deepseek-cli/og.png">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="../style.css">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Install deepseek-cli",
+  "description": "How to install the deepseek CLI and configure an API key.",
+  "url": "https://thevibeworks.github.io/deepseek-cli/install/",
+  "isPartOf": {"@type": "WebSite", "name": "deepseek-cli", "url": "https://thevibeworks.github.io/deepseek-cli/"},
+  "author": {"@type": "Organization", "name": "thevibeworks"},
+  "inLanguage": "en"
+}
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"deepseek-cli","item":"https://thevibeworks.github.io/deepseek-cli/"},{"@type":"ListItem","position":2,"name":"install","item":"https://thevibeworks.github.io/deepseek-cli/install/"}]}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">skip to content</a>
+<header class="masthead">
+  <div class="wrap">
+    <a class="brand" href="../">
+      <span class="caret">&gt;</span><span class="org">thevibeworks/</span><span class="name">deepseek-cli</span>
+    </a>
+    <nav class="sitenav" aria-label="Sections">
+      <a href="../">overview</a>
+      <a href="../install/" aria-current="page">install</a>
+      <a href="../commands/">commands</a>
+      <a href="../formats/">formats</a>
+      <a href="../cost/">cost</a>
+      <a href="../agents/">agents</a>
+      <a href="https://github.com/thevibeworks/deepseek-cli">github&nbsp;&#8599;</a>
+    </nav>
+  </div>
+</header>
+<main id="main">
+  <div class="wrap">
+<nav class="crumb" aria-label="Breadcrumb"><a href="../">deepseek-cli</a><span class="sep">/</span>install</nav>
+
+<h1>Install</h1>
+<p class="lede">A single static binary with no runtime dependencies. Pick
+whichever of these you trust most.</p>
+
+<h2 id="script">One line</h2>
+<p>Detects your platform, downloads the matching release, installs the binary
+and both aliases:</p>
+<pre><code>curl -sL https://github.com/thevibeworks/deepseek-cli/raw/main/install.sh | sh</code></pre>
+<p class="small">Installs to <code>/usr/local/bin</code>; set
+<code>PREFIX=$HOME/.local</code> to install without <code>sudo</code>. If you
+would rather read it first &mdash; and you should, for anything piped to a
+shell &mdash; it is <a href="https://github.com/thevibeworks/deepseek-cli/blob/main/install.sh">forty lines</a>.</p>
+
+<h2 id="binaries">Release binaries</h2>
+<p>From <a href="https://github.com/thevibeworks/deepseek-cli/releases">Releases</a>, for macOS, Linux and Windows
+on both amd64 and arm64:</p>
+<pre><code># macOS (Apple Silicon)
+curl -sL https://github.com/thevibeworks/deepseek-cli/releases/latest/download/deepseek_darwin_arm64.tar.gz | tar xz
+sudo mv deepseek /usr/local/bin/
+
+# Linux (x86_64)
+curl -sL https://github.com/thevibeworks/deepseek-cli/releases/latest/download/deepseek_linux_amd64.tar.gz | tar xz
+sudo mv deepseek /usr/local/bin/</code></pre>
+<p class="small">Every release ships a <code>checksums.txt</code>.</p>
+
+<h2 id="go">Go</h2>
+<pre><code>go install github.com/thevibeworks/deepseek-cli/cmd/deepseek@latest</code></pre>
+<p>Requires Go 1.25 or later. The binary lands in <code>$(go env GOPATH)/bin</code>.</p>
+
+<h2 id="aliases">ds and dscli</h2>
+<p><code>deepseek</code> is eight characters to type many times a day. The
+binary answers to <code>ds</code> and <code>dscli</code> as well.</p>
+<p>These are <strong>symlinks to the same binary</strong>, not shell aliases,
+so they work in scripts, <code>cron</code>, <code>Makefile</code>s and anywhere
+else a shell alias would not exist. The binary notices which name invoked it,
+so <code>ds --help</code> says <code>ds</code>.</p>
+<pre><code>ds chat "why is the sky blue"
+ds usage --since 7d</code></pre>
+<p>The installer and <code>make install</code> create them. By hand:</p>
+<pre><code>sudo ln -sf deepseek /usr/local/bin/ds
+sudo ln -sf deepseek /usr/local/bin/dscli</code></pre>
+
+<h2 id="key">The API key</h2>
+<p>Get one from <a href="https://platform.deepseek.com/api_keys">platform.deepseek.com</a>,
+then either put it in the environment:</p>
+<pre><code>export DEEPSEEK_API_KEY=sk-...</code></pre>
+<p>or, to keep it out of the environment entirely, in a file:</p>
+<pre><code>mkdir -p ~/.config/deepseek &amp;&amp; chmod 700 ~/.config/deepseek
+printf 'sk-...' &gt; ~/.config/deepseek/api_key
+chmod 600 ~/.config/deepseek/api_key</code></pre>
+<p>Precedence is <code>--api-key</code>, then <code>$DEEPSEEK_API_KEY</code>,
+then the file.</p>
+
+<h2 id="config">Configuration</h2>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Variable</th><th>Purpose</th><th>Default</th></tr></thead>
+<tbody>
+<tr><td><code>DEEPSEEK_API_KEY</code></td><td>API key</td><td>&mdash;</td></tr>
+<tr><td><code>DEEPSEEK_BASE_URL</code></td><td>Override the base URL for proxies and gateways</td><td><code>https://api.deepseek.com</code></td></tr>
+<tr><td><code>DEEPSEEK_CONFIG_DIR</code></td><td>Where the key file lives</td><td><code>~/.config/deepseek</code></td></tr>
+<tr><td><code>DEEPSEEK_STATE_DIR</code></td><td>Usage ledger and saved conversations</td><td><code>~/.local/state/deepseek</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Both directories respect <code>XDG_CONFIG_HOME</code> and
+<code>XDG_STATE_HOME</code>.</p>
+
+<div class="note warn">
+<span class="tag">careful</span>
+<p>Setting <code>--base-url</code> sends your API key and your prompts to that
+host instead of DeepSeek. Only point it at a gateway you control.</p>
+</div>
+
+<h2 id="verify">Verify</h2>
+<pre><code>ds check</code></pre>
+<p>Calls all six endpoints once with a one-token cap &mdash; the whole check
+costs a fraction of a cent. Exit code 2 means the key is missing or rejected,
+3 means the balance is exhausted.</p>
+
+<h2 id="completion">Shell completion</h2>
+<pre><code>ds completion zsh  &gt; "${fpath[1]}/_deepseek"    # zsh
+ds completion bash &gt; /etc/bash_completion.d/deepseek
+ds completion fish &gt; ~/.config/fish/completions/deepseek.fish</code></pre>
+<nav class="pager" aria-label="Pagination">
+<a href="../"><span class="lbl">&larr; previous</span>overview</a>
+<a href="../commands/" style="text-align:right"><span class="lbl">next &rarr;</span>commands</a>
+</nav>  </div>
+</main>
+<footer class="foot">
+  <div class="wrap">
+    <span>
+      <a href="https://github.com/thevibeworks/deepseek-cli">source</a> &middot;
+      <a href="https://github.com/thevibeworks/deepseek-cli/blob/main/LICENSE">MIT</a> &middot;
+      <a href="https://thevibeworks.github.io/deepseek-cli/llms.txt">llms.txt</a> &middot;
+      <a href="https://thevibeworks.github.io/">thevibeworks</a>
+    </span>
+    <span>unofficial &mdash; not affiliated with DeepSeek</span>
+  </div>
+</footer>
+</body>
+</html>

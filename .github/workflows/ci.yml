@@ -30,8 +30,18 @@ jobs:
       - name: test
         run: go test ./... -race -count=1
 
+      # The README's coverage badge is a claim; this is what makes it
+      # keep being true.
+      - name: coverage gate
+        run: make cover-gate
+
       - name: build
         run: go build ./...
+
+      # The site's HTML is committed; this catches an edit to the
+      # generator that was never regenerated (or the reverse).
+      - name: site is up to date with its generator
+        run: python3 site/build.py --check
 
   cross-build:
     runs-on: ubuntu-latest

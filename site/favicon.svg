@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="deepseek-cli">
+  <rect width="32" height="32" fill="#000"/>
+  <path d="M5 9 L12 16 L5 23" fill="none" stroke="#e41478" stroke-width="3.2"
+        stroke-linecap="square" stroke-linejoin="miter"/>
+  <rect x="15" y="20.5" width="12" height="3" fill="#00c2e9"/>
+</svg>

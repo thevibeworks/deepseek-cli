@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>deepseek-cli command reference — chat, anthropic, respond, fim, usage</title>
+<meta name="description" content="Full reference for every deepseek CLI command and flag: chat completions, Anthropic Messages, OpenAI Responses, FIM, models, balance, usage ledger, sessions, check and raw, plus exit codes.">
+<meta name="keywords" content="deepseek cli commands, deepseek chat completions cli, deepseek fim completion, deepseek cli flags, deepseek cli reference, deepseek json output, deepseek cli exit codes">
+<meta name="author" content="thevibeworks">
+<meta name="theme-color" content="#000000">
+<link rel="canonical" href="https://thevibeworks.github.io/deepseek-cli/commands/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="deepseek-cli">
+<meta property="og:title" content="deepseek-cli command reference — chat, anthropic, respond, fim, usage">
+<meta property="og:description" content="Full reference for every deepseek CLI command and flag: chat completions, Anthropic Messages, OpenAI Responses, FIM, models, balance, usage ledger, sessions, check and raw, plus exit codes.">
+<meta property="og:url" content="https://thevibeworks.github.io/deepseek-cli/commands/">
+<meta property="og:image" content="https://thevibeworks.github.io/deepseek-cli/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="deepseek-cli — the whole DeepSeek API from the terminal">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="deepseek-cli command reference — chat, anthropic, respond, fim, usage">
+<meta name="twitter:description" content="Full reference for every deepseek CLI command and flag: chat completions, Anthropic Messages, OpenAI Responses, FIM, models, balance, usage ledger, sessions, check and raw, plus exit codes.">
+<meta name="twitter:image" content="https://thevibeworks.github.io/deepseek-cli/og.png">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="../style.css">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "deepseek-cli command reference",
+  "description": "Every command and flag in the deepseek CLI.",
+  "url": "https://thevibeworks.github.io/deepseek-cli/commands/",
+  "isPartOf": {"@type": "WebSite", "name": "deepseek-cli", "url": "https://thevibeworks.github.io/deepseek-cli/"},
+  "author": {"@type": "Organization", "name": "thevibeworks"},
+  "inLanguage": "en"
+}
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"deepseek-cli","item":"https://thevibeworks.github.io/deepseek-cli/"},{"@type":"ListItem","position":2,"name":"commands","item":"https://thevibeworks.github.io/deepseek-cli/commands/"}]}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">skip to content</a>
+<header class="masthead">
+  <div class="wrap">
+    <a class="brand" href="../">
+      <span class="caret">&gt;</span><span class="org">thevibeworks/</span><span class="name">deepseek-cli</span>
+    </a>
+    <nav class="sitenav" aria-label="Sections">
+      <a href="../">overview</a>
+      <a href="../install/">install</a>
+      <a href="../commands/" aria-current="page">commands</a>
+      <a href="../formats/">formats</a>
+      <a href="../cost/">cost</a>
+      <a href="../agents/">agents</a>
+      <a href="https://github.com/thevibeworks/deepseek-cli">github&nbsp;&#8599;</a>
+    </nav>
+  </div>
+</header>
+<main id="main">
+  <div class="wrap">
+<nav class="crumb" aria-label="Breadcrumb"><a href="../">deepseek-cli</a><span class="sep">/</span>commands</nav>
+
+<h1>Commands</h1>
+<p class="lede">Ten commands: six wrap an endpoint, two read local state, one
+is a preflight, one is an escape hatch. <code>--help</code> on any of them
+carries the same detail.</p>
+
+<h2 id="chat">chat</h2>
+<p><code>POST /chat/completions</code> &mdash; the default door, and the only
+format that supports chat prefix completion.</p>
+<pre><code>ds chat "why is the sky blue"
+git diff | ds chat "write a commit message"
+ds chat "explain" --file server.go --file server_test.go
+ds chat "review this" --model deepseek-v4-pro --effort max
+ds chat "and now in one line" --continue</code></pre>
+<p>Arguments are the instruction; piped stdin and <code>--file</code> are the
+material. All three compose.</p>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th>Flag</th><th>Effect</th></tr></thead>
+<tbody>
+<tr><td><code>-m, --model</code></td><td><code>deepseek-v4-flash</code> (default) or <code>deepseek-v4-pro</code></td></tr>
+<tr><td><code>-s, --system</code></td><td>System prompt, inline or <code>@file</code></td></tr>
+<tr><td><code>--think on|off</code></td><td>Thinking mode. Default is the API's own, which is on</td></tr>
+<tr><td><code>-e, --effort</code></td><td><code>low</code>, <code>high</code> or <code>max</code></td></tr>
+<tr><td><code>--max-tokens</code></td><td>Cap generated tokens</td></tr>
+<tr><td><code>--temperature</code>, <code>--top-p</code></td><td>Sampling. Both ignored in thinking mode</td></tr>
+<tr><td><code>--stop</code></td><td>Stop sequence, repeatable, max 16</td></tr>
+<tr><td><code>--response-format</code></td><td><code>text</code> or <code>json_object</code></td></tr>
+<tr><td><code>--tool</code></td><td>Tool definition as JSON or <code>@file</code>, repeatable</td></tr>
+<tr><td><code>--tool-choice</code></td><td><code>none</code>, <code>auto</code>, <code>required</code>, or a JSON object</td></tr>
+<tr><td><code>--prefix</code></td><td>Beta: force the answer to start with this text</td></tr>
+<tr><td><code>-f, --file</code></td><td>Attach a file's contents, repeatable</td></tr>
+<tr><td><code>-c, --continue</code></td><td>Continue the conversation named <code>last</code></td></tr>
+<tr><td><code>--session NAME</code></td><td>Read and write a named conversation</td></tr>
+<tr><td><code>--stream=false</code></td><td>Wait for the whole answer</td></tr>
+<tr><td><code>--reasoning=false</code></td><td>Hide the chain of thought</td></tr>
+<tr><td><code>--logprobs</code>, <code>--top-logprobs</code></td><td>Token log probabilities</td></tr>
+<tr><td><code>--user-id</code></td><td>Cache and scheduling isolation</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 id="multiturn">Multi-turn</h3>
+<p>The API stores nothing, in any format, so conversations live on your
+machine.</p>
+<pre><code>ds chat "read this spec" --file spec.md --session review
+ds chat "now list the risks"          --session review
+ds session ls
+ds session show review
+ds session rm review</code></pre>
+<p><code>--continue</code> is the session named <code>last</code>.</p>
+
+<h3 id="tools">Tools</h3>
+<pre><code>ds chat "weather in Hangzhou?" --tool @weather.json
+# tool_call call_00_hUj... get_weather({"city": "Hangzhou"})</code></pre>
+<p>One tool file works against every format &mdash; both the OpenAI
+<code>parameters</code> and the Anthropic <code>input_schema</code> spellings
+are accepted. The calls are printed, never executed.</p>
+
+<h2 id="anthropic">anthropic</h2>
+<p><code>POST /anthropic/v1/messages</code> &mdash; the format Claude Code, the
+Anthropic SDKs and the Claude desktop app speak.</p>
+<pre><code>ds anthropic "hello"
+ds anthropic "hello" --model claude-opus-4-1 --json</code></pre>
+<p>Claude model names are accepted and remapped server-side. The usage line
+shows both names so the cost stays traceable to the model that actually ran.
+See <a href="../formats/">formats</a> for the mapping.</p>
+
+<h2 id="respond">respond</h2>
+<p><code>POST /responses</code> &mdash; the format Codex speaks. Two things
+live only here: JSON Schema structured output, and a <code>web_search</code>
+tool DeepSeek runs server-side.</p>
+<pre><code>ds respond "what shipped in Go 1.26" --web-search
+ds respond "Berlin" -s "Return city and country." --schema @city.json</code></pre>
+<p>Flash only, for now.</p>
+
+<h2 id="fim">fim</h2>
+<p><code>POST /beta/completions</code> &mdash; give it a prefix and an optional
+suffix; it writes the middle.</p>
+<pre><code>ds fim "def add(a, b):" --suffix "    return result"
+ds fim --prefix @head.go --suffix @tail.go --max-tokens 200</code></pre>
+<p>Beta, with two hard limits: output caps at 4K tokens, and it never thinks.</p>
+
+<h2 id="models">models</h2>
+<pre><code>ds models</code></pre>
+<p>The API's model list joined with the published rate card, so the price is on
+screen next to the model you are about to pick. <code>--json</code> returns the
+API's list alone.</p>
+
+<h2 id="balance">balance</h2>
+<pre><code>ds balance</code></pre>
+<p>Lists every currency the account holds &mdash; a real account returns both a
+USD and a CNY row. Exits 3 when exhausted, the same code a 402 produces
+anywhere else, so a script can check once up front.</p>
+
+<h2 id="usage">usage</h2>
+<pre><code>ds usage                  # today
+ds usage --since 7d
+ds usage --entries --json # individual calls</code></pre>
+<p>Reports the local ledger. See <a href="../cost/">cost</a>.</p>
+
+<h2 id="check">check</h2>
+<pre><code>ds check</code></pre>
+<p>Calls all six endpoints once. Every probe runs even after one fails,
+because "all six rejected the key" is a different diagnosis from "only
+<code>/responses</code> is unhappy".</p>
+
+<h2 id="raw">raw</h2>
+<pre><code>ds raw /models
+ds raw /chat/completions --data @request.json
+ds raw /anthropic/v1/messages --data @req.json --anthropic-auth</code></pre>
+<p>Any path, with this CLI's auth, base URL, retries and error reporting.
+Every other command is a typed convenience over this one, so an endpoint
+DeepSeek ships tomorrow is reachable today.</p>
+
+<h2 id="global">Global flags</h2>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Flag</th><th>Effect</th></tr></thead>
+<tbody>
+<tr><td><code>--json</code></td><td>Print the API's own response body, unwrapped</td></tr>
+<tr><td><code>--jq EXPR</code></td><td>Filter that body through <code>jq</code></td></tr>
+<tr><td><code>--api-key</code>, <code>--base-url</code></td><td>Override the resolved values</td></tr>
+<tr><td><code>--timeout</code></td><td>Default 10m, matching how long the API may hold a connection before inference starts</td></tr>
+<tr><td><code>-v</code>, <code>-vv</code></td><td>Log HTTP to stderr; <code>-vv</code> adds bodies</td></tr>
+<tr><td><code>--no-stats</code></td><td>Suppress the token/cost line</td></tr>
+<tr><td><code>--no-ledger</code></td><td>Do not record the call</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2 id="exit">Exit codes</h2>
+<div class="tablewrap">
+<table>
+<thead><tr><th class="num">Code</th><th>Meaning</th><th>What to do</th></tr></thead>
+<tbody>
+<tr><td class="num">0</td><td>success</td><td>&mdash;</td></tr>
+<tr><td class="num">1</td><td>error</td><td>Read stderr</td></tr>
+<tr><td class="num">2</td><td>auth</td><td>Key missing or rejected. Do not retry</td></tr>
+<tr><td class="num">3</td><td>no balance</td><td>Top up. Do not retry</td></tr>
+<tr><td class="num">4</td><td>rate limited</td><td>Back off, then retry</td></tr>
+<tr><td class="num">130</td><td>interrupted</td><td>&mdash;</td></tr>
+</tbody>
+</table>
+</div>
+<p>Transport failures and 429/5xx are already retried internally with backoff,
+so a non-zero exit means your own retry loop probably will not help either.</p>
+<nav class="pager" aria-label="Pagination">
+<a href="../install/"><span class="lbl">&larr; previous</span>install</a>
+<a href="../formats/" style="text-align:right"><span class="lbl">next &rarr;</span>formats</a>
+</nav>  </div>
+</main>
+<footer class="foot">
+  <div class="wrap">
+    <span>
+      <a href="https://github.com/thevibeworks/deepseek-cli">source</a> &middot;
+      <a href="https://github.com/thevibeworks/deepseek-cli/blob/main/LICENSE">MIT</a> &middot;
+      <a href="https://thevibeworks.github.io/deepseek-cli/llms.txt">llms.txt</a> &middot;
+      <a href="https://thevibeworks.github.io/">thevibeworks</a>
+    </span>
+    <span>unofficial &mdash; not affiliated with DeepSeek</span>
+  </div>
+</footer>
+</body>
+</html>
