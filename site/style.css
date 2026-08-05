@@ -63,6 +63,43 @@
 
     --measure: 68ch;
     --gutter: 1.5rem;
+
+    /* The sea. waves.js reads every one of these off :root and paints
+     * with them, so the two themes are settled here with the rest of the
+     * palette rather than duplicated in JavaScript.
+     *
+     * --sea-0 is the farthest layer and --sea-3 the nearest; they run
+     * from a pale horizon down to something close to the accent, which
+     * is what gives the water depth. --sea-deep is the bottom of every
+     * layer's gradient, so it is the colour of the floor.
+     *
+     * Dark: a lit sea at night, bright enough to sit against black.
+     * Light: the same water at noon, pale enough that black body text
+     * over the top of it stays comfortably above 4.5:1 — the waves are
+     * behind prose on the docs pages, and pretty is not worth unreadable. */
+    --sea-0: #0a4d63;
+    --sea-0: light-dark(#bfe4ef, #0a4d63);
+    --sea-1: #0a6480;
+    --sea-1: light-dark(#a5d9e9, #0a6480);
+    --sea-2: #067f9e;
+    --sea-2: light-dark(#82c9e0, #067f9e);
+    --sea-3: #00a2c4;
+    --sea-3: light-dark(#5bb3d4, #00a2c4);
+    --sea-deep: #00070e;
+    --sea-deep: light-dark(#e8f2f6, #00070e);
+    --sea-foam: #7fecff;
+    --sea-foam: light-dark(#ffffff, #7fecff);
+    --sea-glow: rgba(0, 194, 233, 0.16);
+    --sea-glow: light-dark(rgba(10, 110, 133, 0.14), rgba(0, 194, 233, 0.16));
+    --sea-glow-fade: rgba(0, 194, 233, 0);
+    --sea-glow-fade: light-dark(rgba(10, 110, 133, 0), rgba(0, 194, 233, 0));
+
+    /* The whale is a silhouette, so it only has to be darker than the
+     * water on paper and lighter than the page on black. */
+    --whale: #123f5c;
+    --whale: light-dark(#3d92b5, #123f5c);
+    --whale-lit: #00c2e9;
+    --whale-lit: light-dark(#ffffff, #00c2e9);
 }
 
 /* The toggle writes one of these onto <html>. `only` pins the scheme so
@@ -533,6 +570,99 @@ pre code {
     background: var(--surface-2);
     color: var(--text);
     border-color: var(--muted);
+}
+
+/* ---------- the sea ---------- */
+
+/* One ocean, fixed to the viewport, behind every page. The content column
+ * already carries z-index 2, so prose scrolls over water that does not
+ * move with it — which is the point: the whole site sits on one sea
+ * rather than each page carrying a decorative strip of it.
+ *
+ * The waves live in the bottom half and the whale is wider than the
+ * screen, so the top of the viewport — where headings and the first
+ * paragraph land — stays clean text on the page background.
+ *
+ * Before the canvas mounts, and forever with JS off, the same shape is
+ * drawn with gradients and whale.svg. The canvas only ever upgrades
+ * something already there. */
+.sea {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    /* Nothing in here is content; a screen reader skips the lot. */
+    contain: strict;
+}
+
+.sea-canvas {
+    display: block;
+    position: absolute;
+    inset: 0;
+    /* Never eats a click. waves.js tracks the pointer on the window
+     * instead, which is also why the water answers the pointer anywhere
+     * on the page rather than only where it is painted. */
+    pointer-events: none;
+}
+
+/* Three separate declarations, not one stack of background layers: the
+ * gradients need color-mix() and the whale does not, and a browser that
+ * drops an invalid background-image drops the whole property. Split like
+ * this, an engine without color-mix() loses the water and keeps a whale. */
+.sea {
+    --whale-img: url('whale.svg');
+    background: linear-gradient(180deg,
+            transparent 0%,
+            transparent 56%,
+            color-mix(in srgb, var(--sea-0) 30%, transparent) 62%,
+            color-mix(in srgb, var(--sea-1) 42%, transparent) 70%,
+            transparent 80%);
+}
+
+.sea::before,
+.sea::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+}
+
+/* The whale, sized and placed where the canvas would put it: wider than
+ * the viewport, its own 55% waterline landing on the sea's. */
+.sea::before {
+    background: var(--whale-img) no-repeat 50% calc(78vh - 18.06vw) / 100% auto;
+    opacity: 0.75;
+}
+
+/* ... and the near water washing over its belly. Same sandwich the canvas
+ * builds; a whale on top of a flat gradient reads as a sticker. */
+.sea::after {
+    background: linear-gradient(180deg,
+            transparent 76%,
+            color-mix(in srgb, var(--sea-2) 52%, transparent) 81%,
+            color-mix(in srgb, var(--sea-3) 72%, transparent) 89%,
+            var(--sea-deep) 100%);
+}
+
+/* Once the canvas is up it owns the whole thing. */
+.sea.is-live {
+    background: none;
+}
+
+.sea.is-live::before,
+.sea.is-live::after {
+    display: none;
+}
+
+/* The footer sits on the water rather than on a rule. */
+.foot {
+    position: relative;
+    z-index: 2;
+}
+
+@media print {
+    .sea {
+        display: none;
+    }
 }
 
 .grid {
