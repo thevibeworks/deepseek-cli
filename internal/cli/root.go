@@ -34,7 +34,6 @@ type Options struct {
 
 	stdout    io.Writer
 	stderr    io.Writer
-	stdoutTTY bool
 	stderrTTY bool
 }
 
@@ -78,7 +77,6 @@ func Execute(version string) int {
 	opts := &Options{
 		stdout:    os.Stdout,
 		stderr:    os.Stderr,
-		stdoutTTY: isTTY(os.Stdout),
 		stderrTTY: isTTY(os.Stderr),
 	}
 

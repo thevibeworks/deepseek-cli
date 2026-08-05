@@ -2,6 +2,7 @@ package cli
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -329,4 +330,30 @@ func write(t *testing.T, path, content string) {
 
 func msg(role, content string) deepseek.Message {
 	return deepseek.Message{Role: role, Content: content}
+}
+
+func TestBriefErrorIsOneLine(t *testing.T) {
+	// Table rows carry the API's message; the how-to-fix hint is printed
+	// once at the end, not stacked under every failed row.
+	err := &deepseek.APIError{StatusCode: 401, Message: "Authentication Fails"}
+	if strings.Contains(err.Error(), "\n") == false {
+		t.Fatal("fixture should be a multi-line error with a hint")
+	}
+
+	got := briefError(err)
+	if strings.Contains(got, "\n") {
+		t.Errorf("briefError returned multiple lines: %q", got)
+	}
+	if !strings.Contains(got, "401") || !strings.Contains(got, "Authentication Fails") {
+		t.Errorf("briefError dropped the useful part: %q", got)
+	}
+	if strings.Contains(got, "platform.deepseek.com") {
+		t.Errorf("briefError should not repeat the hint: %q", got)
+	}
+}
+
+func TestBriefErrorOnPlainError(t *testing.T) {
+	if got := briefError(errors.New("line one\nline two")); got != "line one" {
+		t.Errorf("got %q, want the first line", got)
+	}
 }

@@ -3,7 +3,9 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -77,8 +79,10 @@ func runCheck(cmd *cobra.Command, o *Options, model string) error {
 	res.BaseURL = client.BaseURL
 	res.KeySet = true
 
-	// Ordered cheapest-first, so an auth failure shows up before anything
-	// is spent on generation.
+	// Every probe runs even after one fails: the whole point of a preflight
+	// is the full picture, and "all six rejected the key" is a different
+	// diagnosis from "only /responses is unhappy". Nothing is spent on the
+	// failures — a rejected request generates no tokens.
 	res.Probes = append(res.Probes,
 		run(ctx, "models", "GET /models", func(ctx context.Context) (string, error) {
 			list, _, err := client.Models(ctx)
@@ -181,13 +185,35 @@ func run(ctx context.Context, name, path string, fn func(context.Context) (strin
 	detail, err := fn(ctx)
 	p := probe{Name: name, Path: path, Latency: time.Since(start).Milliseconds()}
 	if err != nil {
-		p.Error = err.Error()
+		p.Error = briefError(err)
 		p.err = err
 		return p
 	}
 	p.OK = true
 	p.Detail = detail
 	return p
+}
+
+// briefError is the one-line form for a table row. The full error, with
+// the how-to-fix hint, is printed once at the end — six identical hints
+// stacked under six rows is noise that hides the one thing that differs.
+func briefError(err error) string {
+	var apiErr *deepseek.APIError
+	if errors.As(err, &apiErr) {
+		msg := apiErr.Message
+		if msg == "" {
+			msg = http.StatusText(apiErr.StatusCode)
+		}
+		return fmt.Sprintf("HTTP %d %s", apiErr.StatusCode, msg)
+	}
+	return firstLine(err.Error())
+}
+
+func firstLine(s string) string {
+	if i := strings.IndexByte(s, '\n'); i >= 0 {
+		return s[:i]
+	}
+	return s
 }
 
 func usageDetail(u deepseek.Usage) string {
