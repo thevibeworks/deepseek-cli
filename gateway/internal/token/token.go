@@ -107,6 +107,11 @@ func (s *Signer) mac(domain string, payload []byte) []byte {
 // challengePayload is version(1) | difficulty(1) | issued(4) | nonce(16).
 const challengePayloadLen = 1 + 1 + 4 + 16
 
+// challengeMACLen is how much of the HMAC a challenge carries. A challenge
+// is short-lived and single-use, so 128 bits is plenty and keeps the
+// string manageable for a client that has to hash it in a loop.
+const challengeMACLen = 16
+
 // Challenge is a proof-of-work puzzle the gateway issued. The difficulty
 // travels inside the signed payload so the client cannot negotiate it
 // down, and the whole thing is stateless — nothing is stored until it
@@ -144,7 +149,7 @@ func (s *Signer) NewChallenge(difficulty uint8) (*Challenge, error) {
 	putUint32(payload[2:6], uint32(c.Issued.Unix()))
 	copy(payload[6:], c.ID[:])
 
-	c.String = enc.EncodeToString(payload) + "." + enc.EncodeToString(s.mac("challenge", payload)[:16])
+	c.String = enc.EncodeToString(payload) + "." + enc.EncodeToString(s.mac("challenge", payload)[:challengeMACLen])
 	return &c, nil
 }
 
@@ -152,7 +157,7 @@ func (s *Signer) NewChallenge(difficulty uint8) (*Challenge, error) {
 // It does not check the proof of work — see Verify — and it does not
 // check single use, which needs state the caller owns.
 func (s *Signer) ParseChallenge(raw string, ttl time.Duration) (*Challenge, error) {
-	payload, err := s.split(raw, "challenge", challengePayloadLen)
+	payload, err := s.split(raw, "challenge", challengePayloadLen, challengeMACLen)
 	if err != nil {
 		return nil, err
 	}
@@ -239,6 +244,10 @@ func Solve(challenge string, difficulty uint8, limit uint64) (uint64, error) {
 // tokenPayload is version(1) | tier(1) | issued(4) | subject(16).
 const tokenPayloadLen = 1 + 1 + 4 + 16
 
+// tokenMACLen is how much of the HMAC a bearer token carries. Unlike a
+// challenge, a token is long-lived, so it carries the whole thing.
+const tokenMACLen = sha256.Size
+
 // Token is a minted free-tier credential.
 type Token struct {
 	// String is the bearer value the client sends.
@@ -292,7 +301,7 @@ func (s *Signer) ParseToken(raw string) (*Token, error) {
 	if len(raw) <= len(TokenPrefix) || raw[:len(TokenPrefix)] != TokenPrefix {
 		return nil, fmt.Errorf("%w: not a free-tier token", ErrMalformed)
 	}
-	payload, err := s.split(raw[len(TokenPrefix):], "token", tokenPayloadLen)
+	payload, err := s.split(raw[len(TokenPrefix):], "token", tokenPayloadLen, tokenMACLen)
 	if err != nil {
 		return nil, err
 	}
@@ -317,7 +326,15 @@ func IsToken(raw string) bool {
 
 // split validates the "payload.mac" envelope common to both credentials
 // and returns the payload.
-func (s *Signer) split(raw, domain string, wantLen int) ([]byte, error) {
+//
+// macLen is the exact signature length this credential type carries, and
+// it is exact on purpose. Accepting a shorter signature and comparing it
+// against its own prefix would mean a one-byte MAC verifies against one
+// byte of the real one — 256 guesses to forge any payload, without the
+// secret. The two credentials carry different lengths (see
+// challengeMACLen and tokenMACLen), so the length has to be a parameter
+// rather than something inferred from what the caller sent.
+func (s *Signer) split(raw, domain string, wantLen, macLen int) ([]byte, error) {
 	dot := -1
 	for i := len(raw) - 1; i >= 0; i-- {
 		if raw[i] == '.' {
@@ -340,13 +357,11 @@ func (s *Signer) split(raw, domain string, wantLen int) ([]byte, error) {
 		return nil, fmt.Errorf("%w: payload is %d bytes, want %d", ErrMalformed, len(payload), wantLen)
 	}
 
-	want := s.mac(domain, payload)
-	if len(sig) == 0 || len(sig) > len(want) {
+	if len(sig) != macLen {
 		return nil, ErrSignature
 	}
-	// Constant time, and length-tolerant so a truncated MAC (challenges
-	// carry 16 bytes, tokens 32) compares against its own prefix.
-	if subtle.ConstantTimeCompare(sig, want[:len(sig)]) != 1 {
+	want := s.mac(domain, payload)[:macLen]
+	if subtle.ConstantTimeCompare(sig, want) != 1 {
 		return nil, ErrSignature
 	}
 	return payload, nil

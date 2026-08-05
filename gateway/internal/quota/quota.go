@@ -125,11 +125,16 @@ type Ledger struct {
 	day      string // UTC date the in-memory counters belong to
 	accounts map[string]*Account
 	daySpend float64
-	// priorSpend is everything spent before today, folded at each
-	// rollover so lifetime spend never requires replaying old journals.
+	// priorSpend is everything spent strictly before `through`, folded at
+	// each rollover so lifetime spend never requires replaying the whole
+	// history of journals.
 	priorSpend float64
-	revoked    map[string]bool
-	journal    *os.File
+	// through is the day priorSpend is complete up to, exclusive. It is
+	// persisted alongside priorSpend so a restart can tell which journals
+	// have already been folded in and which still have to be.
+	through string
+	revoked map[string]bool
+	journal *os.File
 
 	now func() time.Time
 }
@@ -172,7 +177,16 @@ func Open(dir string, limits Limits) (*Ledger, error) {
 	if err := l.loadState(); err != nil {
 		return nil, err
 	}
+	// Days that ended while we were down have to be folded in before
+	// today's journal is replayed, or their spend vanishes from the
+	// lifetime pool.
+	if err := l.foldPastLocked(l.day); err != nil {
+		return nil, err
+	}
 	if err := l.replay(l.day); err != nil {
+		return nil, err
+	}
+	if err := l.saveStateLocked(nil); err != nil {
 		return nil, err
 	}
 	if err := l.LoadRevocations(); err != nil {
@@ -226,11 +240,83 @@ func (l *Ledger) loadState() error {
 		return fmt.Errorf("reading %s: %w", l.statePath(), err)
 	}
 	l.priorSpend = s.PriorSpendUSD
+	l.through = s.Through
 	return nil
 }
 
+// foldPastLocked folds in every journal from days that ended while the
+// process was not running.
+//
+// priorSpend only ever advanced at an in-process rollover, so a gateway
+// stopped on one day and started on the next came back believing it had
+// never spent that day's money — silently refunding the lifetime credit
+// pool on every deploy or reboot that crossed midnight. The daily breaker
+// was unaffected, but TotalBudgetUSD, the thing that is supposed to stop
+// a bad invoice, was not enforced across restarts.
+//
+// Days in [through, today) are the ones priorSpend has not seen yet:
+// priorSpend covers everything strictly before `through`, and today's
+// journal is replayed separately into daySpend.
+func (l *Ledger) foldPastLocked(today string) error {
+	names, err := os.ReadDir(l.dir)
+	if err != nil {
+		return err
+	}
+	for _, e := range names {
+		day, ok := journalDay(e.Name())
+		if !ok || day >= today || day < l.through {
+			continue
+		}
+		usd, err := l.sumJournal(day)
+		if err != nil {
+			return err
+		}
+		l.priorSpend += usd
+	}
+	l.through = today
+	return nil
+}
+
+// journalDay pulls the date out of a journal filename, reporting whether
+// the name was one of ours at all.
+func journalDay(name string) (string, bool) {
+	const prefix, suffix = "journal-", ".jsonl"
+	if len(name) != len(prefix)+len("2006-01-02")+len(suffix) {
+		return "", false
+	}
+	if name[:len(prefix)] != prefix || name[len(name)-len(suffix):] != suffix {
+		return "", false
+	}
+	return name[len(prefix) : len(name)-len(suffix)], true
+}
+
+// sumJournal totals one day's spend without disturbing the live counters.
+func (l *Ledger) sumJournal(day string) (float64, error) {
+	f, err := os.Open(l.journalPath(day))
+	if os.IsNotExist(err) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	defer f.Close()
+
+	var total float64
+	dec := json.NewDecoder(f)
+	for {
+		var e entry
+		if err := dec.Decode(&e); err != nil {
+			// Same rule as replay: a truncated final line is a crash
+			// mid-write, and everything before it still counts.
+			break
+		}
+		total += e.USD
+	}
+	return total, nil
+}
+
 func (l *Ledger) saveStateLocked(prev error) error {
-	b, err := json.Marshal(state{PriorSpendUSD: l.priorSpend, Through: l.day})
+	b, err := json.Marshal(state{PriorSpendUSD: l.priorSpend, Through: l.through})
 	if err != nil {
 		return err
 	}
@@ -292,6 +378,7 @@ func (l *Ledger) rollLocked() {
 	l.daySpend = 0
 	l.accounts = map[string]*Account{}
 	l.day = day
+	l.through = day
 
 	if l.journal != nil {
 		l.journal.Close()
