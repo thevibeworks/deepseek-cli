@@ -33,18 +33,19 @@ trap 'rm -rf "$tmp"' EXIT
 echo "downloading $asset"
 curl -fsSL "$url" | tar xz -C "$tmp"
 
-# Only escalate if the target is not writable by this user.
+# Only escalate if we genuinely cannot write there. A PREFIX the user
+# owns must not ask for a password just because the directory does not
+# exist yet -- that is the whole point of PREFIX=$HOME/.local.
 sudo=""
-if [ ! -w "$BINDIR" ]; then
+if ! mkdir -p "$BINDIR" 2>/dev/null || [ ! -w "$BINDIR" ]; then
     if command -v sudo >/dev/null 2>&1; then
         sudo=sudo
+        $sudo mkdir -p "$BINDIR"
     else
-        echo "$BINDIR is not writable and sudo is unavailable; set PREFIX=\$HOME/.local" >&2
+        echo "$BINDIR is not writable and sudo is unavailable; try PREFIX=\$HOME/.local" >&2
         exit 1
     fi
 fi
-
-$sudo mkdir -p "$BINDIR"
 $sudo install -m 0755 "$tmp/deepseek" "$BINDIR/deepseek"
 for alias in ds dscli; do
     $sudo ln -sf deepseek "$BINDIR/$alias"
