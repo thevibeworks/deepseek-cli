@@ -7,7 +7,8 @@
 <meta name="description" content="DeepSeek exposes the same two models through four API formats. What differs between /chat/completions, /anthropic/v1/messages, /responses and FIM: auth, thinking controls, tools, and the token-accounting convention that trips up cost tracking.">
 <meta name="keywords" content="deepseek anthropic api, deepseek openai compatible, deepseek responses api, deepseek claude code, deepseek codex, deepseek api format comparison, deepseek cache_read_input_tokens, deepseek model mapping">
 <meta name="author" content="thevibeworks">
-<meta name="theme-color" content="#000000">
+<meta name="theme-color" content="#fbfaf7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="canonical" href="https://thevibeworks.github.io/deepseek-cli/formats/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="deepseek-cli">
@@ -27,6 +28,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="../style.css">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
+<script>try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t}catch(e){}</script>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Which DeepSeek API format should I use?","acceptedAnswer":{"@type":"Answer","text":"Use the OpenAI /chat/completions format unless you have a reason not to: it is the most widely supported and the only one with chat prefix completion. Use /anthropic/v1/messages when the surrounding tooling speaks Anthropic Messages, such as Claude Code. Use /responses when you need JSON Schema structured output or DeepSeek's server-side web search, or when the tool is Codex. Use FIM only for fill-in-the-middle code completion."}},{"@type":"Question","name":"Does DeepSeek's Anthropic endpoint count tokens the same way?","acceptedAnswer":{"@type":"Answer","text":"No. On /anthropic/v1/messages the usage.input_tokens field excludes cache reads, so the full prompt is input_tokens plus cache_read_input_tokens. The OpenAI chat and Responses formats use the opposite convention, where the input count already includes cached tokens. Treating them the same misprices every cached call."}},{"@type":"Question","name":"What happens if I send a Claude model name to DeepSeek?","acceptedAnswer":{"@type":"Answer","text":"It is remapped server-side. Model names starting with claude-opus map to deepseek-v4-pro; claude-sonnet and claude-haiku map to deepseek-v4-flash; anything unrecognised also falls back to deepseek-v4-flash."}},{"@type":"Question","name":"Can DeepSeek accept images?","acceptedAnswer":{"@type":"Answer","text":"No. DeepSeek is text only. Image, document and search-result content blocks are rejected or replaced with placeholder text in every format."}}]}
 </script>
@@ -49,6 +51,8 @@
       <a href="../cost/">cost</a>
       <a href="../agents/">agents</a>
       <a href="https://github.com/thevibeworks/deepseek-cli">github&nbsp;&#8599;</a>
+      <button class="themetoggle" id="theme-toggle" type="button" hidden
+              aria-label="Theme: auto. Click to change.">theme:&nbsp;<span class="val">auto</span></button>
     </nav>
   </div>
 </header>
@@ -161,9 +165,11 @@ request whether to put it on the wire.</p>
 <ul>
 <li><strong>Text only.</strong> Image, document and search-result blocks are
 rejected or replaced with placeholder text in every format.</li>
-<li><strong>Thinking is on by default</strong> and costs a flat 79 extra input
-tokens for its template &mdash; measured, and constant regardless of prompt
-length &mdash; before a single reasoning token is generated.</li>
+<li><strong>Thinking is on by default</strong>, and what its template costs
+depends on <code>--effort</code>: +79 input tokens on flash at the default,
++92 at <code>max</code>, and <strong>nothing at all</strong> at
+<code>low</code> &mdash; where the model still reasons.
+<a href="../cost/#thinking">The measured table</a>.</li>
 <li><strong>Slow starts are normal.</strong> The API holds the connection with
 <code>: keep-alive</code> comments for up to ten minutes before inference
 begins under load.</li>
@@ -186,5 +192,30 @@ begins under load.</li>
     <span>unofficial &mdash; not affiliated with DeepSeek</span>
   </div>
 </footer>
+<script>
+(function () {
+  var b = document.getElementById('theme-toggle');
+  if (!b) return;
+  var order = ['auto', 'light', 'dark'];
+  var read = function () {
+    try { return localStorage.getItem('theme') || 'auto'; } catch (e) { return 'auto'; }
+  };
+  var paint = function (v) {
+    if (v === 'auto') delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = v;
+    b.querySelector('.val').textContent = v;
+    // The button reads "theme: dark" to a screen reader, and announcing
+    // the change is the whole feedback — the visual change is silent.
+    b.setAttribute('aria-label', 'Theme: ' + v + '. Click to change.');
+  };
+  b.hidden = false;
+  paint(read());
+  b.addEventListener('click', function () {
+    var next = order[(order.indexOf(read()) + 1) % order.length];
+    try { localStorage.setItem('theme', next); } catch (e) {}
+    paint(next);
+  });
+})();
+</script>
 </body>
 </html>

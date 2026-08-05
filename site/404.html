@@ -7,7 +7,8 @@
 <meta name="description" content="That page does not exist. The deepseek-cli documentation index.">
 <meta name="keywords" content="deepseek cli">
 <meta name="author" content="thevibeworks">
-<meta name="theme-color" content="#000000">
+<meta name="theme-color" content="#fbfaf7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <meta name="robots" content="noindex, follow">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="deepseek-cli">
@@ -27,6 +28,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://thevibeworks.github.io/deepseek-cli/style.css">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
+<script>try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t}catch(e){}</script>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -65,6 +67,8 @@
       <a href="cost/">cost</a>
       <a href="agents/">agents</a>
       <a href="https://github.com/thevibeworks/deepseek-cli">github&nbsp;&#8599;</a>
+      <button class="themetoggle" id="theme-toggle" type="button" hidden
+              aria-label="Theme: auto. Click to change.">theme:&nbsp;<span class="val">auto</span></button>
     </nav>
   </div>
 </header>
@@ -98,5 +102,30 @@
     <span>unofficial &mdash; not affiliated with DeepSeek</span>
   </div>
 </footer>
+<script>
+(function () {
+  var b = document.getElementById('theme-toggle');
+  if (!b) return;
+  var order = ['auto', 'light', 'dark'];
+  var read = function () {
+    try { return localStorage.getItem('theme') || 'auto'; } catch (e) { return 'auto'; }
+  };
+  var paint = function (v) {
+    if (v === 'auto') delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = v;
+    b.querySelector('.val').textContent = v;
+    // The button reads "theme: dark" to a screen reader, and announcing
+    // the change is the whole feedback — the visual change is silent.
+    b.setAttribute('aria-label', 'Theme: ' + v + '. Click to change.');
+  };
+  b.hidden = false;
+  paint(read());
+  b.addEventListener('click', function () {
+    var next = order[(order.indexOf(read()) + 1) % order.length];
+    try { localStorage.setItem('theme', next); } catch (e) {}
+    paint(next);
+  });
+})();
+</script>
 </body>
 </html>

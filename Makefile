@@ -26,6 +26,35 @@ cover-gate:
 	 echo "coverage: $$total% (floor $(COVERAGE_FLOOR)%)"; \
 	 awk -v t=$$total -v f=$(COVERAGE_FLOOR) 'BEGIN { if (t+0 < f+0) { print "FAIL: coverage below floor"; exit 1 } }'
 
+# The documentation corpus compiled into the binary by `deepseek docs`.
+#
+# Source of truth is the mirror repo, which converts api-docs.deepseek.com
+# page by page and extracts the FAQ out of its JS bundle. A sibling
+# checkout is used when there is one — that is the loop while working on
+# both — and otherwise it is fetched, so CI and a bare clone both work.
+CORPUS=internal/docs/corpus.tar.gz
+DOCS_REPO=https://github.com/thevibeworks/deepseek-docs
+
+.PHONY: corpus
+corpus:
+	@if [ -d ../deepseek-docs/content/en ]; then \
+	  echo "packing from ../deepseek-docs"; \
+	  tar -C ../deepseek-docs/content -czf $(CORPUS) en; \
+	else \
+	  echo "fetching from $(DOCS_REPO)"; \
+	  tmp=$$(mktemp -d); \
+	  curl -sSL $(DOCS_REPO)/archive/refs/heads/main.tar.gz | tar -xz -C $$tmp --strip-components=1; \
+	  tar -C $$tmp/content -czf $(CORPUS) en; \
+	  rm -rf $$tmp; \
+	fi
+	@echo "$(CORPUS): $$(du -h $(CORPUS) | cut -f1), $$(tar tzf $(CORPUS) | grep -c '\.md$$') pages"
+
+# Fails if the embedded corpus cannot be read back. An unreadable corpus
+# breaks `docs` on a released binary and nothing else would catch it.
+.PHONY: corpus-check
+corpus-check:
+	@go test ./internal/docs/ -run TestEmbeddedCorpusLoads -count=1
+
 .PHONY: vet
 vet:
 	go vet ./...
@@ -39,7 +68,7 @@ fmt-check:
 	@test -z "$$(gofmt -l .)" || { echo "needs gofmt:"; gofmt -l .; exit 1; }
 
 .PHONY: check
-check: fmt-check vet test build
+check: fmt-check vet test corpus-check build
 	@echo "All checks passed"
 
 # Live smoke test against the real API. Needs DEEPSEEK_API_KEY and costs

@@ -182,6 +182,10 @@ func money(usd float64) string {
 	switch {
 	case usd == 0:
 		return "$0"
+	case usd < 0.0000005:
+		// Below the precision printed here. "$0.000000" reads as free,
+		// which is a different claim from "too small to show".
+		return "<$0.000001"
 	case usd < 0.01:
 		return fmt.Sprintf("$%.6f", usd)
 	case usd < 1:

@@ -4,7 +4,9 @@
 > four of DeepSeek's wire formats (OpenAI chat, OpenAI Responses, Anthropic
 > Messages, FIM), plus models and balance. Keeps multi-turn conversations
 > correct across DeepSeek's reasoning_content replay rule, and prices every
-> call from the published rate card into a local ledger.
+> call from the published rate card into a local ledger. Carries DeepSeek's
+> own API documentation inside the binary, so it can answer questions about
+> the API it talks to — offline, with a citation per claim.
 
 Install: `curl -sL https://github.com/thevibeworks/deepseek-cli/raw/main/install.sh | sh`
 Binary: `deepseek`, also answers to `ds` and `dscli`.
@@ -17,7 +19,7 @@ response body unmodified. Exit codes: 0 ok, 1 error, 2 auth, 3 no balance,
 
 - [Overview](https://thevibeworks.github.io/deepseek-cli/): what it is, why it exists, the command table, and what it deliberately does not do
 - [Install](https://thevibeworks.github.io/deepseek-cli/install/): one-line installer, release binaries, go install, the ds/dscli aliases, API key and environment configuration, shell completion
-- [Commands](https://thevibeworks.github.io/deepseek-cli/commands/): every command and flag — chat, anthropic, respond, fim, models, balance, usage, session, check, raw — plus global flags and exit codes
+- [Commands](https://thevibeworks.github.io/deepseek-cli/commands/): every command and flag — chat (with --interactive), anthropic, respond, fim, tokens, docs, models, balance, usage, session, status, check, raw — plus global flags and exit codes
 - [Formats](https://thevibeworks.github.io/deepseek-cli/formats/): DeepSeek's four wire formats compared — auth, thinking controls, tool support, Claude model remapping, and the token-accounting convention that differs between them
 - [Cost](https://thevibeworks.github.io/deepseek-cli/cost/): the rate card, what the context cache is worth, the flat 79-token thinking surcharge, the local usage ledger, and the caveats on every figure
 - [Agents](https://thevibeworks.github.io/deepseek-cli/agents/): the scripting contract — output streams, JSON response shapes per format, exit-code semantics, retry behaviour

@@ -49,14 +49,10 @@ func readPrompt(args []string, files []string, requireText bool) (string, error)
 
 	// Piped stdin joins as material. A terminal stdin is left alone: a
 	// bare `deepseek chat "hi"` must not hang waiting for EOF.
-	if !isTTY(os.Stdin) && !containsDash(args) {
-		text, err := io.ReadAll(os.Stdin)
-		if err != nil {
-			return "", fmt.Errorf("reading stdin: %w", err)
-		}
-		if s := strings.TrimRight(string(text), "\n"); s != "" {
-			blocks = append(blocks, s)
-		}
+	if text, ok, err := readPipedStdin(args); err != nil {
+		return "", err
+	} else if ok {
+		blocks = append(blocks, text)
 	}
 
 	prompt := strings.Join(blocks, "\n\n")
@@ -73,6 +69,31 @@ func containsDash(args []string) bool {
 		}
 	}
 	return false
+}
+
+// readPipedStdin returns piped stdin, if there is any. ok is false when
+// stdin is a terminal — a bare `deepseek chat "hi"` must not hang waiting
+// for EOF — or when an explicit "-" argument already claimed it.
+func readPipedStdin(args []string) (text string, ok bool, err error) {
+	if isTTY(os.Stdin) || containsDash(args) {
+		return "", false, nil
+	}
+	b, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		return "", false, fmt.Errorf("reading stdin: %w", err)
+	}
+	s := strings.TrimRight(string(b), "\n")
+	return s, s != "", nil
+}
+
+// readFileRaw reads a file with no fencing and no label, for the callers
+// that must measure or send exactly what is on disk.
+func readFileRaw(path string) (string, error) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("reading --file %s: %w", path, err)
+	}
+	return string(b), nil
 }
 
 // readFileBlock reads a file and fences it with its name, so the model is

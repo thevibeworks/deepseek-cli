@@ -7,7 +7,8 @@
 <meta name="description" content="A single Go binary for every DeepSeek API: chat completions in OpenAI, Anthropic and Responses formats, FIM, models and balance — with multi-turn that survives the reasoning round-trip and per-call cost accounting.">
 <meta name="keywords" content="deepseek cli, deepseek api, deepseek command line, deepseek-v4-flash, deepseek-v4-pro, deepseek anthropic api, deepseek responses api, deepseek context cache, deepseek pricing, llm cli">
 <meta name="author" content="thevibeworks">
-<meta name="theme-color" content="#000000">
+<meta name="theme-color" content="#fbfaf7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="canonical" href="https://thevibeworks.github.io/deepseek-cli/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="deepseek-cli">
@@ -27,6 +28,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="style.css">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
+<script>try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t}catch(e){}</script>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -65,6 +67,8 @@
       <a href="cost/">cost</a>
       <a href="agents/">agents</a>
       <a href="https://github.com/thevibeworks/deepseek-cli">github&nbsp;&#8599;</a>
+      <button class="themetoggle" id="theme-toggle" type="button" hidden
+              aria-label="Theme: auto. Click to change.">theme:&nbsp;<span class="val">auto</span></button>
     </nav>
   </div>
 </header>
@@ -127,6 +131,14 @@ every call, and keeps a <a href="./cost/">local ledger</a>.</p>
 Claude Code or Codex at DeepSeek and something behaves oddly.</p>
 </li>
 <li class="card">
+<h3>It carries the manual</h3>
+<p>Every page of DeepSeek's API docs lives <em>inside</em> the binary, plus
+the FAQ that is otherwise locked in a JavaScript bundle.
+<code>ds docs ask</code> answers from them and
+<strong>cites the page</strong> &mdash; so the answer is checkable against a
+URL, not whatever a model remembers about an API that changes monthly.</p>
+</li>
+<li class="card">
 <h3>Built for scripts and agents</h3>
 <p>stdout is data, stderr is status, <code>--json</code> is the API's own
 response body unwrapped. Exit codes separate <em>bad key</em> from <em>no
@@ -161,6 +173,32 @@ or one specific endpoint.</p>
 <span class="c">all endpoints reachable</span></code></pre>
 </div>
 
+<h2 id="selfhost">The API, explaining itself</h2>
+<p>The tool that talks to an API should be able to answer questions about
+it. This one carries DeepSeek's own documentation &mdash; 67 pages,
+about 85KB compressed &mdash; and asks DeepSeek to answer from it.</p>
+
+<div class="term">
+<div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="title">ds docs ask</span></div>
+<pre><code><span class="p">$</span> ds docs ask <span class="w">"when must I send reasoning_content back?"</span>
+<span class="o">Send reasoning_content back only when the model performed a tool call
+during that turn. In that case it must be passed back in all subsequent
+turns, or the API returns a 400 error (guides/thinking_mode).</span>
+<span class="c">answered from guides/thinking_mode, api/create-chat-completion &middot; docs built in, fetched today</span>
+<span class="c">&middot; flash &middot; 5.3k in (39% cached) &middot; 116 out &middot; ~$0.000778 &middot; 2.2s</span></code></pre>
+</div>
+
+<p>Pages are selected locally and sent whole, with an instruction to answer
+only from them. The same pages lead every request, so the second question
+about an area <strong>hits the context cache</strong> &mdash; which is the
+cost feature on this site demonstrating itself. Search, read and the
+change log cost nothing and need no network:</p>
+
+<pre><code>ds docs search "context cache"
+ds docs show guides/kv_cache
+ds docs changelog              # what DeepSeek shipped, newest first
+ds docs sync                   # refresh the snapshot</code></pre>
+
 <h2 id="commands">The commands</h2>
 <p>One per endpoint, named for what it does rather than for its path.
 Full reference on the <a href="./commands/">commands page</a>.</p>
@@ -175,8 +213,11 @@ Full reference on the <a href="./commands/">commands page</a>.</p>
 <tr><td><code>fim</code></td><td><code>POST /beta/completions</code></td><td>Fill in the middle &mdash; the shape editors use for inline completion.</td></tr>
 <tr><td><code>models</code></td><td><code>GET /models</code></td><td>Available models, joined with the published rate card.</td></tr>
 <tr><td><code>balance</code></td><td><code>GET /user/balance</code></td><td>What is left, per currency.</td></tr>
+<tr><td><code>tokens</code></td><td><code>POST /beta/completions</code></td><td>Exact token counts, from the model's own tokenizer.</td></tr>
+<tr><td><code>docs</code></td><td><em>local</em></td><td>DeepSeek's own documentation, in the binary. Search, read, ask.</td></tr>
 <tr><td><code>usage</code></td><td><em>local</em></td><td>What this CLI has spent, from its own ledger.</td></tr>
 <tr><td><code>session</code></td><td><em>local</em></td><td>The conversations <code>chat --continue</code> replays.</td></tr>
+<tr><td><code>status</code></td><td><code>GET /models</code>, <code>/user/balance</code></td><td>Is it up, for this key, from here. Costs nothing.</td></tr>
 <tr><td><code>check</code></td><td><em>all six</em></td><td>Preflight.</td></tr>
 <tr><td><code>raw</code></td><td><em>anything</em></td><td>Escape hatch &mdash; any path, with auth and retries.</td></tr>
 </tbody>
@@ -215,5 +256,30 @@ gap here.</li>
     <span>unofficial &mdash; not affiliated with DeepSeek</span>
   </div>
 </footer>
+<script>
+(function () {
+  var b = document.getElementById('theme-toggle');
+  if (!b) return;
+  var order = ['auto', 'light', 'dark'];
+  var read = function () {
+    try { return localStorage.getItem('theme') || 'auto'; } catch (e) { return 'auto'; }
+  };
+  var paint = function (v) {
+    if (v === 'auto') delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = v;
+    b.querySelector('.val').textContent = v;
+    // The button reads "theme: dark" to a screen reader, and announcing
+    // the change is the whole feedback — the visual change is silent.
+    b.setAttribute('aria-label', 'Theme: ' + v + '. Click to change.');
+  };
+  b.hidden = false;
+  paint(read());
+  b.addEventListener('click', function () {
+    var next = order[(order.indexOf(read()) + 1) % order.length];
+    try { localStorage.setItem('theme', next); } catch (e) {}
+    paint(next);
+  });
+})();
+</script>
 </body>
 </html>

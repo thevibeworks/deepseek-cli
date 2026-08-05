@@ -4,7 +4,9 @@
 > four of DeepSeek's wire formats (OpenAI chat, OpenAI Responses, Anthropic
 > Messages, FIM), plus models and balance. Keeps multi-turn conversations
 > correct across DeepSeek's reasoning_content replay rule, and prices every
-> call from the published rate card into a local ledger.
+> call from the published rate card into a local ledger. Carries DeepSeek's
+> own API documentation inside the binary, so it can answer questions about
+> the API it talks to — offline, with a citation per claim.
 
 Install: `go install github.com/thevibeworks/deepseek-cli/cmd/deepseek@latest`
 Auth: `DEEPSEEK_API_KEY`, or `~/.config/deepseek/api_key`.
@@ -25,6 +27,7 @@ response body unmodified. Exit codes: 0 ok, 1 error, 2 auth, 3 no balance,
 - [internal/deepseek](internal/deepseek): the API client. `client.go` transport, auth, retry policy; `chat.go` `responses.go` `anthropic.go` `fim.go` `meta.go` one file per endpoint; `sse.go` streaming for both SSE dialects; `pricing.go` the rate card and cost/cache-savings arithmetic; `errors.go` error envelope and exit-code classification
 - [internal/cli](internal/cli): command tree. One file per command, plus `output.go` (the stdout/stderr contract) and `input.go` (prompt assembly from args, files and stdin)
 - [internal/session](internal/session): stored conversations and the reasoning_content replay rule
+- [internal/docs](internal/docs): DeepSeek's own documentation compiled into the binary — `docs.go` the embedded corpus and its cache, `search.go` BM25-with-IDF ranking over 67 pages
 - [internal/ledger](internal/ledger): append-only usage log and its reports
 
 ## Reference

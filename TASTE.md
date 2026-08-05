@@ -117,3 +117,119 @@ one turn.
 
 **Expires.** Not expected to. A tool-executing mode would be a different
 product, not a flag.
+
+---
+
+## 2026-08-05 rejected: scraping status.deepseek.com
+
+**Why.** `deepseek status` should obviously report DeepSeek's status, and
+the status page is right there. But it is a client-rendered app with no
+documented JSON endpoint — no `/api/v2/summary.json`, no Instatus shape,
+nothing to parse but markup nobody promised to keep. A scraper written
+against that markup does not fail loudly when a `div` is renamed; it
+fails by reporting **all systems operational** forever. A wrong all-clear
+is worse than no answer, because it is the answer people act on at 3am.
+
+**Reuse.** `status` answers the question the user actually has — is the
+API reachable *right now, with this key, from this machine* — with two
+calls that generate no tokens, so it costs nothing and is safe in a loop.
+That is also a strictly better question than the status page answers: a
+working API behind a broken corporate proxy looks fine there and broken
+here. The incident page is linked, in the text output and in the JSON, so
+a human always has somewhere to go.
+
+**Expires.** If DeepSeek publishes a documented status JSON endpoint,
+consume it and report both.
+
+---
+
+## 2026-08-05 rejected: shipping the tokenizer, or estimating from the ratios
+
+**Why.** Counting tokens locally means one of two bad trades. Porting
+DeepSeek's demo tokenizer — a Python zip, still labelled *v3* while the
+API serves v4 — means several hundred lines of BPE in Go, pinned to a
+vocabulary we cannot verify matches what bills us, and stale the moment
+they retrain. Using the published rules of thumb (0.3 tokens per English
+character, 0.6 per Chinese) is honest but wrong: measured, the English
+ratio over-counts by about 30% on prose. A CLI whose whole pitch is exact
+accounting cannot headline an approximation.
+
+**Reuse.** Ask the API, from an endpoint nobody uses for this. FIM at
+`/beta/completions` takes a raw prompt with no chat template around it
+and reports `prompt_tokens` for exactly the bytes sent, plus one BOS
+token — verified constant from 1 character to 1,800. Subtract the one and
+the count is exact for the tokenizer that will actually bill you. The
+cost of measuring is printed every time, because the text really is sent
+and really is billed. `--offline` keeps the ratio estimate for when free
+matters more than right, labelled an upper bound.
+
+**Expires.** If DeepSeek ships a count-tokens endpoint, or a versioned
+tokenizer matching the served model, switch to it.
+
+---
+
+## 2026-08-05 rejected: making `--interactive` the default when stdin is a terminal
+
+**Why.** `deepseek chat "hi"` at a terminal could reasonably drop into a
+prompt for follow-ups — the information is all there, and the guard
+(`isTTY(stdin) && isTTY(stderr)`) is reliable. It is still wrong. A
+one-shot command that sometimes does not exit breaks the contract every
+other invocation relies on: `time`, `&&`, a `Makefile` rule, a shell
+loop, a person who typed one question and wants their prompt back. The
+convenience is worth one character; the surprise is worth a bug report.
+
+**Reuse.** `-i` opts in, and it is built on the session machinery rather
+than beside it — so leaving the loop loses nothing, `chat -c` resumes it,
+and `session show last` reads it. Interactive mode adds a prompt, not a
+second way to hold a conversation.
+
+---
+
+## 2026-08-05 rejected: requiring every search term to appear on the page
+
+**Why.** Strict AND is the obvious retrieval rule and it reads as
+precision. It shipped a wrong answer within an hour. Asked *"what is the
+max output token limit for FIM"*, it excluded `guides/fim_completion` —
+the one page that states the 4K cap — because that page never uses the
+word "output". The model was then handed release notes, correctly refused
+to invent, and reported that the documentation does not say. It does say.
+
+**Reuse.** Coverage weights rather than gates: `score × (matched/total)²`,
+over BM25 term saturation with length normalisation, times an IDF weight
+per term. Each of those three fixed a real failure — coverage the one
+above; length normalisation an 82KB integration page that won any query
+containing an ordinary English word; IDF the fact that in "max output
+token limit for FIM" only one word identifies the subject. All five cases
+are pinned in `internal/docs/docs_test.go` against the real corpus.
+
+---
+
+## 2026-08-05 rejected: light-theming the terminal transcripts
+
+**Why.** The site's terminal blocks are page furniture like everything
+else, so the tidy rule is that they follow the theme. But they are not
+furniture — they are a picture of a terminal, and the colours inside them
+are the ANSI-ish set the CLI actually prints, calibrated against a dark
+background. Recolouring them for paper makes the screenshot a lie about
+what the tool looks like. A photograph does not invert when the page
+does.
+
+**Reuse.** `.term` carries its own fixed palette and `color-scheme: only
+dark`, in both themes. Print is the exception — on paper it is text, not
+a screen, so `@media print` flips it back.
+
+---
+
+## 2026-08-05 rejected: a sun/moon theme toggle
+
+**Why.** Two icons can only express two states, so the moment anyone
+touches it, "follow the system" becomes unreachable — and following the
+system is the correct default for almost everyone. The usual patch is a
+long-press or a settings panel, which is more machinery than the whole
+feature deserves.
+
+**Reuse.** On a site set in a monospace face, the honest control is the
+word: a button reading `theme: auto` that cycles auto → light → dark and
+names the state it is in. Three states, no legend, no icon vocabulary to
+learn. It ships `hidden` and JS unhides it, because a control that cannot
+work without JS should not take up space when there is none.

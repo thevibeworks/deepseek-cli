@@ -7,7 +7,8 @@
 <meta name="description" content="DeepSeek&#x27;s context cache makes a cached input token 50x cheaper than an uncached one. How the deepseek CLI prices every call, what the local usage ledger records, and the caveats on every figure it prints.">
 <meta name="keywords" content="deepseek pricing, deepseek api cost, deepseek context cache, deepseek cache hit tokens, deepseek token cost calculator, deepseek v4 flash price, deepseek usage tracking">
 <meta name="author" content="thevibeworks">
-<meta name="theme-color" content="#000000">
+<meta name="theme-color" content="#fbfaf7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="canonical" href="https://thevibeworks.github.io/deepseek-cli/cost/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="deepseek-cli">
@@ -27,6 +28,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="../style.css">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
+<script>try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t}catch(e){}</script>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -58,6 +60,8 @@
       <a href="../cost/" aria-current="page">cost</a>
       <a href="../agents/">agents</a>
       <a href="https://github.com/thevibeworks/deepseek-cli">github&nbsp;&#8599;</a>
+      <button class="themetoggle" id="theme-toggle" type="button" hidden
+              aria-label="Theme: auto. Click to change.">theme:&nbsp;<span class="val">auto</span></button>
     </nav>
   </div>
 </header>
@@ -103,22 +107,44 @@ The practical rule: <strong>put the stable part of a prompt first</strong>
 variable part come last.</p>
 
 <h2 id="thinking">The thinking surcharge</h2>
-<p>Thinking mode is on by default and costs a <strong>flat 79 extra input
-tokens</strong> per request for its template, before generating a single
-reasoning token. Measured across prompts of very different lengths:</p>
+<p>Thinking mode is on by default and adds a fixed template to your input
+before generating a single reasoning token. The size of that template is
+<strong>constant regardless of prompt length</strong> &mdash; but it is not
+the same at every effort level, and at the low levels it is not there at
+all while the model still reasons.</p>
+
+<div class="note">
+<span class="tag">measured against the live API, 2026-08-05</span>
+<p>Two prompts, 10 and 36 tokens, every level run twice. The surcharge is
+exactly constant: 89&minus;10 = 115&minus;36 = 79.</p>
+</div>
+
 <div class="tablewrap">
 <table>
-<thead><tr><th>Prompt</th><th class="num">--think off</th><th class="num">--think on</th><th class="num">difference</th></tr></thead>
+<thead><tr><th><code>--effort</code></th><th class="num">flash</th><th class="num">pro</th><th>thinking</th></tr></thead>
 <tbody>
-<tr><td><code>"hi"</code></td><td class="num">5</td><td class="num">84</td><td class="num">+79</td></tr>
-<tr><td>9-token question</td><td class="num">11</td><td class="num">90</td><td class="num">+79</td></tr>
-<tr><td>14-token question</td><td class="num">16</td><td class="num">95</td><td class="num">+79</td></tr>
+<tr><td><code>none</code></td><td class="num">+0</td><td class="num">+0</td><td>off entirely</td></tr>
+<tr><td><code>minimal</code>, <code>low</code></td><td class="num"><strong>+0</strong></td><td class="num"><strong>+0</strong></td><td>on</td></tr>
+<tr><td><code>medium</code>, <code>high</code>, <code>xhigh</code></td><td class="num">+79</td><td class="num">+0</td><td>on</td></tr>
+<tr><td><code>max</code></td><td class="num">+92</td><td class="num">+79</td><td>on</td></tr>
 </tbody>
 </table>
 </div>
-<p>On a short factual lookup that surcharge is most of the bill, and the
-reasoning tokens it then generates are the rest. <code>--think off</code>
-removes both.</p>
+
+<p>Two of those levels are in no DeepSeek documentation at all.
+<code>none</code> is documented only for the Responses API, but the chat
+endpoint takes it and it disables thinking exactly as
+<code>--think off</code> does. <code>minimal</code> is undocumented
+everywhere. The API rejects only genuinely unknown values, with
+<code>unknown variant</code>, which is how this list was established.</p>
+
+<p>The practical consequence: on flash, <code>--effort low</code> removes
+the entire input surcharge and <em>keeps</em> the chain of thought. On a
+short factual lookup at the default effort, that template is most of the
+bill.</p>
+
+<pre><code>ds tokens "your prompt here"           # what it costs at default effort
+ds tokens "your prompt here" -e low    # what it costs without the template</code></pre>
 
 <h2 id="ledger">The ledger</h2>
 <p>Every call prints one line to stderr and appends one row to
@@ -185,5 +211,30 @@ a completion, not for bookkeeping.</p>
     <span>unofficial &mdash; not affiliated with DeepSeek</span>
   </div>
 </footer>
+<script>
+(function () {
+  var b = document.getElementById('theme-toggle');
+  if (!b) return;
+  var order = ['auto', 'light', 'dark'];
+  var read = function () {
+    try { return localStorage.getItem('theme') || 'auto'; } catch (e) { return 'auto'; }
+  };
+  var paint = function (v) {
+    if (v === 'auto') delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = v;
+    b.querySelector('.val').textContent = v;
+    // The button reads "theme: dark" to a screen reader, and announcing
+    // the change is the whole feedback — the visual change is silent.
+    b.setAttribute('aria-label', 'Theme: ' + v + '. Click to change.');
+  };
+  b.hidden = false;
+  paint(read());
+  b.addEventListener('click', function () {
+    var next = order[(order.indexOf(read()) + 1) % order.length];
+    try { localStorage.setItem('theme', next); } catch (e) {}
+    paint(next);
+  });
+})();
+</script>
 </body>
 </html>

@@ -36,6 +36,51 @@ NAV = [
     ("agents/", "agents"),
 ]
 
+# Theme. The default is whatever the OS says; the toggle overrides it and
+# persists the override. Two scripts, and the split matters:
+#
+# THEME_INIT runs in <head>, before the first paint, so a reader who chose
+# light does not get a black flash on every navigation. It must therefore
+# be inline and tiny — an external file would be a blocking round trip.
+# It touches only documentElement, which exists by then.
+#
+# THEME_TOGGLE runs at the end of <body>, where the button exists. It also
+# unhides the button: a control that does nothing without JS should not
+# take up space when there is none.
+#
+# localStorage throws in Safari's private mode rather than returning null,
+# so both are wrapped. A thrown init script would leave the page unstyled.
+THEME_INIT = (
+    "try{var t=localStorage.getItem('theme');"
+    "if(t==='dark'||t==='light')document.documentElement.dataset.theme=t}catch(e){}"
+)
+
+THEME_TOGGLE = """
+(function () {
+  var b = document.getElementById('theme-toggle');
+  if (!b) return;
+  var order = ['auto', 'light', 'dark'];
+  var read = function () {
+    try { return localStorage.getItem('theme') || 'auto'; } catch (e) { return 'auto'; }
+  };
+  var paint = function (v) {
+    if (v === 'auto') delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = v;
+    b.querySelector('.val').textContent = v;
+    // The button reads "theme: dark" to a screen reader, and announcing
+    // the change is the whole feedback — the visual change is silent.
+    b.setAttribute('aria-label', 'Theme: ' + v + '. Click to change.');
+  };
+  b.hidden = false;
+  paint(read());
+  b.addEventListener('click', function () {
+    var next = order[(order.indexOf(read()) + 1) % order.length];
+    try { localStorage.setItem('theme', next); } catch (e) {}
+    paint(next);
+  });
+})();
+""".strip()
+
 
 def head(*, slug, title, description, keywords, jsonld, crumb_title):
     """The <head> for one page: canonical, social cards, structured data."""
@@ -68,7 +113,8 @@ def head(*, slug, title, description, keywords, jsonld, crumb_title):
 <meta name="description" content="{html.escape(description)}">
 <meta name="keywords" content="{html.escape(keywords)}">
 <meta name="author" content="thevibeworks">
-<meta name="theme-color" content="#000000">
+<meta name="theme-color" content="#fbfaf7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="canonical" href="{url}">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="deepseek-cli">
@@ -88,6 +134,7 @@ def head(*, slug, title, description, keywords, jsonld, crumb_title):
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="{root}style.css">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
+<script>{THEME_INIT}</script>
 <script type="application/ld+json">
 {jsonld}
 </script>
@@ -105,6 +152,8 @@ def head(*, slug, title, description, keywords, jsonld, crumb_title):
     <nav class="sitenav" aria-label="Sections">
 {nav_links(slug, root)}
       <a href="{REPO}">github&nbsp;&#8599;</a>
+      <button class="themetoggle" id="theme-toggle" type="button" hidden
+              aria-label="Theme: auto. Click to change.">theme:&nbsp;<span class="val">auto</span></button>
     </nav>
   </div>
 </header>
@@ -164,6 +213,9 @@ FOOT = """  </div>
     <span>unofficial &mdash; not affiliated with DeepSeek</span>
   </div>
 </footer>
+<script>
+{toggle}
+</script>
 </body>
 </html>
 """
@@ -184,7 +236,7 @@ def render(page):
     body += crumb(page.get("crumb", ""), root)
     body += page["body"].replace("{{root}}", root or "./").replace("{{repo}}", REPO).replace("{{docs}}", DOCS)
     body += pager(slug, root)
-    body += FOOT.format(repo=REPO, site=SITE)
+    body += FOOT.format(repo=REPO, site=SITE, toggle=THEME_TOGGLE)
     return body
 
 
@@ -302,6 +354,14 @@ every call, and keeps a <a href="{{root}}cost/">local ledger</a>.</p>
 Claude Code or Codex at DeepSeek and something behaves oddly.</p>
 </li>
 <li class="card">
+<h3>It carries the manual</h3>
+<p>Every page of DeepSeek's API docs lives <em>inside</em> the binary, plus
+the FAQ that is otherwise locked in a JavaScript bundle.
+<code>ds docs ask</code> answers from them and
+<strong>cites the page</strong> &mdash; so the answer is checkable against a
+URL, not whatever a model remembers about an API that changes monthly.</p>
+</li>
+<li class="card">
 <h3>Built for scripts and agents</h3>
 <p>stdout is data, stderr is status, <code>--json</code> is the API's own
 response body unwrapped. Exit codes separate <em>bad key</em> from <em>no
@@ -336,6 +396,32 @@ or one specific endpoint.</p>
 <span class="c">all endpoints reachable</span></code></pre>
 </div>
 
+<h2 id="selfhost">The API, explaining itself</h2>
+<p>The tool that talks to an API should be able to answer questions about
+it. This one carries DeepSeek's own documentation &mdash; 67 pages,
+about 85KB compressed &mdash; and asks DeepSeek to answer from it.</p>
+
+<div class="term">
+<div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="title">ds docs ask</span></div>
+<pre><code><span class="p">$</span> ds docs ask <span class="w">"when must I send reasoning_content back?"</span>
+<span class="o">Send reasoning_content back only when the model performed a tool call
+during that turn. In that case it must be passed back in all subsequent
+turns, or the API returns a 400 error (guides/thinking_mode).</span>
+<span class="c">answered from guides/thinking_mode, api/create-chat-completion &middot; docs built in, fetched today</span>
+<span class="c">&middot; flash &middot; 5.3k in (39% cached) &middot; 116 out &middot; ~$0.000778 &middot; 2.2s</span></code></pre>
+</div>
+
+<p>Pages are selected locally and sent whole, with an instruction to answer
+only from them. The same pages lead every request, so the second question
+about an area <strong>hits the context cache</strong> &mdash; which is the
+cost feature on this site demonstrating itself. Search, read and the
+change log cost nothing and need no network:</p>
+
+<pre><code>ds docs search "context cache"
+ds docs show guides/kv_cache
+ds docs changelog              # what DeepSeek shipped, newest first
+ds docs sync                   # refresh the snapshot</code></pre>
+
 <h2 id="commands">The commands</h2>
 <p>One per endpoint, named for what it does rather than for its path.
 Full reference on the <a href="{{root}}commands/">commands page</a>.</p>
@@ -350,8 +436,11 @@ Full reference on the <a href="{{root}}commands/">commands page</a>.</p>
 <tr><td><code>fim</code></td><td><code>POST /beta/completions</code></td><td>Fill in the middle &mdash; the shape editors use for inline completion.</td></tr>
 <tr><td><code>models</code></td><td><code>GET /models</code></td><td>Available models, joined with the published rate card.</td></tr>
 <tr><td><code>balance</code></td><td><code>GET /user/balance</code></td><td>What is left, per currency.</td></tr>
+<tr><td><code>tokens</code></td><td><code>POST /beta/completions</code></td><td>Exact token counts, from the model's own tokenizer.</td></tr>
+<tr><td><code>docs</code></td><td><em>local</em></td><td>DeepSeek's own documentation, in the binary. Search, read, ask.</td></tr>
 <tr><td><code>usage</code></td><td><em>local</em></td><td>What this CLI has spent, from its own ledger.</td></tr>
 <tr><td><code>session</code></td><td><em>local</em></td><td>The conversations <code>chat --continue</code> replays.</td></tr>
+<tr><td><code>status</code></td><td><code>GET /models</code>, <code>/user/balance</code></td><td>Is it up, for this key, from here. Costs nothing.</td></tr>
 <tr><td><code>check</code></td><td><em>all six</em></td><td>Preflight.</td></tr>
 <tr><td><code>raw</code></td><td><em>anything</em></td><td>Escape hatch &mdash; any path, with auth and retries.</td></tr>
 </tbody>
@@ -481,9 +570,9 @@ PAGES.append(dict(
     jsonld=tech_article("deepseek-cli command reference", "Every command and flag in the deepseek CLI.", "commands/"),
     body="""
 <h1>Commands</h1>
-<p class="lede">Ten commands: six wrap an endpoint, two read local state, one
-is a preflight, one is an escape hatch. <code>--help</code> on any of them
-carries the same detail.</p>
+<p class="lede">Thirteen commands: seven wrap an endpoint, three read
+local state, two are health checks, one is an escape hatch.
+<code>--help</code> on any of them carries the same detail.</p>
 
 <h2 id="chat">chat</h2>
 <p><code>POST /chat/completions</code> &mdash; the default door, and the only
@@ -532,6 +621,32 @@ ds session show review
 ds session rm review</code></pre>
 <p><code>--continue</code> is the session named <code>last</code>.</p>
 
+<h3 id="interactive">Interactive</h3>
+<p><code>-i</code> keeps the conversation open and prompts for the next
+turn, instead of retyping <code>--continue</code>:</p>
+<div class="term">
+<div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="title">ds chat -i</span></div>
+<pre><code><span class="p">$</span> ds chat <span class="k">-i</span> <span class="w">"walk me through this codebase"</span> <span class="k">--file</span> main.go
+<span class="o">The entry point wires three things together...</span>
+<span class="c">&middot; flash &middot; 2.1k in &middot; 180 out &middot; ~$0.000302 &middot; 1.8s</span>
+<span class="p">&rsaquo;</span> now what would you change first
+<span class="o">The retry loop, because...</span>
+<span class="p">&rsaquo;</span> <span class="k">/model pro</span>
+<span class="c">model deepseek-v4-pro</span>
+<span class="p">&rsaquo;</span> <span class="c">^D</span>
+<span class="c">bye &mdash; 4 messages saved as "last"; resume with: deepseek chat -c</span></code></pre>
+</div>
+<p>It is the same session machinery, so nothing is lost on exit &mdash;
+<code>ds chat -c</code> resumes it and <code>ds session show last</code>
+reads it. <code>/help</code> lists the slash commands: <code>/model</code>,
+<code>/think</code>, <code>/effort</code>, <code>/system</code>,
+<code>/file</code>, <code>/tokens</code>, <code>/docs</code>,
+<code>/new</code>, <code>/save</code>.</p>
+<p><code>^C</code> during an answer abandons that answer and keeps the
+conversation; <code>^D</code> leaves. It needs a terminal and refuses to
+combine with <code>--json</code> &mdash; for scripted multi-turn use
+<code>--session</code>, which is what it is built on.</p>
+
 <h3 id="tools">Tools</h3>
 <pre><code>ds chat "weather in Hangzhou?" --tool @weather.json
 # tool_call call_00_hUj... get_weather({"city": "Hangzhou"})</code></pre>
@@ -562,6 +677,49 @@ suffix; it writes the middle.</p>
 <pre><code>ds fim "def add(a, b):" --suffix "    return result"
 ds fim --prefix @head.go --suffix @tail.go --max-tokens 200</code></pre>
 <p>Beta, with two hard limits: output caps at 4K tokens, and it never thinks.</p>
+
+<h2 id="tokens">tokens</h2>
+<p>Exact token counts, from the tokenizer that will bill you.</p>
+<pre><code>ds tokens "why is the sky blue"
+ds tokens --file main.go --file main_test.go
+git diff | ds tokens
+ds tokens --offline --file huge.log     # free local estimate</code></pre>
+<p>DeepSeek ships no count-tokens endpoint and no Go tokenizer &mdash; only a
+Python demo and two rules of thumb. But the FIM endpoint takes a raw prompt
+with no chat template around it and reports <code>prompt_tokens</code> for
+exactly the bytes sent, plus one BOS token. Subtract the one and the count
+is exact.</p>
+<p>That measurement is <strong>a real request</strong>: the text goes to
+DeepSeek and is billed as input, the same as sending it would have been.
+The cost prints on stderr every time. <code>--offline</code> uses
+DeepSeek's published character ratios instead &mdash; free, and an upper
+bound that says so.</p>
+
+<h2 id="docs">docs</h2>
+<p>DeepSeek's own API documentation, compiled into the binary.</p>
+<pre><code>ds docs                          # every page
+ds docs search "context cache"
+ds docs show guides/thinking_mode
+ds docs ask "does FIM support thinking?"
+ds docs changelog                # releases, newest first
+ds docs sync                     # refresh from the mirror</code></pre>
+<p>67 pages, about 85KB compressed: every page of
+<a href="{{docs}}">api-docs.deepseek.com</a> plus the FAQ, which lives
+outside that site as a JSON blob inside a JavaScript bundle and is not
+otherwise readable as text.</p>
+<p>Only <code>ask</code> costs anything. It selects pages locally, sends
+them whole, and instructs the model to answer from them and cite the page,
+so a claim can be checked against a URL. Every command here prints how old
+the snapshot is, and every page keeps the upstream URL it came from.</p>
+
+<h2 id="status">status</h2>
+<pre><code>ds status</code></pre>
+<p>Is the API reachable right now, with this key, from this machine. Two
+calls that generate no tokens, so it is free and safe to run in a loop.
+That is a different question from
+<a href="https://status.deepseek.com/">DeepSeek's incident page</a>, which
+reports outages affecting everyone &mdash; a working API behind a broken
+proxy looks fine there and broken here.</p>
 
 <h2 id="models">models</h2>
 <pre><code>ds models</code></pre>
@@ -752,9 +910,11 @@ request whether to put it on the wire.</p>
 <ul>
 <li><strong>Text only.</strong> Image, document and search-result blocks are
 rejected or replaced with placeholder text in every format.</li>
-<li><strong>Thinking is on by default</strong> and costs a flat 79 extra input
-tokens for its template &mdash; measured, and constant regardless of prompt
-length &mdash; before a single reasoning token is generated.</li>
+<li><strong>Thinking is on by default</strong>, and what its template costs
+depends on <code>--effort</code>: +79 input tokens on flash at the default,
++92 at <code>max</code>, and <strong>nothing at all</strong> at
+<code>low</code> &mdash; where the model still reasons.
+<a href="{{root}}cost/#thinking">The measured table</a>.</li>
 <li><strong>Slow starts are normal.</strong> The API holds the connection with
 <code>: keep-alive</code> comments for up to ten minutes before inference
 begins under load.</li>
@@ -810,22 +970,44 @@ The practical rule: <strong>put the stable part of a prompt first</strong>
 variable part come last.</p>
 
 <h2 id="thinking">The thinking surcharge</h2>
-<p>Thinking mode is on by default and costs a <strong>flat 79 extra input
-tokens</strong> per request for its template, before generating a single
-reasoning token. Measured across prompts of very different lengths:</p>
+<p>Thinking mode is on by default and adds a fixed template to your input
+before generating a single reasoning token. The size of that template is
+<strong>constant regardless of prompt length</strong> &mdash; but it is not
+the same at every effort level, and at the low levels it is not there at
+all while the model still reasons.</p>
+
+<div class="note">
+<span class="tag">measured against the live API, 2026-08-05</span>
+<p>Two prompts, 10 and 36 tokens, every level run twice. The surcharge is
+exactly constant: 89&minus;10 = 115&minus;36 = 79.</p>
+</div>
+
 <div class="tablewrap">
 <table>
-<thead><tr><th>Prompt</th><th class="num">--think off</th><th class="num">--think on</th><th class="num">difference</th></tr></thead>
+<thead><tr><th><code>--effort</code></th><th class="num">flash</th><th class="num">pro</th><th>thinking</th></tr></thead>
 <tbody>
-<tr><td><code>"hi"</code></td><td class="num">5</td><td class="num">84</td><td class="num">+79</td></tr>
-<tr><td>9-token question</td><td class="num">11</td><td class="num">90</td><td class="num">+79</td></tr>
-<tr><td>14-token question</td><td class="num">16</td><td class="num">95</td><td class="num">+79</td></tr>
+<tr><td><code>none</code></td><td class="num">+0</td><td class="num">+0</td><td>off entirely</td></tr>
+<tr><td><code>minimal</code>, <code>low</code></td><td class="num"><strong>+0</strong></td><td class="num"><strong>+0</strong></td><td>on</td></tr>
+<tr><td><code>medium</code>, <code>high</code>, <code>xhigh</code></td><td class="num">+79</td><td class="num">+0</td><td>on</td></tr>
+<tr><td><code>max</code></td><td class="num">+92</td><td class="num">+79</td><td>on</td></tr>
 </tbody>
 </table>
 </div>
-<p>On a short factual lookup that surcharge is most of the bill, and the
-reasoning tokens it then generates are the rest. <code>--think off</code>
-removes both.</p>
+
+<p>Two of those levels are in no DeepSeek documentation at all.
+<code>none</code> is documented only for the Responses API, but the chat
+endpoint takes it and it disables thinking exactly as
+<code>--think off</code> does. <code>minimal</code> is undocumented
+everywhere. The API rejects only genuinely unknown values, with
+<code>unknown variant</code>, which is how this list was established.</p>
+
+<p>The practical consequence: on flash, <code>--effort low</code> removes
+the entire input surcharge and <em>keeps</em> the chain of thought. On a
+short factual lookup at the default effort, that template is most of the
+bill.</p>
+
+<pre><code>ds tokens "your prompt here"           # what it costs at default effort
+ds tokens "your prompt here" -e low    # what it costs without the template</code></pre>
 
 <h2 id="ledger">The ledger</h2>
 <p>Every call prints one line to stderr and appends one row to

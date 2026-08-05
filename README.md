@@ -11,9 +11,9 @@
   <a href="https://github.com/thevibeworks/deepseek-cli/releases"><img src="https://img.shields.io/github/v/release/thevibeworks/deepseek-cli?color=blue&label=release" alt="Release"></a>
   <a href="https://github.com/thevibeworks/deepseek-cli/actions/workflows/ci.yml"><img src="https://github.com/thevibeworks/deepseek-cli/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="#commands"><img src="https://img.shields.io/badge/API%20coverage-6%2F6%20endpoints-brightgreen" alt="API coverage: 6 of 6 endpoints"></a>
-  <a href="#development"><img src="https://img.shields.io/badge/tests-103%20%C2%B7%2068%25%20covered-brightgreen" alt="103 tests, 68% statement coverage"></a>
+  <a href="#development"><img src="https://img.shields.io/badge/tests-174%20%C2%B7%2069%25%20covered-brightgreen" alt="174 tests, 69% statement coverage"></a>
   <br>
-  <a href="https://api-docs.deepseek.com"><img src="https://img.shields.io/badge/DeepSeek%20API%20docs-2026--08--02-8a2be2" alt="Implemented against the DeepSeek API docs of 2026-08-02"></a>
+  <a href="https://api-docs.deepseek.com"><img src="https://img.shields.io/badge/DeepSeek%20API%20docs-2026--08--05-8a2be2" alt="Implemented against the DeepSeek API docs of 2026-08-05"></a>
   <a href="https://api-docs.deepseek.com/quick_start/pricing"><img src="https://img.shields.io/badge/models-v4--flash%20%7C%20v4--pro-0ea5e9" alt="Models: deepseek-v4-flash and deepseek-v4-pro"></a>
   <a href="https://go.dev"><img src="https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go&logoColor=white" alt="Go"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT License"></a>
@@ -30,7 +30,7 @@
 
 <div align="center">
 
-**[Documentation](https://thevibeworks.github.io/deepseek-cli/)** · [Install](#install) · [Quick start](#quick-start) · [Commands](#commands) · [Cost](#what-things-cost) · [For agents](#for-agents) · [Config](#configuration)
+**[Documentation](https://thevibeworks.github.io/deepseek-cli/)** · [Install](#install) · [Quick start](#quick-start) · [Commands](#commands) · [Docs](#asking-the-api-about-itself) · [Cost](#what-things-cost) · [For agents](#for-agents) · [Config](#configuration)
 
 </div>
 
@@ -43,7 +43,7 @@ OpenAI chat, OpenAI Responses, Anthropic Messages, and FIM. Every other
 client picks one. This speaks all four, so you can send the same prompt
 down each and see what actually differs.
 
-It also does the two things `curl` will not:
+It also does three things `curl` will not:
 
 - **Keeps multi-turn correct.** With tools in play, DeepSeek returns
   `400` unless every assistant message's `reasoning_content` is replayed
@@ -53,6 +53,10 @@ It also does the two things `curl` will not:
   token **50× cheaper** than an uncached one. That split is invisible
   unless something reads `prompt_cache_hit_tokens` and does the
   arithmetic. This does, on every call, and keeps a local ledger.
+- **Carries the manual.** `deepseek docs ask "..."` answers questions
+  about the DeepSeek API from DeepSeek's own documentation, offline, with
+  a citation per claim. The tool that talks to an API should be able to
+  explain it.
 
 ```console
 $ deepseek chat "explain this diff" --file changes.patch
@@ -146,8 +150,11 @@ One command per endpoint, named for what it does.
 | `fim` | `POST /beta/completions` | Fill in the middle — the shape editors use for inline completion. |
 | `models` | `GET /models` | Available models, joined with the published rate card. |
 | `balance` | `GET /user/balance` | What is left, per currency. |
+| `tokens` | `POST /beta/completions` | Exact token counts, from the model's own tokenizer. |
+| `docs` | *(local)* | DeepSeek's own API docs, in the binary. Search, read, and ask. |
 | `usage` | *(local)* | What this CLI has spent, from its own ledger. |
 | `session` | *(local)* | The conversations `chat --continue` replays. |
+| `status` | `GET /models`, `/user/balance` | Is it up, for this key, from here. Costs nothing. |
 | `check` | *(all six)* | Preflight. |
 | `raw` | *(anything)* | Escape hatch — any path, with auth and retries. |
 
@@ -178,6 +185,92 @@ deepseek session show last
 
 Use `--session <name>` to keep threads apart. `--continue` is the session
 named `last`.
+
+### Interactive
+
+`-i` keeps the conversation open and prompts for the next turn, instead
+of you retyping `--continue`:
+
+```console
+$ ds chat -i "walk me through this codebase" --file main.go
+The entry point wires three things together...
+· flash · 2.1k in · 180 out · ~$0.000302 · 1.8s
+› now what would you change first
+The retry loop, because...
+› /model pro
+model deepseek-v4-pro
+› ^D
+bye — 4 messages saved as "last"; resume with: deepseek chat -c
+```
+
+It is the same session machinery, so quitting loses nothing —
+`deepseek chat -c` picks the conversation back up, and so does
+`deepseek session show last`. `/help` lists the slash commands:
+`/model`, `/think`, `/effort`, `/system`, `/file`, `/tokens`, `/docs`,
+`/new`, `/save`. `^C` during an answer abandons that answer and keeps
+the conversation; `^D` leaves.
+
+Interactive mode needs a terminal and refuses to combine with `--json` —
+for scripted multi-turn, use `--session`, which is what it is built on.
+
+### Counting tokens
+
+DeepSeek publishes no count-tokens endpoint and no Go tokenizer. But the
+FIM endpoint reports `prompt_tokens` for a raw prompt with no chat
+template around it, so subtracting its single BOS token gives an exact
+count from the tokenizer that will bill you:
+
+```console
+$ ds tokens --file internal/cli/chat.go --file internal/cli/repl.go
+TOKENS  CHARS  CHARS/TOK  SOURCE
+2082    6940   3.33       internal/cli/chat.go
+1140    4187   3.67       internal/cli/repl.go
+3222    11127  3.45       total
+
+as a chat request: 3226 in (+4 envelope), 3305 with thinking at default effort (+79 template)
+flash input cost: $0.000452 uncached, $0.000009 fully cached
+· flash · 3.2k in · 0 out · ~$0.000451 · 1.94s
+```
+
+That last line is the honest part: measuring sends your text to DeepSeek
+and is billed as input, exactly as sending it would have been. For a
+free local estimate from DeepSeek's published character ratios — an
+upper bound, and labelled as one — use `--offline`.
+
+### Asking the API about itself
+
+`docs` carries every page of api-docs.deepseek.com inside the binary,
+plus the FAQ, which lives outside that site as a JSON blob in a
+JavaScript bundle and is not otherwise readable as text. About 85KB
+compressed, so it works offline:
+
+```console
+$ ds docs search "context cache"
+guides/kv_cache
+  Context Caching
+  The DeepSeek API Context Caching on Disk Technology is enabled by default...
+
+$ ds docs ask "when must I send reasoning_content back?"
+Send reasoning_content back only when the model performed a tool call during
+that turn. In that case it must be passed back in all subsequent turns, or
+the API returns a 400 error (guides/thinking_mode).
+answered from guides/thinking_mode, api/create-chat-completion · docs built in, fetched today
+· flash · 5.3k in (39% cached) · 116 out · ~$0.000778 · 2.2s
+
+$ ds docs changelog          # what DeepSeek shipped, newest first
+$ ds docs show guides/kv_cache
+$ ds docs sync               # refresh from the mirror
+```
+
+`ask` selects pages locally, sends them whole, and instructs the model to
+answer only from them and cite the page — so an answer is checkable
+against a URL rather than being whatever the model remembers about an API
+that changes monthly. It is also the honest demo of the cost accounting:
+the same pages lead every request, so a second question about the same
+area hits the context cache, and the usage line shows it.
+
+A snapshot ages, so every `docs` command prints how old it is, and each
+page keeps the upstream URL it was converted from.
 
 ### The other three formats
 
@@ -302,10 +395,24 @@ Global flags: `--api-key` `--base-url` `--json` `--jq` `--timeout`
 Things the API does that surprise people, and that this tool surfaces
 rather than hides:
 
-- **Thinking is on by default** and costs a flat 79 extra input tokens
-  per request for its template — measured, and constant regardless of
-  prompt length — before a single reasoning token is generated. On short
-  factual work that is most of the bill; `--think off` removes it.
+- **Thinking is on by default, and its cost depends on `--effort` in a
+  way nothing documents.** The template it adds to your input is a fixed
+  number of tokens, constant regardless of prompt length, but it is not
+  the same number at every level — and at low effort it is not there at
+  all, while the model still reasons:
+
+  | `--effort` | flash | pro |
+  | --- | --- | --- |
+  | `none` | +0 (thinking off) | +0 (thinking off) |
+  | `minimal`, `low` | **+0** | **+0** |
+  | `medium`, `high`, `xhigh` | +79 | +0 |
+  | `max` | +92 | +79 |
+
+  Measured against the live API on 2026-08-05 at two prompt lengths,
+  twice each. `deepseek tokens -e low` will show you the same thing for
+  your own text. Two of those levels — `none` and `minimal` — appear in
+  no DeepSeek documentation at all; `none` disables thinking exactly as
+  `--think off` does.
 - **Text only.** DeepSeek rejects image, document and search-result
   content blocks in every format.
 - **The Responses endpoint is flash-only** for now.
@@ -318,9 +425,10 @@ rather than hides:
 
 ```bash
 make            # build
-make check      # fmt + vet + test + build
-make test       # 103 tests, no network required
+make check      # fmt + vet + test + corpus + build
+make test       # 174 tests, no network required
 make cover-gate # fails under the coverage floor
+make corpus     # repack the embedded DeepSeek docs from the mirror
 ```
 
 Zero runtime dependencies beyond `cobra` and `golang.org/x/term`; the API

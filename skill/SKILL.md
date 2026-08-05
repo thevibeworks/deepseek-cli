@@ -47,11 +47,22 @@ answer alone.
 | --- | --- |
 | Cheap, fast, most work | default (`deepseek-v4-flash`) |
 | Hardest reasoning | `--model deepseek-v4-pro --effort max` |
-| Short factual answer | `--think off` — saves a flat 79 input tokens plus all reasoning |
+| Short factual answer | `--think off` — no reasoning, no template |
+| Cheap reasoning | `--effort low` — still reasons, but adds **no** input template on flash |
 | Long answer | `--max-tokens N` |
 
-Thinking is on by default. It is worth it for reasoning and wasteful for
-lookups.
+Thinking is on by default. The template it adds to the input depends on
+the effort, measured live rather than documented:
+
+| `--effort` | flash | pro |
+| --- | --- | --- |
+| `none` | +0, thinking off | +0, thinking off |
+| `minimal`, `low` | +0 | +0 |
+| `medium`, `high`, `xhigh` | +79 | +0 |
+| `max` | +92 | +79 |
+
+So `--effort low` on flash is the cheap way to keep reasoning, and
+`--think off` (or `--effort none`) is the cheap way to drop it.
 
 ## Multi-turn
 
@@ -111,12 +122,48 @@ amounts. Say so when reporting them.
 Add `--no-stats --no-ledger` when the usage line would pollute output
 being captured.
 
+## Answer DeepSeek API questions from the docs, not from memory
+
+The binary carries every page of api-docs.deepseek.com plus the FAQ. Use
+it instead of recalling how the API works — it changes monthly.
+
+```bash
+deepseek docs search "context cache"          # free, offline
+deepseek docs show guides/thinking_mode       # free, offline
+deepseek docs changelog                       # free, offline
+deepseek docs ask "when must I replay reasoning_content?"   # costs a request
+```
+
+`ask` sends the relevant pages and requires the answer to cite them, so
+every claim traces to a page path and a URL. Each command prints how old
+the snapshot is: if it is more than a month old, say so in your answer or
+run `deepseek docs sync`.
+
+## Count tokens before sending something large
+
+```bash
+deepseek tokens --file big.md --json
+deepseek tokens --offline --file big.md    # free estimate, upper bound
+```
+
+Exact counts come from the API and are billed as input — the text is
+really sent. Say "measured" for those and "estimated" for `--offline`.
+
 ## Anything not covered
 
 ```bash
 deepseek raw /models
 deepseek raw /chat/completions --data @request.json
 ```
+
+## Is it up
+
+```bash
+deepseek status --json    # free: two calls that generate no tokens
+```
+
+Answers whether the API is reachable with this key from this machine.
+That is not the same as DeepSeek's incident page, which the output links.
 
 ## Rules
 

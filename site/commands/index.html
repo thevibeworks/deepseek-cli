@@ -7,7 +7,8 @@
 <meta name="description" content="Full reference for every deepseek CLI command and flag: chat completions, Anthropic Messages, OpenAI Responses, FIM, models, balance, usage ledger, sessions, check and raw, plus exit codes.">
 <meta name="keywords" content="deepseek cli commands, deepseek chat completions cli, deepseek fim completion, deepseek cli flags, deepseek cli reference, deepseek json output, deepseek cli exit codes">
 <meta name="author" content="thevibeworks">
-<meta name="theme-color" content="#000000">
+<meta name="theme-color" content="#fbfaf7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="canonical" href="https://thevibeworks.github.io/deepseek-cli/commands/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="deepseek-cli">
@@ -27,6 +28,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="../style.css">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
+<script>try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t}catch(e){}</script>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -58,6 +60,8 @@
       <a href="../cost/">cost</a>
       <a href="../agents/">agents</a>
       <a href="https://github.com/thevibeworks/deepseek-cli">github&nbsp;&#8599;</a>
+      <button class="themetoggle" id="theme-toggle" type="button" hidden
+              aria-label="Theme: auto. Click to change.">theme:&nbsp;<span class="val">auto</span></button>
     </nav>
   </div>
 </header>
@@ -66,9 +70,9 @@
 <nav class="crumb" aria-label="Breadcrumb"><a href="../">deepseek-cli</a><span class="sep">/</span>commands</nav>
 
 <h1>Commands</h1>
-<p class="lede">Ten commands: six wrap an endpoint, two read local state, one
-is a preflight, one is an escape hatch. <code>--help</code> on any of them
-carries the same detail.</p>
+<p class="lede">Thirteen commands: seven wrap an endpoint, three read
+local state, two are health checks, one is an escape hatch.
+<code>--help</code> on any of them carries the same detail.</p>
 
 <h2 id="chat">chat</h2>
 <p><code>POST /chat/completions</code> &mdash; the default door, and the only
@@ -117,6 +121,32 @@ ds session show review
 ds session rm review</code></pre>
 <p><code>--continue</code> is the session named <code>last</code>.</p>
 
+<h3 id="interactive">Interactive</h3>
+<p><code>-i</code> keeps the conversation open and prompts for the next
+turn, instead of retyping <code>--continue</code>:</p>
+<div class="term">
+<div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="title">ds chat -i</span></div>
+<pre><code><span class="p">$</span> ds chat <span class="k">-i</span> <span class="w">"walk me through this codebase"</span> <span class="k">--file</span> main.go
+<span class="o">The entry point wires three things together...</span>
+<span class="c">&middot; flash &middot; 2.1k in &middot; 180 out &middot; ~$0.000302 &middot; 1.8s</span>
+<span class="p">&rsaquo;</span> now what would you change first
+<span class="o">The retry loop, because...</span>
+<span class="p">&rsaquo;</span> <span class="k">/model pro</span>
+<span class="c">model deepseek-v4-pro</span>
+<span class="p">&rsaquo;</span> <span class="c">^D</span>
+<span class="c">bye &mdash; 4 messages saved as "last"; resume with: deepseek chat -c</span></code></pre>
+</div>
+<p>It is the same session machinery, so nothing is lost on exit &mdash;
+<code>ds chat -c</code> resumes it and <code>ds session show last</code>
+reads it. <code>/help</code> lists the slash commands: <code>/model</code>,
+<code>/think</code>, <code>/effort</code>, <code>/system</code>,
+<code>/file</code>, <code>/tokens</code>, <code>/docs</code>,
+<code>/new</code>, <code>/save</code>.</p>
+<p><code>^C</code> during an answer abandons that answer and keeps the
+conversation; <code>^D</code> leaves. It needs a terminal and refuses to
+combine with <code>--json</code> &mdash; for scripted multi-turn use
+<code>--session</code>, which is what it is built on.</p>
+
 <h3 id="tools">Tools</h3>
 <pre><code>ds chat "weather in Hangzhou?" --tool @weather.json
 # tool_call call_00_hUj... get_weather({"city": "Hangzhou"})</code></pre>
@@ -147,6 +177,49 @@ suffix; it writes the middle.</p>
 <pre><code>ds fim "def add(a, b):" --suffix "    return result"
 ds fim --prefix @head.go --suffix @tail.go --max-tokens 200</code></pre>
 <p>Beta, with two hard limits: output caps at 4K tokens, and it never thinks.</p>
+
+<h2 id="tokens">tokens</h2>
+<p>Exact token counts, from the tokenizer that will bill you.</p>
+<pre><code>ds tokens "why is the sky blue"
+ds tokens --file main.go --file main_test.go
+git diff | ds tokens
+ds tokens --offline --file huge.log     # free local estimate</code></pre>
+<p>DeepSeek ships no count-tokens endpoint and no Go tokenizer &mdash; only a
+Python demo and two rules of thumb. But the FIM endpoint takes a raw prompt
+with no chat template around it and reports <code>prompt_tokens</code> for
+exactly the bytes sent, plus one BOS token. Subtract the one and the count
+is exact.</p>
+<p>That measurement is <strong>a real request</strong>: the text goes to
+DeepSeek and is billed as input, the same as sending it would have been.
+The cost prints on stderr every time. <code>--offline</code> uses
+DeepSeek's published character ratios instead &mdash; free, and an upper
+bound that says so.</p>
+
+<h2 id="docs">docs</h2>
+<p>DeepSeek's own API documentation, compiled into the binary.</p>
+<pre><code>ds docs                          # every page
+ds docs search "context cache"
+ds docs show guides/thinking_mode
+ds docs ask "does FIM support thinking?"
+ds docs changelog                # releases, newest first
+ds docs sync                     # refresh from the mirror</code></pre>
+<p>67 pages, about 85KB compressed: every page of
+<a href="https://api-docs.deepseek.com">api-docs.deepseek.com</a> plus the FAQ, which lives
+outside that site as a JSON blob inside a JavaScript bundle and is not
+otherwise readable as text.</p>
+<p>Only <code>ask</code> costs anything. It selects pages locally, sends
+them whole, and instructs the model to answer from them and cite the page,
+so a claim can be checked against a URL. Every command here prints how old
+the snapshot is, and every page keeps the upstream URL it came from.</p>
+
+<h2 id="status">status</h2>
+<pre><code>ds status</code></pre>
+<p>Is the API reachable right now, with this key, from this machine. Two
+calls that generate no tokens, so it is free and safe to run in a loop.
+That is a different question from
+<a href="https://status.deepseek.com/">DeepSeek's incident page</a>, which
+reports outages affecting everyone &mdash; a working API behind a broken
+proxy looks fine there and broken here.</p>
 
 <h2 id="models">models</h2>
 <pre><code>ds models</code></pre>
@@ -228,5 +301,30 @@ so a non-zero exit means your own retry loop probably will not help either.</p>
     <span>unofficial &mdash; not affiliated with DeepSeek</span>
   </div>
 </footer>
+<script>
+(function () {
+  var b = document.getElementById('theme-toggle');
+  if (!b) return;
+  var order = ['auto', 'light', 'dark'];
+  var read = function () {
+    try { return localStorage.getItem('theme') || 'auto'; } catch (e) { return 'auto'; }
+  };
+  var paint = function (v) {
+    if (v === 'auto') delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = v;
+    b.querySelector('.val').textContent = v;
+    // The button reads "theme: dark" to a screen reader, and announcing
+    // the change is the whole feedback — the visual change is silent.
+    b.setAttribute('aria-label', 'Theme: ' + v + '. Click to change.');
+  };
+  b.hidden = false;
+  paint(read());
+  b.addEventListener('click', function () {
+    var next = order[(order.indexOf(read()) + 1) % order.length];
+    try { localStorage.setItem('theme', next); } catch (e) {}
+    paint(next);
+  });
+})();
+</script>
 </body>
 </html>

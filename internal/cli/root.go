@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -130,25 +131,49 @@ func Execute(version string) int {
 // is draining — a caught SIGTERM would leave the process unkillable by
 // `timeout` or `kill`, which is worse than not catching it at all. So the
 // second signal, or two seconds, force-exits regardless.
+//
+// The exception is an interactive session, which holds the signal for the
+// duration of a turn — see holdInterrupt.
 func interruptContext() (context.Context, func()) {
 	ctx, cancel := context.WithCancel(context.Background())
 	ch := make(chan os.Signal, 2)
 	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
-		<-ch
-		cancel()
-		select {
-		case <-ch:
-		case <-time.After(2 * time.Second):
+		for {
+			<-ch
+			if h := interruptHolder.Load(); h != nil {
+				// A REPL is mid-answer. Abandon that answer, keep the
+				// process: returning to the prompt is the whole point of
+				// an interactive session.
+				(*h)()
+				continue
+			}
+			cancel()
+			select {
+			case <-ch:
+			case <-time.After(2 * time.Second):
+			}
+			os.Exit(130) // 128 + SIGINT, the shell convention
 		}
-		os.Exit(130) // 128 + SIGINT, the shell convention
 	}()
 
 	return ctx, func() {
 		signal.Stop(ch)
 		cancel()
 	}
+}
+
+// interruptHolder is the interactive loop's claim on SIGINT, set only
+// while a turn is in flight.
+var interruptHolder atomic.Pointer[func()]
+
+// holdInterrupt redirects the next SIGINT to cancel, instead of killing
+// the process, until the returned function is called. Used by the REPL
+// around each turn so ^C abandons one answer rather than the session.
+func holdInterrupt(cancel func()) (release func()) {
+	interruptHolder.Store(&cancel)
+	return func() { interruptHolder.Store(nil) }
 }
 
 // exitCodeOf lets a command name its own exit code, falling back to the
@@ -197,10 +222,13 @@ stdout is the answer; reasoning, usage and errors go to stderr.`),
 		newAnthropicCmd(opts),
 		newRespondCmd(opts),
 		newFIMCmd(opts),
+		newTokensCmd(opts),
 		newModelsCmd(opts),
 		newBalanceCmd(opts),
 		newUsageCmd(opts),
 		newSessionCmd(opts),
+		newDocsCmd(opts),
+		newStatusCmd(opts),
 		newCheckCmd(opts),
 		newRawCmd(opts),
 	)

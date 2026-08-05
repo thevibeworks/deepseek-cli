@@ -38,6 +38,12 @@ jobs:
       - name: build
         run: go build ./...
 
+      # `deepseek docs` reads a corpus compiled into the binary. A
+      # truncated or unreadable archive breaks it only at runtime, on a
+      # released binary, so it is checked here.
+      - name: embedded documentation loads
+        run: make corpus-check
+
       # The site's HTML is committed; this catches an edit to the
       # generator that was never regenerated (or the reverse).
       - name: site is up to date with its generator

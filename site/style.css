@@ -6,23 +6,73 @@
  * with tables and terminal output, and those want different rhythm.
  *
  * No framework, no build step, no JS required to read anything.
+ *
+ * Two themes. The default follows the system; the toggle in the masthead
+ * overrides it and persists. Every token is declared twice: the dark
+ * value alone first, then the light-dark() pair. A browser without
+ * light-dark() keeps the dark value and the site still works — the
+ * declaration it cannot parse is the second one, and it drops it.
+ *
+ * light-dark() reads color-scheme, so forcing a theme is one property on
+ * :root rather than a duplicate block per token. It also drags form
+ * controls, scrollbars and caret colour along for free.
  */
 
 :root {
+    color-scheme: light dark;
+
     --bg: #000000;
+    --bg: light-dark(#fbfaf7, #000000);
     --surface: #0d0d0d;
+    --surface: light-dark(#f2f1ec, #0d0d0d);
     --surface-2: #141414;
+    --surface-2: light-dark(#e8e7e0, #141414);
     --line: #262626;
+    --line: light-dark(#d4d1c7, #262626);
     --text: #e8e8e8;
+    --text: light-dark(#17171a, #e8e8e8);
     --muted: #9a9a9a;
+    --muted: light-dark(#5a5a60, #9a9a9a);
+
+    /* Accents are not shared between themes. The dark set is tuned for a
+     * black backdrop and every one of them fails 4.5:1 on paper; these
+     * are the darkened equivalents, all measured at 4.7:1 or better
+     * against --bg, --surface and --surface-2. */
     --cyan: #00c2e9;
+    --cyan: light-dark(#0a6e85, #00c2e9);
     --pink: #e41478;
-    --green: #00ff41;
+    --pink: light-dark(#bd0e60, #e41478);
     --purple: #bf00ff;
+    --purple: light-dark(#7a12b8, #bf00ff);
     --yellow: #ffd53d;
+    --yellow: light-dark(#7a5200, #ffd53d);
+
+    /* Strong text is brighter than body text on black and darker than it
+     * on paper — "bolder" is a direction, not a colour. */
+    --strong: #ffffff;
+    --strong: light-dark(#000000, #ffffff);
+
+    /* The masthead's translucent backdrop, per theme. */
+    --masthead-bg: rgba(0, 0, 0, 0.9);
+    --masthead-bg: light-dark(rgba(251, 250, 247, 0.9), rgba(0, 0, 0, 0.9));
+
+    /* Scan lines are texture on black. On paper they are dirt, so the
+     * light value is fully transparent rather than a fainter tint. */
+    --scanline: rgba(0, 194, 233, 0.025);
+    --scanline: light-dark(transparent, rgba(0, 194, 233, 0.025));
 
     --measure: 68ch;
     --gutter: 1.5rem;
+}
+
+/* The toggle writes one of these onto <html>. `only` pins the scheme so
+ * light-dark() stops consulting the OS. */
+:root[data-theme='dark'] {
+    color-scheme: only dark;
+}
+
+:root[data-theme='light'] {
+    color-scheme: only light;
 }
 
 *,
@@ -69,7 +119,7 @@ body::before {
     pointer-events: none;
     z-index: 1;
     background: repeating-linear-gradient(0deg,
-            rgba(0, 194, 233, 0.025) 0px,
+            var(--scanline) 0px,
             transparent 1px,
             transparent 3px);
 }
@@ -86,7 +136,7 @@ body::before {
 
 .masthead {
     border-bottom: 1px solid var(--line);
-    background: rgba(0, 0, 0, 0.9);
+    background: var(--masthead-bg);
     backdrop-filter: blur(6px);
     position: sticky;
     top: 0;
@@ -152,6 +202,43 @@ body::before {
 .sitenav a[aria-current='page'] {
     color: var(--text);
     border-bottom-color: var(--pink);
+}
+
+/* Theme toggle.
+ *
+ * A sun/moon pair can only say "light" or "dark", which leaves no way
+ * back to "follow the system" once you have touched it. On a site set in
+ * a monospace face the honest control is the word itself: it names the
+ * state you are in and cycles auto -> light -> dark. Three states, no
+ * legend needed.
+ *
+ * It ships hidden and JS unhides it, because a control that cannot do
+ * anything without JS should not occupy space when there is none.
+ */
+.themetoggle {
+    font: inherit;
+    font-size: 0.85rem;
+    line-height: inherit;
+    color: var(--muted);
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 0.1rem 0.5rem;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.themetoggle:hover {
+    color: var(--cyan);
+    border-color: var(--cyan);
+}
+
+.themetoggle .val {
+    color: var(--text);
+}
+
+.themetoggle[hidden] {
+    display: none;
 }
 
 /* ---------- typography ---------- */
@@ -233,7 +320,7 @@ a:hover {
 }
 
 strong {
-    color: #fff;
+    color: var(--strong);
     font-weight: 700;
 }
 
@@ -287,10 +374,30 @@ pre code {
     font-size: inherit;
 }
 
-/* Terminal transcript: a real session, not a mockup. */
+/* Terminal transcript: a real session, not a mockup.
+ *
+ * These blocks stay dark in both themes, and that is deliberate. They are
+ * a picture of a terminal, not page furniture — the same way a photograph
+ * does not invert when the page does. The colours inside them are the
+ * ANSI-ish set the CLI actually prints, calibrated against a dark
+ * background; recolouring them for paper would make the screenshot a lie.
+ * So .term carries its own fixed palette instead of the page tokens.
+ */
 .term {
-    background: var(--surface);
-    border: 1px solid var(--line);
+    --term-bg: #0d0d0d;
+    --term-bg-2: #141414;
+    --term-line: #262626;
+    --term-text: #e8e8e8;
+    --term-muted: #9a9a9a;
+    --term-cyan: #00c2e9;
+    --term-pink: #e41478;
+    --term-green: #00ff41;
+    --term-yellow: #ffd53d;
+
+    color-scheme: only dark;
+    background: var(--term-bg);
+    color: var(--term-text);
+    border: 1px solid var(--term-line);
     margin: 0 0 1.5rem;
     overflow: hidden;
 }
@@ -300,10 +407,10 @@ pre code {
     align-items: center;
     gap: 0.45rem;
     padding: 0.5rem 0.8rem;
-    background: var(--surface-2);
-    border-bottom: 1px solid var(--line);
+    background: var(--term-bg-2);
+    border-bottom: 1px solid var(--term-line);
     font-size: 0.75rem;
-    color: var(--muted);
+    color: var(--term-muted);
 }
 
 .dot {
@@ -315,15 +422,15 @@ pre code {
 }
 
 .dot.r {
-    background: var(--pink);
+    background: var(--term-pink);
 }
 
 .dot.y {
-    background: var(--yellow);
+    background: var(--term-yellow);
 }
 
 .dot.g {
-    background: var(--green);
+    background: var(--term-green);
 }
 
 .term-bar .title {
@@ -334,30 +441,37 @@ pre code {
     border: 0;
     margin: 0;
     background: none;
+    color: var(--term-text);
+}
+
+.term code {
+    background: none;
+    border: 0;
+    color: inherit;
 }
 
 .term .p {
-    color: var(--green);
+    color: var(--term-green);
 }
 
 /* prompt $ */
 .term .c {
-    color: var(--muted);
+    color: var(--term-muted);
 }
 
 /* comment / stderr status */
 .term .o {
-    color: var(--text);
+    color: var(--term-text);
 }
 
 /* stdout */
 .term .k {
-    color: var(--cyan);
+    color: var(--term-cyan);
 }
 
 /* keyword / flag */
 .term .w {
-    color: var(--yellow);
+    color: var(--term-yellow);
 }
 
 /* warn */
@@ -407,7 +521,7 @@ pre code {
 
 .btn:hover {
     background: var(--cyan);
-    color: #000;
+    color: var(--bg);
 }
 
 .btn.alt {
@@ -615,7 +729,7 @@ td code {
     top: 0.5rem;
     z-index: 100;
     background: var(--cyan);
-    color: #000;
+    color: var(--bg);
     padding: 0.5rem 0.9rem;
 }
 
@@ -648,8 +762,30 @@ td code {
         display: none;
     }
 
+    /* Paper is paper regardless of what the screen was doing. Pin the
+     * light scheme so a reader printing from dark mode does not get a
+     * page of black ink, and flip the terminal blocks with it — on paper
+     * they are text, not a picture of a screen. */
+    :root,
+    :root[data-theme='dark'],
+    .term {
+        color-scheme: only light;
+    }
+
     body {
         background: #fff;
         color: #000;
+    }
+
+    .term {
+        --term-bg: #fff;
+        --term-bg-2: #f2f1ec;
+        --term-line: #d4d1c7;
+        --term-text: #17171a;
+        --term-muted: #5a5a60;
+        --term-cyan: #0a6e85;
+        --term-pink: #bd0e60;
+        --term-green: #0a6b2c;
+        --term-yellow: #7a5200;
     }
 }

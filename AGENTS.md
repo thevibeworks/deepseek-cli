@@ -98,6 +98,48 @@ deepseek usage --since 7d --json # local ledger, not billing
 deepseek usage --entries --json  # individual calls
 ```
 
+### Documentation, offline
+
+The binary carries every page of api-docs.deepseek.com plus the FAQ.
+Use it before answering a DeepSeek API question from memory — the API
+changes monthly and this is the vendor's own text, with a source URL per
+page.
+
+```bash
+deepseek docs search "context cache" --json   # [{"path","title","source","score","snippet"}]
+deepseek docs show guides/thinking_mode       # markdown to stdout, URL to stderr
+deepseek docs ask "..." --json                # a grounded answer, with citations
+deepseek docs changelog --json                # releases, newest first
+deepseek docs sync                            # refresh the snapshot
+```
+
+`ask` costs a request; `search`, `show` and `changelog` cost nothing and
+work with no network. Every one of them prints the corpus age on stderr;
+treat a corpus more than a month old as suspect and say so, or sync.
+
+### Counting tokens
+
+```bash
+deepseek tokens --file big.md --json
+# {"method":"api","model":"...","total":{"tokens","chars","bytes"},"items":[...],
+#  "chat":{"input","input_thinking"}}
+```
+
+Exact, via the FIM endpoint's `prompt_tokens` minus its BOS token. It is
+a billed request that sends the text — use `--offline` for a free local
+estimate, which over-counts English and is labelled an upper bound.
+
+### Is it up
+
+```bash
+deepseek status --json
+# {"base_url","ok","models":[...],"latency_ms","balance","status_page"}
+```
+
+Two calls that generate no tokens, so it is free and safe in a loop.
+Exits 2 on a bad key, 0 when reachable. `deepseek check` is the fuller
+preflight and does cost a fraction of a cent.
+
 ### Escape hatch
 
 ```bash
@@ -128,7 +170,14 @@ These are computed locally, not from the API:
 usage --json      {"since","total":{...},"by_model":{...},"by_api":{...}}
 check --json      {"base_url","key_set","ok","probes":[{"name","path","ok","detail","error","ms"}]}
 session ls --json [{"name","model","turns","updated","bytes"}]
+status --json     {"base_url","ok","models":[...],"latency_ms","balance","status_page"}
+tokens --json     {"method","model","total":{...},"items":[...],"chat":{...}}
+docs search --json [{"path","title","source","score","snippet"}]
 ```
+
+The ledger records `tokens` and `docs` calls under those API names, so
+`usage --json` can separate measurement and documentation spend from
+work.
 
 Note the usage field names differ per format, exactly as the API sends
 them: chat has `prompt_cache_hit_tokens`, Anthropic has
@@ -185,11 +234,27 @@ Every call prints a usage line to stderr and appends to
 
 - **Text only.** Images, documents and search-result blocks are rejected
   by the API in every format.
-- **Thinking is on by default** and adds a flat 79 input tokens per
-  request before generating anything. Use `--think off` for short
-  factual work.
+- **The thinking surcharge depends on effort**, and not as documented.
+  The template added to your input is fixed per level, constant across
+  prompt length, measured live on 2026-08-05:
+
+  | `--effort` | flash | pro |
+  | --- | --- | --- |
+  | `none` | +0, thinking off | +0, thinking off |
+  | `minimal`, `low` | +0 | +0 |
+  | `medium`, `high`, `xhigh` | +79 | +0 |
+  | `max` | +92 | +79 |
+
+  So on flash, `--effort low` removes the whole surcharge and still
+  reasons. `--think off` removes the reasoning as well. `none` and
+  `minimal` are accepted by the API and documented nowhere.
 - **`respond` is flash-only.** `--model deepseek-v4-pro` will fail there.
 - **`fim` caps output at 4K tokens** and never thinks.
 - **Slow starts are normal**, up to ten minutes before inference begins
   under load. Do not set an aggressive `--timeout` and call it a failure.
 - **Tool calls are printed, not executed.**
+- **A strict tool moves the request to the beta path** automatically.
+  Sent to the stable path, `strict` is ignored and the schema guarantee
+  silently does not hold.
+- **`--user-id` is validated locally** against the API's rule
+  (`[a-zA-Z0-9_-]{1,512}`). It is not a place for personal data.
