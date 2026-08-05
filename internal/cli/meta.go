@@ -42,7 +42,11 @@ to the model you are about to pick. --json returns the API's list alone.`),
 					m.ID, m.OwnedBy, price.CacheHitInput, price.CacheMissInput, price.Output)
 			}
 			w.Flush()
-			fmt.Fprint(&b, "\nUSD per 1M tokens, from the published rate card. 1M context, 384K max output.")
+			// Everything on this line is DeepSeek's published spec, and is
+			// labelled as such: the advertised 1M context is a headline
+			// figure, and the input a request actually accepts has been
+			// observed to be materially lower.
+			fmt.Fprint(&b, "\nUSD per 1M tokens. Published spec: 1M context, 384K max output.")
 
 			return o.emit(raw, b.String())
 		},
