@@ -11,7 +11,7 @@
   <a href="https://github.com/thevibeworks/deepseek-cli/releases"><img src="https://img.shields.io/github/v/release/thevibeworks/deepseek-cli?color=blue&label=release" alt="Release"></a>
   <a href="https://github.com/thevibeworks/deepseek-cli/actions/workflows/ci.yml"><img src="https://github.com/thevibeworks/deepseek-cli/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="#commands"><img src="https://img.shields.io/badge/API%20coverage-6%2F6%20endpoints-brightgreen" alt="API coverage: 6 of 6 endpoints"></a>
-  <a href="#development"><img src="https://img.shields.io/badge/tests-102%20%C2%B7%2068%25%20covered-brightgreen" alt="102 tests, 68% statement coverage"></a>
+  <a href="#development"><img src="https://img.shields.io/badge/tests-103%20%C2%B7%2068%25%20covered-brightgreen" alt="103 tests, 68% statement coverage"></a>
   <br>
   <a href="https://api-docs.deepseek.com"><img src="https://img.shields.io/badge/DeepSeek%20API%20docs-2026--08--02-8a2be2" alt="Implemented against the DeepSeek API docs of 2026-08-02"></a>
   <a href="https://api-docs.deepseek.com/quick_start/pricing"><img src="https://img.shields.io/badge/models-v4--flash%20%7C%20v4--pro-0ea5e9" alt="Models: deepseek-v4-flash and deepseek-v4-pro"></a>
@@ -30,7 +30,7 @@
 
 <div align="center">
 
-[Install](#install) · [Quick start](#quick-start) · [Commands](#commands) · [Cost](#what-things-cost) · [For agents](#for-agents) · [Config](#configuration)
+**[Documentation](https://thevibeworks.github.io/deepseek-cli/)** · [Install](#install) · [Quick start](#quick-start) · [Commands](#commands) · [Cost](#what-things-cost) · [For agents](#for-agents) · [Config](#configuration)
 
 </div>
 
@@ -319,7 +319,7 @@ rather than hides:
 ```bash
 make            # build
 make check      # fmt + vet + test + build
-make test       # 102 tests, no network required
+make test       # 103 tests, no network required
 make cover-gate # fails under the coverage floor
 ```
 
@@ -327,6 +327,15 @@ Zero runtime dependencies beyond `cobra` and `golang.org/x/term`; the API
 client is hand-rolled. `--jq` shells out to `jq` if you use it.
 
 Design rulings and the reasons behind them: [TASTE.md](TASTE.md).
+
+## Links
+
+- **[Documentation](https://thevibeworks.github.io/deepseek-cli/)** — the same
+  material as a browsable site, plus a
+  [comparison of DeepSeek's four API formats](https://thevibeworks.github.io/deepseek-cli/formats/)
+- [AGENTS.md](AGENTS.md) · [skill/SKILL.md](skill/SKILL.md) — the scripting contract
+- [TASTE.md](TASTE.md) — design rejections and their reasons
+- [DeepSeek API docs](https://api-docs.deepseek.com/) — the upstream API
 
 ## License
 
