@@ -98,14 +98,18 @@ price-check:
 
 # The site is generated HTML plus one page that is an application. The
 # generator has its own --check; these cover the parts it cannot see —
-# that the playground's script and markup still agree, and that all three
-# implementations of the enrolment puzzle still produce the same answers.
+# that the playground's script and markup still agree, that all three
+# implementations of the enrolment puzzle still produce the same answers,
+# and that the sea still runs, stops when it should, and draws the same
+# whale on the canvas as whale.svg draws for readers without JavaScript.
 .PHONY: site-check
 site-check:
 	python3 site/build.py --check
 	node site/pow.test.js
 	node site/playground.test.js
 	node site/playground.dom.test.js
+	node site/waves.test.js
+	node site/waves.dom.test.js
 
 .PHONY: site
 site:

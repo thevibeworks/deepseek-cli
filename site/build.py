@@ -203,6 +203,7 @@ def pager(slug, root):
 
 FOOT = """  </div>
 </main>
+<div class="ocean ocean-foot" data-ocean data-whale="off"></div>
 <footer class="foot">
   <div class="wrap">
     <span>
@@ -217,6 +218,7 @@ FOOT = """  </div>
 <script>
 {toggle}
 </script>
+<script src="{root}waves.js" defer></script>
 {extra}</body>
 </html>
 """
@@ -238,7 +240,7 @@ def render(page):
     body += page["body"].replace("{{root}}", root or "./").replace("{{repo}}", REPO).replace("{{docs}}", DOCS)
     body += pager(slug, root)
     body += FOOT.format(
-        repo=REPO, site=SITE, toggle=THEME_TOGGLE,
+        repo=REPO, site=SITE, toggle=THEME_TOGGLE, root=root or "./",
         # Pages that ship an app rather than prose load it here, after the
         # theme script, so the markup it wires up already exists.
         extra=page.get("scripts", "").replace("{{root}}", root or "./"),
@@ -319,14 +321,6 @@ what each call cost.</p>
 <img src="https://img.shields.io/badge/models-v4--flash%20%7C%20v4--pro-00c2e9?labelColor=0d0d0d" alt="Models: deepseek-v4-flash and deepseek-v4-pro" width="164" height="20" loading="lazy">
 </p>
 
-<div class="term">
-<div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="title">~/work</span></div>
-<pre><code><span class="p">$</span> ds chat <span class="w">"explain this diff"</span> <span class="k">--file</span> changes.patch
-<span class="o">The patch swaps the retry loop for exponential backoff, and stops
-retrying 4xx responses &mdash; those would fail identically on a second try.</span>
-<span class="c">&middot; flash &middot; 3.2k in (87% cached) &middot; 412 out (180 think) &middot; ~$0.000178 &middot; 2.1s</span></code></pre>
-</div>
-
 <div class="cta">
 <a class="btn" href="{{root}}install/">install</a>
 <a class="btn alt" href="{{root}}playground/">try it, no key</a>
@@ -334,6 +328,16 @@ retrying 4xx responses &mdash; those would fail identically on a second try.</sp
 <a class="btn alt" href="{{repo}}">source</a>
 </div>
 </section>
+
+<div class="ocean ocean-bleed ocean-hero" data-ocean data-whale-x="0.6" data-whale-span="0.62"></div>
+
+<div class="term">
+<div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="title">~/work</span></div>
+<pre><code><span class="p">$</span> ds chat <span class="w">"explain this diff"</span> <span class="k">--file</span> changes.patch
+<span class="o">The patch swaps the retry loop for exponential backoff, and stops
+retrying 4xx responses &mdash; those would fail identically on a second try.</span>
+<span class="c">&middot; flash &middot; 3.2k in (87% cached) &middot; 412 out (180 think) &middot; ~$0.000178 &middot; 2.1s</span></code></pre>
+</div>
 
 <h2 id="no-key">You do not need an API key to start</h2>
 <p class="lede">Most tools open with "get an API key". This one opens with an
@@ -1406,7 +1410,10 @@ def build(check_only=False):
         jsonld=SOFTWARE_JSONLD,
         body="""
 <h1>404</h1>
-<p class="lede">No such page. The whole site is six of them:</p>
+<p class="lede">No such page &mdash; deep water. The whole site is seven of them:</p>
+
+<div class="ocean ocean-bleed ocean-hero" data-ocean data-whale-x="0.5" data-whale-span="0.55"></div>
+
 <ul>
 <li><a href="BASE/">overview</a> &mdash; what it is and why</li>
 <li><a href="BASE/install/">install</a> &mdash; binaries, Go, the <code>ds</code> alias, configuration</li>
@@ -1414,6 +1421,7 @@ def build(check_only=False):
 <li><a href="BASE/formats/">formats</a> &mdash; DeepSeek's four wire formats compared</li>
 <li><a href="BASE/cost/">cost</a> &mdash; pricing, the context cache, the usage ledger</li>
 <li><a href="BASE/agents/">agents</a> &mdash; the scripting contract</li>
+<li><a href="BASE/playground/">playground</a> &mdash; the API in a browser, no key needed</li>
 </ul>
 <p><a href="BASE/">&larr; back to the overview</a></p>
 """,
@@ -1428,6 +1436,7 @@ def build(check_only=False):
         '<meta name="robots" content="noindex, follow">')
     notfound = notfound.replace('href="style.css"', f'href="{SITE}/style.css"')
     notfound = notfound.replace('href="favicon.svg"', f'href="{SITE}/favicon.svg"')
+    notfound = notfound.replace('src="./waves.js"', f'src="{SITE}/waves.js"')
     out404 = ROOT / "404.html"
     if check_only:
         if not out404.exists() or out404.read_text() != notfound:

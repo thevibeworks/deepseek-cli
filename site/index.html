@@ -91,14 +91,6 @@ what each call cost.</p>
 <img src="https://img.shields.io/badge/models-v4--flash%20%7C%20v4--pro-00c2e9?labelColor=0d0d0d" alt="Models: deepseek-v4-flash and deepseek-v4-pro" width="164" height="20" loading="lazy">
 </p>
 
-<div class="term">
-<div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="title">~/work</span></div>
-<pre><code><span class="p">$</span> ds chat <span class="w">"explain this diff"</span> <span class="k">--file</span> changes.patch
-<span class="o">The patch swaps the retry loop for exponential backoff, and stops
-retrying 4xx responses &mdash; those would fail identically on a second try.</span>
-<span class="c">&middot; flash &middot; 3.2k in (87% cached) &middot; 412 out (180 think) &middot; ~$0.000178 &middot; 2.1s</span></code></pre>
-</div>
-
 <div class="cta">
 <a class="btn" href="./install/">install</a>
 <a class="btn alt" href="./playground/">try it, no key</a>
@@ -106,6 +98,16 @@ retrying 4xx responses &mdash; those would fail identically on a second try.</sp
 <a class="btn alt" href="https://github.com/thevibeworks/deepseek-cli">source</a>
 </div>
 </section>
+
+<div class="ocean ocean-bleed ocean-hero" data-ocean data-whale-x="0.6" data-whale-span="0.62"></div>
+
+<div class="term">
+<div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="title">~/work</span></div>
+<pre><code><span class="p">$</span> ds chat <span class="w">"explain this diff"</span> <span class="k">--file</span> changes.patch
+<span class="o">The patch swaps the retry loop for exponential backoff, and stops
+retrying 4xx responses &mdash; those would fail identically on a second try.</span>
+<span class="c">&middot; flash &middot; 3.2k in (87% cached) &middot; 412 out (180 think) &middot; ~$0.000178 &middot; 2.1s</span></code></pre>
+</div>
 
 <h2 id="no-key">You do not need an API key to start</h2>
 <p class="lede">Most tools open with "get an API key". This one opens with an
@@ -285,6 +287,7 @@ gap here.</li>
 <a href="install/" style="text-align:right"><span class="lbl">next &rarr;</span>install</a>
 </nav>  </div>
 </main>
+<div class="ocean ocean-foot" data-ocean data-whale="off"></div>
 <footer class="foot">
   <div class="wrap">
     <span>
@@ -321,5 +324,6 @@ gap here.</li>
   });
 })();
 </script>
+<script src="./waves.js" defer></script>
 </body>
 </html>
