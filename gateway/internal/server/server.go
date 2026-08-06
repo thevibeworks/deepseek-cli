@@ -8,14 +8,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/thevibeworks/deepseek-cli/gateway/internal/keyring"
 	"github.com/thevibeworks/deepseek-cli/gateway/internal/mint"
 	"github.com/thevibeworks/deepseek-cli/gateway/internal/quota"
+	"github.com/thevibeworks/deepseek-cli/gateway/internal/stats"
 	"github.com/thevibeworks/deepseek-cli/gateway/internal/token"
 )
 
@@ -25,10 +28,17 @@ import (
 type Config struct {
 	// UpstreamBaseURL is DeepSeek's API root.
 	UpstreamBaseURL string
-	// UpstreamKey is our real API key. It never leaves this process.
-	UpstreamKey string
+	// UpstreamKeys are the real API keys this service spends. They never
+	// leave this process. More than one is a pool: requests rotate across
+	// them and an emptied key retires itself, so a donation extends the
+	// service without a restart.
+	UpstreamKeys []string
+	// KeyStatePath persists donated keys across restarts.
+	KeyStatePath string
 	// Model is the only model the free tier serves.
 	Model string
+	// Version is the build, shown on the status page.
+	Version string
 
 	MaxBodyBytes int64
 	MaxTokens    int
@@ -79,6 +89,13 @@ type Server struct {
 	mint   *mint.Mint
 	signer *token.Signer
 	ledger *quota.Ledger
+	keys   *keyring.Ring
+	stats  *stats.Collector
+
+	// statusDoc caches the public status document; see publicStatusTTL.
+	statusMu  sync.Mutex
+	statusDoc *PublicStatus
+	statusAt  time.Time
 
 	http        *http.Client
 	inflight    chan struct{}
@@ -139,6 +156,8 @@ func New(cfg Config, signer *token.Signer, m *mint.Mint, ledger *quota.Ledger) *
 				return http.ErrUseLastResponse
 			},
 		},
+		keys:         keyring.New(cfg.UpstreamKeys, cfg.KeyStatePath),
+		stats:        stats.New(),
 		inflight:     make(chan struct{}, cfg.MaxInflight),
 		limiter:      newLimiter(cfg.RequestsPerMinute, time.Minute),
 		subjLimiter:  newLimiter(cfg.SubjectRequestsPerMinute, time.Minute),
@@ -147,6 +166,9 @@ func New(cfg Config, signer *token.Signer, m *mint.Mint, ledger *quota.Ledger) *
 		started:      time.Now(),
 	}
 }
+
+// Keys exposes the pool so an operator command can seed it at boot.
+func (s *Server) Keys() *keyring.Ring { return s.keys }
 
 // acquireSubject takes one of a token's concurrency slots, or reports
 // that they are all in use.
@@ -182,6 +204,12 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/anon/info", s.handleInfo)
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 	mux.HandleFunc("GET /admin/health", s.handleAdminHealth)
+
+	// The dashboard and what feeds it.
+	mux.HandleFunc("GET /v1/status", s.handleStatus)
+	mux.HandleFunc("GET /admin/status", s.handleAdminStatus)
+	mux.HandleFunc("/admin/keys", s.handleAdminKeys)
+	s.routeWeb(mux)
 
 	// The balance endpoint is answered locally rather than proxied: the
 	// upstream figure is our account's, and it is nobody else's business.
@@ -330,34 +358,79 @@ func (s *Server) StartBalanceWatch(ctx context.Context, interval time.Duration) 
 	}()
 }
 
+// checkBalance asks DeepSeek about every key in the pool and retires the
+// ones it says are done. Checking each key rather than a representative
+// one is the point: with a pool, "are we out of money" is a question per
+// key, and a single dry donation should not condemn the rest.
 func (s *Server) checkBalance(ctx context.Context) {
+	any := false
+	// Dry keys are checked too, not skipped — that is how a donor who
+	// topped their key up gets back into rotation without anyone noticing
+	// by hand. Only an operator retirement is permanent.
+	for _, fp := range s.keys.Fingerprints() {
+		switch s.keyAvailable(ctx, fp) {
+		case availYes:
+			any = true
+			if s.keys.MarkFunded(fp) {
+				log.Printf("key %s has credit again and is back in rotation", fp)
+			}
+		case availNo:
+			s.keys.MarkDry(fp, "DeepSeek reports no balance on this key")
+		case availUnknown:
+			// Network trouble is not "out of money". A key already in
+			// rotation stays; one already dry stays dry until upstream
+			// actually answers for it.
+			any = true
+		}
+	}
+	s.upstreamDry.Store(!any)
+	s.invalidateStatus()
+}
+
+type availability int
+
+const (
+	availUnknown availability = iota
+	availYes
+	availNo
+)
+
+func (s *Server) keyAvailable(ctx context.Context, fingerprint string) availability {
+	secret, ok := s.keys.Secret(fingerprint)
+	if !ok {
+		return availUnknown
+	}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
 		strings.TrimRight(s.cfg.UpstreamBaseURL, "/")+"/user/balance", nil)
 	if err != nil {
-		return
+		return availUnknown
 	}
-	req.Header.Set("Authorization", "Bearer "+s.cfg.UpstreamKey)
+	req.Header.Set("Authorization", "Bearer "+secret)
 	req.Header.Set("User-Agent", "dsgate")
 
 	resp, err := s.http.Do(req)
 	if err != nil {
-		// Network trouble is not "out of money". The last known state
-		// stands until DeepSeek says otherwise.
-		return
+		return availUnknown
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return availNo // the key is not valid at all
+	}
 	if resp.StatusCode != http.StatusOK {
-		return
+		return availUnknown
 	}
 	var b struct {
 		IsAvailable bool `json:"is_available"`
 	}
 	if json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&b) != nil {
-		return
+		return availUnknown
 	}
-	s.upstreamDry.Store(!b.IsAvailable)
+	if b.IsAvailable {
+		return availYes
+	}
+	return availNo
 }
 
 // --- simple endpoints ---------------------------------------------------
@@ -370,14 +443,15 @@ func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleAdminHealth(w http.ResponseWriter, r *http.Request) {
-	if s.cfg.AdminToken == "" || r.Header.Get("X-Admin-Token") != s.cfg.AdminToken {
+	if !s.adminOK(r) {
 		writeError(w, http.StatusNotFound, typeRejected, "not found")
 		return
 	}
 	writeJSON(w, http.StatusOK, struct {
 		quota.Health
 		UpstreamAvailable bool `json:"upstream_available"`
-	}{s.ledger.Health(), !s.upstreamDry.Load()})
+		Keys              int  `json:"keys_active"`
+	}{s.ledger.Health(), !s.upstreamDry.Load(), s.keys.Status(false).Active})
 }
 
 // Info is the unauthenticated description of the service, so a client can

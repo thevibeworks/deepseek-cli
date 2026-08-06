@@ -94,7 +94,7 @@ func newHarness(t *testing.T, up *upstream, tune func(*Config, *quota.Limits)) *
 	}
 	cfg := Config{
 		UpstreamBaseURL:          up.server.URL,
-		UpstreamKey:              upstreamKey,
+		UpstreamKeys:             []string{upstreamKey},
 		Model:                    "deepseek-v4-flash",
 		MaxBodyBytes:             4096,
 		MaxTokens:                256,

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en" data-theme-init>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vision — freeseek</title>
+<meta name="description" content="Where freeseek goes from here: free access as activation, a donated-key pool, a possible GitHub-verified tier, and a promise that there will never be a paid tier.">
+<meta name="keywords" content="freeseek, dsgate, vision, donated keys, community pool, DeepSeek free tier">
+<link rel="canonical" href="https://freeseek.1lm.io/vision">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23000'/%3E%3Cpath d='M2 10c2-3 4 3 6 0s4 3 6 0' stroke='%2300c2e9' stroke-width='1.6' fill='none'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/style.css">
+<script>try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body class="doc">
+<header class="masthead">
+  <a class="wordmark" href="/">freeseek</a>
+  <nav><a href="/">dashboard</a> <a href="/story">story</a> <a href="/vision">vision</a> <a href="/privacy">privacy</a> <a href="/terms">terms</a></nav>
+</header>
+<main class="prose">
+  <h1>Where this goes</h1>
+
+  <p class="lede">Free access here is activation, not an entitlement. The whole goal is that one person gets one successful DeepSeek call before deciding whether an API key is worth their time. Thirty requests a day is enough to evaluate a tool honestly; it is deliberately not enough to build on. If you finish a day here and want more, the free tier has done its job, and the next step is a key of your own from <a href="https://platform.deepseek.com">platform.deepseek.com</a>.</p>
+
+  <h2>How it stays alive</h2>
+  <p>The pool is funded by donated API keys and the maintainers' own money, protected by a daily budget breaker so a bad day costs a bounded amount. That is the entire sustainability model, and it means the arithmetic is simple: the pool grows only if people donate keys. There is no revenue, no investor, and no plan for either. At flash prices a dollar buys roughly three thousand ordinary conversational turns, so modest donations go a surprisingly long way. When the pool is empty, the service says so and waits.</p>
+
+  <h2>A possible verified tier</h2>
+  <p>The anonymous proof-of-work tier is the floor, sized for evaluation. The design has always reserved an upgrade rung: sign in with GitHub, and an account with real age and history gets a larger daily quota, because that identity is genuinely costly to farm. It is designed in but not built, and it will only ever be an addition on top of the anonymous tier, never a replacement for it. The keyless first call is the point of the project and it stays.</p>
+
+  <h2>Never a paid tier</h2>
+  <p>There will never be a paid tier of this gateway. This is worth stating as a commitment rather than a current fact, because it constrains every future decision: the moment we charged for access we would be reselling DeepSeek's API with a markup and a worse SLA, which is a business we do not want and you should not want to buy from. The paid path is and will remain bringing your own key directly to DeepSeek, where you get every model, no proxy in the middle, and your money buys exactly what it says.</p>
+
+  <h2>What would make us shut it down</h2>
+  <p>Honesty about the exit, too. We will shut this down if abuse consumes the budget so consistently that honest users get nothing but "come back tomorrow"; if the service creates legal or safety problems that a hobby project cannot responsibly carry; or if donations and our own patience run out together. The budget breaker guarantees the ending would be quiet rather than expensive: the service refuses politely, and the CLI keeps working with your own key. Nothing about the CLI depends on this gateway existing.</p>
+
+  <h2>How to help</h2>
+  <ul>
+    <li><strong>Donate a key.</strong> Open an issue on the <a href="https://github.com/thevibeworks/deepseek-cli/issues">issue tracker</a> and we will arrange it. Every donated key extends the pool for everyone.</li>
+    <li><strong>Run your own copy.</strong> The gateway is open source and lives in the <a href="https://github.com/thevibeworks/deepseek-cli">repository</a>. It is a single static binary with no database; point it at your key and you have a bounded free tier for your team, your classroom, or your community.</li>
+    <li><strong>Improve the CLI.</strong> The gateway exists to get people into the tool, and the tool is where contributions compound. Issues and pull requests are welcome.</li>
+  </ul>
+
+  <p>The measure of success is modest and specific: someone installs the CLI, runs one command, gets a real answer from a real model, and decides from evidence whether to go further. Everything else here exists to make that moment cheap, bounded, and honest.</p>
+</main>
+<footer class="footer">
+  <p>A community credit pool run by <a href="https://github.com/thevibeworks/deepseek-cli">thevibeworks/deepseek-cli</a>. No uptime guarantee. <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></p>
+</footer>
+</body>
+</html>

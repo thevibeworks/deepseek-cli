@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"sync"
 	"time"
 )
@@ -142,6 +143,12 @@ type Ledger struct {
 	// persisted alongside priorSpend so a restart can tell which journals
 	// have already been folded in and which still have to be.
 	through string
+	// priorTotals is lifetime token and request counts for every day
+	// before today, scanned from the journals at boot. Spend is tracked
+	// separately in priorSpend, which is persisted; these are not, because
+	// re-deriving them is cheap and a counter that can drift from its own
+	// journal is worse than one that cannot.
+	priorTotals Totals
 	// reserved is the projected worst-case cost of every admitted request
 	// that has not yet been charged or refunded. It counts against both
 	// budgets at admission, which is what makes them ceilings rather than
@@ -202,6 +209,9 @@ func Open(dir string, limits Limits) (*Ledger, error) {
 		return nil, err
 	}
 	if err := l.replay(l.day); err != nil {
+		return nil, err
+	}
+	if err := l.scanPastTotals(l.day); err != nil {
 		return nil, err
 	}
 	if err := l.saveStateLocked(nil); err != nil {
@@ -292,6 +302,33 @@ func (l *Ledger) foldPastLocked(today string) error {
 		l.priorSpend += usd
 	}
 	l.through = today
+	return nil
+}
+
+// scanPastTotals sums token and request counts from every journal before
+// today, so the dashboard's lifetime figures survive a restart.
+func (l *Ledger) scanPastTotals(today string) error {
+	names, err := os.ReadDir(l.dir)
+	if err != nil {
+		return err
+	}
+	l.priorTotals = Totals{}
+	for _, e := range names {
+		day, ok := journalDay(e.Name())
+		if !ok || day >= today {
+			continue
+		}
+		f, err := os.Open(l.journalPath(day))
+		if err != nil {
+			continue
+		}
+		scanJournal(f, func(en entry) {
+			l.priorTotals.Requests++
+			l.priorTotals.InputTokens += en.InputTokens
+			l.priorTotals.OutputTokens += en.OutputTokens
+		})
+		f.Close()
+	}
 	return nil
 }
 
@@ -398,6 +435,11 @@ func (l *Ledger) rollLocked() {
 	}
 	l.priorSpend += l.daySpend
 	l.daySpend = 0
+	for _, a := range l.accounts {
+		l.priorTotals.Requests += a.Requests
+		l.priorTotals.InputTokens += a.InputTokens
+		l.priorTotals.OutputTokens += a.OutputTokens
+	}
 	l.accounts = map[string]*Account{}
 	l.day = day
 	l.through = day
@@ -591,6 +633,88 @@ func (l *Ledger) Status(subject, tier string) Status {
 		ResetsAt:  midnight(l.now()),
 		Exhausted: l.priorSpend+l.daySpend >= l.limits.TotalBudgetUSD,
 	}
+}
+
+// Totals is aggregate usage over some period.
+type Totals struct {
+	Requests     int     `json:"requests"`
+	InputTokens  int     `json:"input_tokens"`
+	OutputTokens int     `json:"output_tokens"`
+	SpentUSD     float64 `json:"spent_usd"`
+}
+
+// Today totals everything charged since midnight UTC.
+func (l *Ledger) Today() Totals {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.rollLocked()
+
+	var t Totals
+	for _, a := range l.accounts {
+		t.Requests += a.Requests
+		t.InputTokens += a.InputTokens
+		t.OutputTokens += a.OutputTokens
+		t.SpentUSD += a.SpentUSD
+	}
+	return t
+}
+
+// Lifetime totals every journal this ledger has ever written.
+//
+// Unlike spend — which is folded into priorSpend precisely so lifetime
+// money never needs a full replay — token counts are read by scanning
+// the journals once at boot and kept live from there. The scan is a few
+// hundred kilobytes at this service's volume, and the alternative was
+// another persisted counter that could silently drift from the journals
+// it claims to summarise.
+func (l *Ledger) Lifetime() Totals {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.rollLocked()
+
+	t := l.priorTotals
+	for _, a := range l.accounts {
+		t.Requests += a.Requests
+		t.InputTokens += a.InputTokens
+		t.OutputTokens += a.OutputTokens
+	}
+	t.SpentUSD = l.priorSpend + l.daySpend
+	return t
+}
+
+// SubjectUsage is one anonymous account's day, for the leaderboard.
+type SubjectUsage struct {
+	Subject string `json:"subject"`
+	Account
+}
+
+// TopSubjects returns today's busiest subjects, most requests first.
+//
+// A subject is 16 random bytes with no person attached, but the caller
+// still truncates it before publishing: an id that is whole is an id that
+// can be matched against the one in someone's free.json.
+func (l *Ledger) TopSubjects(n int) []SubjectUsage {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.rollLocked()
+
+	out := make([]SubjectUsage, 0, len(l.accounts))
+	for sub, a := range l.accounts {
+		out = append(out, SubjectUsage{Subject: sub, Account: *a})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Requests != out[j].Requests {
+			return out[i].Requests > out[j].Requests
+		}
+		if out[i].OutputTokens != out[j].OutputTokens {
+			return out[i].OutputTokens > out[j].OutputTokens
+		}
+		return out[i].Subject < out[j].Subject
+	})
+	if len(out) > n {
+		out = out[:n]
+	}
+	return out
 }
 
 // Health is the operator's view: the figures Status deliberately hides.
