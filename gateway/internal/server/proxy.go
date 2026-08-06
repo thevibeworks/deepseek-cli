@@ -73,6 +73,11 @@ func (s *Server) handleProxy(w http.ResponseWriter, r *http.Request) {
 	}
 	defer s.releaseSubject(subject)
 
+	// Counted here, once the caller is known to be real and admitted. The
+	// country arrives already reduced to two letters by the edge; no
+	// address reaches the collector. See package stats.
+	s.stats.Seen(subject, edgeCountry(r), route.Name)
+
 	// The model list barely changes and is deliberately uncharged, so it
 	// is answered from a short cache when possible — otherwise the one
 	// free endpoint would burn in-flight slots and upstream round trips.
@@ -145,7 +150,31 @@ func (s *Server) handleProxy(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { <-s.inflight }()
 
+	s.stats.InFlight(1)
+	defer s.stats.InFlight(-1)
+
 	s.forward(w, r, route, decision, subject, billable, reserve)
+}
+
+// edgeCountry reads the two-letter country the CDN attached to this
+// request. Cloudflare sets CF-IPCountry; other edges use the same idea
+// under a different name.
+//
+// It is only meaningful behind a proxy we control — the same condition
+// that makes X-Forwarded-For trustworthy — because a client can otherwise
+// set it to anything. A wrong country on a histogram is harmless, but
+// counting one we did not derive ourselves would be a lie about where the
+// number came from, so it follows TrustProxy.
+func edgeCountry(r *http.Request) string {
+	c := r.Header.Get("CF-IPCountry")
+	if c == "" {
+		c = r.Header.Get("X-Country-Code")
+	}
+	c = strings.ToUpper(strings.TrimSpace(c))
+	if len(c) != 2 || c == "XX" || c == "T1" {
+		return ""
+	}
+	return c
 }
 
 // acquire takes an in-flight slot, or gives up.
@@ -191,9 +220,17 @@ func (s *Server) forward(w http.ResponseWriter, r *http.Request, route policy.Ro
 	if accept := r.Header.Get("Accept"); accept != "" {
 		up.Header.Set("Accept", accept)
 	}
-	up.Header.Set("Authorization", "Bearer "+s.cfg.UpstreamKey)
+	secret, fingerprint, err := s.keys.Next()
+	if err != nil {
+		if billable {
+			s.ledger.Refund(subject, reserve)
+		}
+		s.writeLimit(w, &quota.LimitError{Reason: quota.ReasonCredits})
+		return
+	}
+	up.Header.Set("Authorization", "Bearer "+secret)
 	if route.AnthropicAuth {
-		up.Header.Set("x-api-key", s.cfg.UpstreamKey)
+		up.Header.Set("x-api-key", secret)
 		version := r.Header.Get("anthropic-version")
 		if version == "" {
 			version = "2023-06-01"
@@ -214,6 +251,7 @@ func (s *Server) forward(w http.ResponseWriter, r *http.Request, route policy.Ro
 			if billable {
 				cost := meter.Cost(d.Model, meter.Usage{InputTokens: len(d.Body) + 1})
 				s.ledger.Charge(subject, route.Name, d.Model, len(d.Body)/4+1, 0, 0, cost, reserve, true)
+				s.stats.Charged(len(d.Body)/4+1, 0)
 			}
 			return // there is nobody to tell
 		}
@@ -226,6 +264,18 @@ func (s *Server) forward(w http.ResponseWriter, r *http.Request, route policy.Ro
 		return
 	}
 	defer resp.Body.Close()
+
+	// A key that upstream refuses for money or validity is done, and
+	// leaves the rotation now rather than after it has failed everyone
+	// else's request too. Other 4xx are about the request, not the key.
+	switch resp.StatusCode {
+	case http.StatusPaymentRequired:
+		s.keys.MarkDry(fingerprint, "DeepSeek answered 402: out of credit")
+		s.invalidateStatus()
+	case http.StatusUnauthorized, http.StatusForbidden:
+		s.keys.MarkDry(fingerprint, "DeepSeek rejected this key: "+resp.Status)
+		s.invalidateStatus()
+	}
 
 	if route.Name == "models" && resp.StatusCode == http.StatusOK {
 		s.relayModels(w, resp)
@@ -288,12 +338,14 @@ func (s *Server) forward(w http.ResponseWriter, r *http.Request, route policy.Ro
 		// it could have cost. Unbillable must never mean free, or it
 		// becomes the way in.
 		s.ledger.Charge(subject, route.Name, model, len(d.Body)/4+1, 0, d.MaxTokens, reserve, reserve, true)
+		s.stats.Charged(len(d.Body)/4+1, d.MaxTokens)
 		return
 	}
 
 	s.ledger.Charge(subject, route.Name, model,
 		usage.InputTokens, usage.CacheHitTokens, usage.OutputTokens,
 		meter.Cost(model, usage), reserve, false)
+	s.stats.Charged(usage.InputTokens, usage.OutputTokens)
 }
 
 // relayModels forwards the model list, minus the models this gateway

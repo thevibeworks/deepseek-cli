@@ -318,6 +318,48 @@ flash without being told would draw wrong conclusions and blame the model.
 
 ---
 
+## The status page
+
+`freeseek.1lm.io/` is the dashboard, served by the gateway itself from
+`go:embed` — one binary, and the page can never be a different version
+from the JSON it reads. It polls `GET /v1/status`, which is public,
+unauthenticated and cached for three seconds.
+
+What that document says and what it refuses to say are both deliberate:
+
+| published | withheld | why |
+|---|---|---|
+| credit as a **percentage** | dollars, account balance | "$0.19 of $0.25" is a progress bar for whoever wants to trip the breaker |
+| subject ids **truncated to 6 chars** | whole subject ids | a whole id can be matched against the one in someone's `free.json` |
+| **per-country** request counts | anything per-IP, ever | an aggregate is a fact about the service, not about a person |
+| token counts, tok/s, live subjects | prompts, completions | the promise in `deepseek free` is the promise here |
+
+Exact money, per-key health and the full subject table live behind
+`GET /admin/status` with the operator token.
+
+Metrics live in package `stats`: a ring of per-second buckets, bounded
+maps, everything in memory and lost on restart. That is the right trade —
+losing it costs a graph, and it keeps observability from ever becoming a
+second, weaker copy of the money.
+
+## The key pool
+
+One key was a single point of failure with a hard floor. Package
+`keyring` holds several, rotates per request, and retires a key the
+moment DeepSeek answers 401 or 402 on it — the authority on "this key is
+done" is upstream, not our own ledger, because a donated key may be
+funding something else as well.
+
+A secret never leaves the package. Every accessor returns a fingerprint
+(last four characters plus a truncated hash), which tells two keys apart
+in a dashboard and is useless to anyone who steals the output.
+
+Donations are added by an operator through `POST /admin/keys` and
+persisted, so a gift survives a restart and lands without a deploy.
+**There is deliberately no public form.** A service that collects other
+people's API keys over the open internet is a phishing lesson with a nice
+stylesheet; the donation path is a private message to a human.
+
 ## What we deliberately did not build
 
 - **A user table.** Stateless tokens plus daily counters. Nothing to

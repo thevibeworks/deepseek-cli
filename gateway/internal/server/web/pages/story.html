@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en" data-theme-init>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Story — freeseek</title>
+<meta name="description" content="Why freeseek exists: a CLI that needed to work before you had an API key, a maintainer's key behind a metered proxy, and a budget breaker instead of a signup wall.">
+<meta name="keywords" content="freeseek, dsgate, DeepSeek CLI, proof of work, budget circuit breaker, free tier design">
+<link rel="canonical" href="https://freeseek.1lm.io/story">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23000'/%3E%3Cpath d='M2 10c2-3 4 3 6 0s4 3 6 0' stroke='%2300c2e9' stroke-width='1.6' fill='none'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/style.css">
+<script>try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body class="doc">
+<header class="masthead">
+  <a class="wordmark" href="/">freeseek</a>
+  <nav><a href="/">dashboard</a> <a href="/story">story</a> <a href="/vision">vision</a> <a href="/privacy">privacy</a> <a href="/terms">terms</a></nav>
+</header>
+<main class="prose">
+  <h1>Why this exists</h1>
+
+  <p class="lede">We built a command-line tool for the DeepSeek API, and then watched everyone hit the same wall before they could form an opinion about it. The tool is free, the model is cheap, the install is one command. But the first real step was always the same: go get an API key. Sign up, top up, paste a secret into an environment variable, and only then find out whether the thing is any good. The evaluation cost more than the evaluation was worth.</p>
+
+  <p>So we put our own key behind a metered proxy and gave it away. Type <code>deepseek free</code> once and <code>deepseek chat "hi"</code> works. No signup, no card, no email. That decision spends real money on strangers' behalf, and everything interesting about this service is in how that spending is bounded.</p>
+
+  <h2>Why proof-of-work instead of signup</h2>
+  <p>The obvious move is a login. Sign in with GitHub and we get a real identity, an account age we can check, someone to attribute abuse to. We designed that tier in and may still build it. But as the front door it kills the exact property the feature exists for: install it and it works. The moment there is a signup, the magic is gone and we are just another dashboard asking for your details before showing you anything.</p>
+  <p>The next obvious move is rate limiting by IP address, which costs fifty lines and fails immediately: a five-dollar proxy pool defeats it entirely, and one university NAT shares one quota between two thousand students.</p>
+  <p>Proof-of-work is the middle path. Your machine burns about one second of one core solving a puzzle, and gets a bearer token in exchange. Nothing personal changes hands; identity just costs something. Every student behind the campus NAT mints their own token. And when one address starts minting greedily, the puzzle gets harder for that address: the fourth mint of the day costs four times the first, the eighth about a thousand times. No blocklists, no ASN database to keep current, just a price that rises with appetite.</p>
+
+  <h2>The budget breaker is the real security</h2>
+  <p>Here is the honest part. Proof-of-work is not a security boundary and is not pretending to be one. CPU is cheap; a spot instance can mint thousands of identities overnight. Any scheme that tries to make identity trustworthy on the open internet loses, because identity on the open internet is not something you can win.</p>
+  <p>So we stopped trying. The per-user quota is a fairness mechanism: it keeps one person from crowding out the rest on a normal day. The security mechanism is a budget that cannot be exceeded no matter how many identities exist. The gateway keeps an append-only journal of every charge, synced to disk per debit, and refuses new requests the moment the day's budget or the lifetime credit pool would be crossed. Each request's worst possible cost is reserved before it is admitted and settled to its real cost afterwards, so the budget is a ceiling, not a horizon. If a response cannot be metered, it is charged a deliberately pessimistic estimate; unbillable must never mean free. If the journal cannot be written to disk, the gateway stops admitting requests entirely, because spend that cannot be recorded is spend a restart would silently refund.</p>
+  <p>The trade we accepted, stated plainly: a determined attacker can burn the day's budget in an hour, and honest users get "come back tomorrow". We chose bounded loss over guaranteed availability, because we can survive a bad day and cannot survive a bad invoice.</p>
+
+  <h2>Why a transparent proxy</h2>
+  <p>The gateway does not reimplement the DeepSeek API. The CLI already speaks four wire formats against one configurable base URL, and a typed per-endpoint gateway would have to be extended for each of them and would drift from upstream the day it shipped. Instead the gateway's job is narrow: authenticate the token, apply policy to the request, pass the bytes through, meter the response, charge the account. Because it proxies faithfully, chat, Anthropic, Responses, FIM and the model list all work with no client changes, and so does whatever DeepSeek ships next month. It even bills streaming without touching the stream, because all three streaming formats turn out to emit their usage figures in the final event; the gateway tees the bytes and reads the tail.</p>
+  <p>One field it does rewrite deliberately: every upstream request carries the token's anonymous subject as DeepSeek's <code>user_id</code>. That is the mechanism DeepSeek built for one account fronting many users. It attributes safety events to the user who caused them rather than to the whole pool, and it keeps strangers' prompt caches isolated from each other, which without it would be our privacy bug.</p>
+
+  <h2>Small on purpose</h2>
+  <p>There is no database. Counters live in memory and every debit appends to a journal file you can read with <code>tail</code>, replayed at boot. The whole gateway is a single static binary sharing a one-gigabyte box with other services, which is what a service this size should cost to run. There is no user table, which means there is nothing to breach and nothing to migrate. And there is no prompt logging, not for debugging, not behind a flag, because a flag that can log prompts is a flag that will.</p>
+
+  <p>The result is deliberately modest: a shared pool, funded by donated keys and our own money, that gives a stranger about thirty requests a day until it runs out. It exists so that the first DeepSeek call of your life can happen in the minute after you install the <a href="https://github.com/thevibeworks/deepseek-cli">CLI</a>, and the decision about whether to get a real key can be made from experience instead of faith. Where it goes from here is on the <a href="/vision">vision page</a>.</p>
+</main>
+<footer class="footer">
+  <p>A community credit pool run by <a href="https://github.com/thevibeworks/deepseek-cli">thevibeworks/deepseek-cli</a>. No uptime guarantee. <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></p>
+</footer>
+</body>
+</html>

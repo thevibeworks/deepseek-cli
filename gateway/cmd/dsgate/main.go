@@ -61,6 +61,7 @@ const usage = `dsgate — the free tier for the deepseek CLI
 Configuration is entirely environment variables:
 
   DSGATE_UPSTREAM_KEY        DeepSeek API key to spend        (required)
+  DSGATE_UPSTREAM_KEYS       more keys, comma separated; the pool rotates
   DSGATE_UPSTREAM_BASE_URL   upstream root                    (https://api.deepseek.com)
   DSGATE_ADDR                listen address                   (:8787)
   DSGATE_STATE_DIR           journal, secret, revocations     (./state)
@@ -102,8 +103,14 @@ SIGHUP re-reads <state>/revoked.txt without dropping connections.
 `
 
 func run() error {
-	key := env("DSGATE_UPSTREAM_KEY", os.Getenv("DEEPSEEK_API_KEY"))
-	if key == "" {
+	// One key or many. The pool is what lets a donated key extend the
+	// service without a restart, and what lets an emptied one retire
+	// itself instead of taking the whole free tier down with it.
+	keys := envList("DSGATE_UPSTREAM_KEYS")
+	if k := env("DSGATE_UPSTREAM_KEY", os.Getenv("DEEPSEEK_API_KEY")); k != "" {
+		keys = append([]string{k}, keys...)
+	}
+	if len(keys) == 0 {
 		return errors.New("DSGATE_UPSTREAM_KEY is not set; there is nothing to spend")
 	}
 
@@ -150,8 +157,10 @@ func run() error {
 
 	cfg := server.Config{
 		UpstreamBaseURL:          env("DSGATE_UPSTREAM_BASE_URL", "https://api.deepseek.com"),
-		UpstreamKey:              key,
+		UpstreamKeys:             keys,
+		KeyStatePath:             filepath.Join(stateDir, "donated-keys.json"),
 		Model:                    env("DSGATE_MODEL", "deepseek-v4-flash"),
+		Version:                  version,
 		MaxBodyBytes:             int64(envInt("DSGATE_MAX_BODY_BYTES", 131072)),
 		MaxTokens:                envInt("DSGATE_ANON_MAX_TOKENS", 4096),
 		MaxInflight:              envInt("DSGATE_MAX_INFLIGHT", 8),

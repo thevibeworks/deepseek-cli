@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en" data-theme-init>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Terms — freeseek</title>
+<meta name="description" content="Terms of service and acceptable use for the freeseek gateway: a free, as-is, shared community credit pool for the DeepSeek API. No warranty, no SLA, no paid tier.">
+<meta name="keywords" content="freeseek, dsgate, terms of service, acceptable use, DeepSeek proxy, free tier">
+<link rel="canonical" href="https://freeseek.1lm.io/terms">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23000'/%3E%3Cpath d='M2 10c2-3 4 3 6 0s4 3 6 0' stroke='%2300c2e9' stroke-width='1.6' fill='none'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/style.css">
+<script>try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body class="doc">
+<header class="masthead">
+  <a class="wordmark" href="/">freeseek</a>
+  <nav><a href="/">dashboard</a> <a href="/story">story</a> <a href="/vision">vision</a> <a href="/privacy">privacy</a> <a href="/terms">terms</a></nav>
+</header>
+<main class="prose">
+  <h1>Terms of service</h1>
+  <p class="note">Last updated: 2026-08-06</p>
+
+  <p class="lede">This service, dsgate at freeseek.1lm.io, is a free, keyless proxy to the DeepSeek API. It is a hobby project run by the maintainers of the open-source project <a href="https://github.com/thevibeworks/deepseek-cli">thevibeworks/deepseek-cli</a>. It is not a company and there is no legal entity behind it. These terms are written to be honest rather than to sound like a contract, because they are not one: they are the conditions under which we are willing to spend our own money on your API calls. By using the service you accept them.</p>
+
+  <h2>1. What you are using</h2>
+  <p>A shared community credit pool, funded by donated API keys and the maintainers' own money. Your requests are relayed to api.deepseek.com and billed against that pool. The pool is finite. It can and will run out, sometimes for the rest of the day, eventually perhaps for good.</p>
+
+  <h2>2. No warranty, no availability</h2>
+  <p class="warn">The service is provided as-is and as-available, with no warranty of any kind. There is no SLA, no uptime guarantee, and no paid tier that would buy you one. A daily budget circuit breaker protects the pool, which means a busy or abusive day can exhaust the service before you get to it; when that happens the honest answer is "come back after 00:00 UTC". The service may be suspended, changed, or shut down permanently at any time, without notice.</p>
+
+  <h2>3. Quotas</h2>
+  <p>Per user, per UTC day, resetting at 00:00 UTC:</p>
+  <ul>
+    <li>30 requests</li>
+    <li>60,000 input tokens and 20,000 output tokens</li>
+    <li>4,096 output tokens per call</li>
+    <li>128 KB per request body</li>
+    <li>the <code>deepseek-v4-flash</code> model only; a request for any other model is refused, not silently downgraded</li>
+  </ul>
+  <p>Enrolment tokens expire seven days after they are minted; the CLI renews them automatically.</p>
+  <p>Circumventing the quota system is prohibited. That includes minting multiple identities to multiply your allowance, evading or outsourcing the proof-of-work, stockpiling tokens, and sharing or distributing tokens to others. The proof-of-work exists to make each identity cost something; treating it as a farming target is abuse of a shared resource that other people paid for.</p>
+
+  <h2>4. DeepSeek's terms apply to you</h2>
+  <p>Your prompts do not run here. They run at DeepSeek, so you must also comply with the <a href="https://cdn.deepseek.com/policies/en-US/deepseek-open-platform-terms-of-service.html">DeepSeek Open Platform Terms of Service</a>. Every request you send carries your anonymous subject id as DeepSeek's <code>user_id</code>, which means content-safety violations are attributable to your token specifically. If DeepSeek's terms and these terms disagree about what you may generate, the stricter one wins.</p>
+
+  <h2>5. Acceptable use</h2>
+  <p>Do not use the service to:</p>
+  <ul>
+    <li>generate content that is illegal, or that violates DeepSeek's terms</li>
+    <li>attempt to overwhelm, probe, or break the gateway or the machines it runs on</li>
+    <li>resell access, meter it to your own users, or otherwise charge anyone for what you got for free</li>
+    <li>serve as backend infrastructure for a product or service; the free tier is for a person evaluating a tool, not for production traffic</li>
+    <li>send anything sensitive or confidential; the <a href="/privacy">privacy page</a> explains what transits third parties</li>
+  </ul>
+  <p>If you have real volume or a real product, bring your own key from <a href="https://platform.deepseek.com">platform.deepseek.com</a>. It is cheap, it is unmetered by us, and it is the intended path.</p>
+
+  <h2>6. What the gateway does to your requests</h2>
+  <p>This is a policy-enforcing proxy, and you should know what the policy touches. The gateway pins the model, clamps the output-token cap, and overwrites any user identity field with your subject id. It refuses request parameters that multiply cost (<code>n</code>, <code>best_of</code> above 1) and server-side tools such as web search, whose cost cannot be metered. Only an allowlisted set of endpoints is proxied at all. Apart from those named fields, your request is forwarded as you sent it.</p>
+
+  <h2>7. Revocation and termination</h2>
+  <p>Any token may be revoked at any time, without notice and without appeal. A revoked token does not heal at midnight. In practice revocation is used against abuse, but nothing here obliges us to justify it: this is a gift, and a gift can be withdrawn.</p>
+
+  <h2>8. Liability</h2>
+  <p>To the maximum extent permitted by applicable law, the operators accept no liability for anything arising from your use of this service: not for downtime, not for lost work, not for model output, not for what DeepSeek does with your prompts. The total value you have paid us is zero, and our liability is capped at the same figure.</p>
+
+  <h2>9. Changes</h2>
+  <p>These terms may change without notice. The current version is always at <a href="/terms">freeseek.1lm.io/terms</a>, and its history lives in the repository like everything else.</p>
+
+  <h2>10. Governing spirit</h2>
+  <p>An honest note in place of the usual jurisdiction clause: we are not going to invent a company address or claim the courts of some carefully chosen state, because there is no company. If something is wrong, open an issue on the <a href="https://github.com/thevibeworks/deepseek-cli/issues">GitHub issue tracker</a> and a human will read it. If you need a counterparty you can hold to a contract, this free tier is not that, and DeepSeek's own platform is where to find one.</p>
+</main>
+<footer class="footer">
+  <p>A community credit pool run by <a href="https://github.com/thevibeworks/deepseek-cli">thevibeworks/deepseek-cli</a>. No uptime guarantee. <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></p>
+</footer>
+</body>
+</html>

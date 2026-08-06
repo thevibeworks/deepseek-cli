@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>freeseek — free DeepSeek API, no key, no account</title>
+<meta name="description" content="Free DeepSeek API access with no key and no account. An OpenAI-compatible community gateway to deepseek-v4-flash — solve a one-second proof-of-work puzzle and start building.">
+<meta name="keywords" content="free deepseek api, deepseek api free, deepseek cli, free deepseek api key, deepseek api without key, ds api, deepseek v4 flash, openai compatible deepseek, deepseek free tier, keyless deepseek">
+<link rel="canonical" href="https://freeseek.1lm.io/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="freeseek">
+<meta property="og:title" content="freeseek — free DeepSeek API, no key, no account">
+<meta property="og:description" content="OpenAI-compatible community gateway to deepseek-v4-flash. No key, no account — a one-second proof-of-work puzzle is the only gate.">
+<meta property="og:url" content="https://freeseek.1lm.io/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="freeseek — free DeepSeek API, no key, no account">
+<meta name="twitter:description" content="OpenAI-compatible community gateway to deepseek-v4-flash. No key, no account — a one-second proof-of-work puzzle is the only gate.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23000'/%3E%3Cpath d='M2 10c2-3 4 3 6 0s4 3 6 0' stroke='%2300c2e9' stroke-width='1.6' fill='none'/%3E%3C/svg%3E">
+<script>(function(){try{var t=localStorage.getItem("theme");if(t==="dark"||t==="light"){document.documentElement.dataset.theme=t;}}catch(e){}})();</script>
+<link rel="stylesheet" href="style.css">
+<script src="app.js" defer></script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@graph":[
+ {"@type":"WebSite","name":"freeseek","url":"https://freeseek.1lm.io/",
+  "description":"Free, keyless, OpenAI-compatible DeepSeek API gateway."},
+ {"@type":"SoftwareApplication","name":"deepseek-cli","applicationCategory":"DeveloperApplication",
+  "operatingSystem":"Linux, macOS, Windows",
+  "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},
+  "url":"https://github.com/thevibeworks/deepseek-cli"}
+]}
+</script>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap masthead-row">
+    <a class="wordmark" href="/">free<span>seek</span></a>
+    <span id="pill" class="pill st-off" aria-live="polite">connecting…</span>
+    <nav class="mastnav" aria-label="site">
+      <a href="/playground">Playground</a>
+      <a href="https://github.com/thevibeworks/deepseek-cli">GitHub</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
+      <button id="theme-toggle" type="button" aria-label="toggle color theme" title="toggle theme">◐</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+<section class="hero" aria-labelledby="hero-h">
+  <h1 id="hero-h">Free DeepSeek API. No key. No account.</h1>
+  <p class="hero-sub">A community-run, OpenAI-compatible gateway to
+  <strong>deepseek-v4-flash</strong>. Your client solves a one-second
+  proof-of-work puzzle — that is the whole signup.</p>
+  <div class="codeblock">
+    <button id="copy-btn" type="button" aria-label="copy commands to clipboard">copy</button>
+<pre id="install-code"><code>go install github.com/thevibeworks/deepseek-cli/cmd/deepseek@latest
+deepseek free
+deepseek chat "why is the sky blue"</code></pre>
+  </div>
+  <p class="hero-note">OpenAI-compatible: point any OpenAI client at base URL
+  <code>https://freeseek.1lm.io</code>. Shared community pool — be kind, no SLA.</p>
+</section>
+
+<section id="dash" aria-labelledby="dash-h">
+  <div class="dash-head">
+    <h2 id="dash-h">Live status</h2>
+    <p id="detail" class="detail">—</p>
+  </div>
+  <p id="offline" class="offline" hidden>cannot reach the gateway — showing last
+  known numbers, retrying…</p>
+  <noscript><p class="offline">Live metrics need JavaScript. The API itself does not.</p></noscript>
+
+  <div class="tiles">
+    <div class="tile"><span class="tile-v" id="t-tps">—</span><span class="tile-l">tokens/sec</span></div>
+    <div class="tile"><span class="tile-v" id="t-rpm">—</span><span class="tile-l">requests/min</span></div>
+    <div class="tile"><span class="tile-v" id="t-live">—</span><span class="tile-l">live users (5m)</span></div>
+    <div class="tile"><span class="tile-v" id="t-flight">—</span><span class="tile-l">in flight</span></div>
+    <div class="tile"><span class="tile-v" id="t-today">—</span><span class="tile-l">users today</span></div>
+    <div class="tile"><span class="tile-v" id="t-uptime">—</span><span class="tile-l">uptime</span></div>
+  </div>
+
+  <figure class="card chart">
+    <figcaption class="chart-cap">
+      <span>output tokens/sec — last 5 minutes</span>
+      <span id="spark-readout"></span>
+    </figcaption>
+    <canvas id="spark" role="img" aria-label="area chart of output tokens per second over the last five minutes"></canvas>
+    <div class="chart-x" aria-hidden="true"><span>5m ago</span><span>now</span></div>
+  </figure>
+
+  <div class="cols">
+    <div class="card">
+      <h3>Budget</h3>
+      <div class="gauge">
+        <div class="gauge-top"><span>today's budget remaining</span><span id="g-day-val">—</span></div>
+        <div class="gauge-track" role="meter" aria-label="today's budget remaining"
+             aria-valuemin="0" aria-valuemax="100" aria-valuetext="unknown" id="g-day">
+          <div class="gauge-fill" id="g-day-fill"></div>
+        </div>
+      </div>
+      <div class="gauge">
+        <div class="gauge-top"><span>credit pool remaining</span><span id="g-pool-val">—</span></div>
+        <div class="gauge-track" role="meter" aria-label="credit pool remaining"
+             aria-valuemin="0" aria-valuemax="100" aria-valuetext="unknown" id="g-pool">
+          <div class="gauge-fill" id="g-pool-fill"></div>
+        </div>
+      </div>
+      <p class="fineprint" id="reset-note">daily budget resets at 00:00 UTC</p>
+    </div>
+
+    <div class="card">
+      <h3>Totals</h3>
+      <table class="totals">
+        <thead><tr><th scope="col"></th><th scope="col">today</th><th scope="col">lifetime</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">requests</th><td id="to-req">—</td><td id="lt-req">—</td></tr>
+          <tr><th scope="row">input tokens</th><td id="to-in">—</td><td id="lt-in">—</td></tr>
+          <tr><th scope="row">output tokens</th><td id="to-out">—</td><td id="lt-out">—</td></tr>
+        </tbody>
+      </table>
+      <p class="fineprint">model <code id="t-model">—</code></p>
+    </div>
+  </div>
+
+  <div class="cols">
+    <div class="card">
+      <h3>Endpoints</h3>
+      <ul class="barlist" id="endpoints"><li class="empty">no data yet</li></ul>
+    </div>
+    <div class="card">
+      <h3>Countries</h3>
+      <ul class="barlist" id="countries"><li class="empty">no data yet</li></ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Top users today</h3>
+    <table class="subjects">
+      <caption>anonymous ids — the gateway never sees names, emails or accounts</caption>
+      <thead><tr>
+        <th scope="col">anonymous id</th><th scope="col">requests</th>
+        <th scope="col">input tokens</th><th scope="col">output tokens</th>
+      </tr></thead>
+      <tbody id="subjects-body"><tr><td colspan="4" class="empty">no data yet</td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="cols">
+    <div class="card">
+      <h3>Key pool</h3>
+      <p class="keypool"><span id="kp-line">— active · — retired · — total · — donated</span></p>
+      <p class="fineprint">Running on donated DeepSeek API keys. Want to donate one?
+      <a href="https://github.com/thevibeworks/deepseek-cli/issues/new">Open an issue</a>
+      and we'll arrange a private channel — keys are never accepted through any
+      web form, including this page.</p>
+    </div>
+    <div class="card">
+      <h3>System</h3>
+      <ul class="sysline">
+        <li>load <span id="sys-load">—</span></li>
+        <li>heap <span id="sys-heap">—</span></li>
+        <li>goroutines <span id="sys-goroutines">—</span></li>
+        <li>cpus <span id="sys-cpu">—</span></li>
+        <li>go <span id="sys-go">—</span></li>
+        <li>build <span id="sys-version">—</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="how" aria-labelledby="how-h">
+  <h2 id="how-h">How it works</h2>
+  <ol class="steps">
+    <li><strong>Proof of work.</strong> Your client burns about one second of CPU
+    on a small puzzle. No email, no signup, no tracking — the puzzle is the gate.</li>
+    <li><strong>Token.</strong> The gateway hands back a short-lived anonymous
+    token tied to nothing but that puzzle solution.</li>
+    <li><strong>Metered proxy.</strong> Requests are counted against fair-use
+    limits and forwarded to DeepSeek on pooled keys.</li>
+  </ol>
+  <h3>Per-user daily limits</h3>
+  <ul class="limits">
+    <li><span id="lim-req">30</span> requests</li>
+    <li><span id="lim-in">60k</span> input tokens</li>
+    <li><span id="lim-out">20k</span> output tokens</li>
+  </ul>
+</section>
+
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <nav aria-label="footer">
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
+      <a href="https://github.com/thevibeworks/deepseek-cli">GitHub</a>
+      <a href="https://thevibeworks.github.io/deepseek-cli/">Docs</a>
+    </nav>
+    <p>freeseek is a community pool run on donated credit. Best effort, no
+    uptime guarantee — if it matters, bring your own key.</p>
+  </div>
+</footer>
+
+</body>
+</html>
