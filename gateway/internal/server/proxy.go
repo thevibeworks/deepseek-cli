@@ -56,6 +56,35 @@ func (s *Server) handleProxy(w http.ResponseWriter, r *http.Request) {
 	}
 	subject := tok.Subject.String()
 
+	// The subject's own valves, independent of the address ones: a token
+	// used from many addresses and many tokens behind one address are
+	// different attacks.
+	if ok, wait := s.subjLimiter.Allow(subject); !ok {
+		retryAfter(w, wait)
+		writeError(w, http.StatusTooManyRequests, typeQuota,
+			fmt.Sprintf("this token is sending too fast — retry in %s", wait.Round(time.Second)))
+		return
+	}
+	if !s.acquireSubject(subject) {
+		w.Header().Set("Retry-After", "2")
+		writeError(w, http.StatusTooManyRequests, typeQuota,
+			fmt.Sprintf("this token already has %d request(s) in flight — wait for one to finish", s.cfg.SubjectInflight))
+		return
+	}
+	defer s.releaseSubject(subject)
+
+	// The model list barely changes and is deliberately uncharged, so it
+	// is answered from a short cache when possible — otherwise the one
+	// free endpoint would burn in-flight slots and upstream round trips.
+	if route.Name == "models" {
+		if body, ok := s.cachedModels(); ok {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write(body)
+			return
+		}
+	}
+
 	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, s.cfg.MaxBodyBytes))
 	if err != nil {
 		writeError(w, http.StatusRequestEntityTooLarge, typeRejected, fmt.Sprintf(
@@ -82,8 +111,21 @@ func (s *Server) handleProxy(w http.ResponseWriter, r *http.Request) {
 	// `deepseek status` free and safe in a loop against the free tier,
 	// exactly as it is against the real API.
 	billable := route.Format != policy.FormatNone
+	var reserve float64
 	if billable {
-		if err := s.ledger.Admit(subject); err != nil {
+		if s.upstreamDry.Load() {
+			// DeepSeek says the account is unusable. The local ledger's
+			// opinion is irrelevant; honest 402 beats a confusing relay of
+			// upstream's insufficient-balance error.
+			s.writeLimit(w, &quota.LimitError{Reason: quota.ReasonCredits})
+			return
+		}
+		// The worst this request could cost is reserved before it is
+		// forwarded. This is what makes the budget a ceiling: without the
+		// reservation, every in-flight request is unbilled and the breaker
+		// only notices after the money is spent.
+		reserve = meter.Estimate(decision.Model, len(decision.Body), decision.MaxTokens)
+		if err := s.ledger.Admit(subject, reserve); err != nil {
 			s.writeLimit(w, err)
 			return
 		}
@@ -94,7 +136,7 @@ func (s *Server) handleProxy(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.acquire(r); err != nil {
 		if billable {
-			s.ledger.Refund(subject)
+			s.ledger.Refund(subject, reserve)
 		}
 		w.Header().Set("Retry-After", "5")
 		writeError(w, http.StatusServiceUnavailable, typeQuota,
@@ -103,7 +145,7 @@ func (s *Server) handleProxy(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { <-s.inflight }()
 
-	s.forward(w, r, route, decision, subject, billable)
+	s.forward(w, r, route, decision, subject, billable, reserve)
 }
 
 // acquire takes an in-flight slot, or gives up.
@@ -123,7 +165,7 @@ func (s *Server) acquire(r *http.Request) error {
 	}
 }
 
-func (s *Server) forward(w http.ResponseWriter, r *http.Request, route policy.Route, d *policy.Decision, subject string, billable bool) {
+func (s *Server) forward(w http.ResponseWriter, r *http.Request, route policy.Route, d *policy.Decision, subject string, billable bool, reserve float64) {
 	url := strings.TrimRight(s.cfg.UpstreamBaseURL, "/") + route.Upstream
 
 	var payload io.Reader
@@ -133,7 +175,7 @@ func (s *Server) forward(w http.ResponseWriter, r *http.Request, route policy.Ro
 	up, err := http.NewRequestWithContext(r.Context(), route.Method, url, payload)
 	if err != nil {
 		if billable {
-			s.ledger.Refund(subject)
+			s.ledger.Refund(subject, reserve)
 		}
 		writeError(w, http.StatusInternalServerError, typeInternal, "could not build the upstream request")
 		return
@@ -162,13 +204,23 @@ func (s *Server) forward(w http.ResponseWriter, r *http.Request, route policy.Ro
 
 	resp, err := s.http.Do(up)
 	if err != nil {
+		if r.Context().Err() != nil {
+			// The caller hung up before upstream answered. The prompt very
+			// likely reached DeepSeek, and whether they bill the aborted
+			// prefill is undocumented — so this is charged as an input-side
+			// estimate rather than refunded. Refunding here was a drain: an
+			// attacker could send-and-abort in a loop and the ledger would
+			// record nothing while our key paid for every prefill.
+			if billable {
+				cost := meter.Cost(d.Model, meter.Usage{InputTokens: len(d.Body) + 1})
+				s.ledger.Charge(subject, route.Name, d.Model, len(d.Body)/4+1, 0, 0, cost, reserve, true)
+			}
+			return // there is nobody to tell
+		}
 		// Never reached the model, so it cost nothing and the caller keeps
 		// their request allowance.
 		if billable {
-			s.ledger.Refund(subject)
-		}
-		if r.Context().Err() != nil {
-			return // the caller hung up; there is nobody to tell
+			s.ledger.Refund(subject, reserve)
 		}
 		writeError(w, http.StatusBadGateway, typeUpstream, "could not reach DeepSeek: "+err.Error())
 		return
@@ -221,23 +273,27 @@ func (s *Server) forward(w http.ResponseWriter, r *http.Request, route policy.Ro
 
 	if !usage.Found {
 		if upstreamFault || resp.StatusCode >= 400 {
-			// No tokens were generated. Give the request allowance back
-			// only when the fault was not the caller's.
 			if upstreamFault {
-				s.ledger.Refund(subject)
+				// No tokens were generated and the fault was not the
+				// caller's: give everything back.
+				s.ledger.Refund(subject, reserve)
+			} else {
+				// The caller's own 4xx keeps its request debit, but the
+				// money reserved for it goes back to the pool.
+				s.ledger.Release(reserve)
 			}
 			return
 		}
-		// A 2xx we could not read. Charge the most it could have cost:
-		// unbillable must never mean free, or it becomes the way in.
-		cost := meter.Estimate(model, len(d.Body), d.MaxTokens)
-		s.ledger.Charge(subject, route.Name, model, len(d.Body)/4+1, 0, d.MaxTokens, cost, true)
+		// A 2xx we could not read. Charge the whole reservation — the most
+		// it could have cost. Unbillable must never mean free, or it
+		// becomes the way in.
+		s.ledger.Charge(subject, route.Name, model, len(d.Body)/4+1, 0, d.MaxTokens, reserve, reserve, true)
 		return
 	}
 
 	s.ledger.Charge(subject, route.Name, model,
 		usage.InputTokens, usage.CacheHitTokens, usage.OutputTokens,
-		meter.Cost(model, usage), false)
+		meter.Cost(model, usage), reserve, false)
 }
 
 // relayModels forwards the model list, minus the models this gateway
@@ -281,10 +337,33 @@ func (s *Server) relayModels(w http.ResponseWriter, resp *http.Response) {
 	out, err := json.Marshal(list)
 	if err != nil {
 		out = raw
+	} else {
+		s.storeModels(out)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(out)
+}
+
+// modelsCacheTTL is short on purpose: /models doubles as `deepseek
+// status`'s reachability probe, and a long cache would keep answering
+// "up" after DeepSeek went down.
+const modelsCacheTTL = 30 * time.Second
+
+func (s *Server) cachedModels() ([]byte, bool) {
+	s.modelsMu.Lock()
+	defer s.modelsMu.Unlock()
+	if s.modelsBody == nil || time.Since(s.modelsAt) > modelsCacheTTL {
+		return nil, false
+	}
+	return s.modelsBody, true
+}
+
+func (s *Server) storeModels(body []byte) {
+	s.modelsMu.Lock()
+	s.modelsBody = body
+	s.modelsAt = time.Now()
+	s.modelsMu.Unlock()
 }
 
 // relay copies the upstream body to the client and to the meter,
@@ -354,6 +433,12 @@ func (s *Server) writeLimit(w http.ResponseWriter, err error) {
 	case quota.ReasonRevoked:
 		writeError(w, http.StatusForbidden, typeAuth,
 			"this free-tier token has been revoked")
+	case quota.ReasonUnavailable:
+		// The ledger cannot record spend, so nothing is allowed to spend.
+		// A 503 is honest: this is our outage, not the caller's quota.
+		w.Header().Set("Retry-After", "30")
+		writeError(w, http.StatusServiceUnavailable, typeInternal,
+			"the free tier is temporarily unavailable; retry shortly")
 	case quota.ReasonDailyBudget:
 		retryAfter(w, lim.RetryAfter(time.Now()))
 		writeError(w, http.StatusTooManyRequests, typeQuota,

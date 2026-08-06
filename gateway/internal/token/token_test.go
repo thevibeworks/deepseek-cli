@@ -109,7 +109,7 @@ func TestTokenIsBoundToItsSecret(t *testing.T) {
 // token — minting an identity with no proof of work at all.
 func TestChallengeCannotBePresentedAsAToken(t *testing.T) {
 	s := testSigner(t)
-	c, err := s.NewChallenge(8)
+	c, err := s.NewChallenge(8, Bind("test"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +124,7 @@ func TestChallengeCannotBePresentedAsAToken(t *testing.T) {
 
 func TestChallengeCarriesItsOwnDifficulty(t *testing.T) {
 	s := testSigner(t)
-	c, err := s.NewChallenge(14)
+	c, err := s.NewChallenge(14, Bind("test"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +144,7 @@ func TestChallengeCarriesItsOwnDifficulty(t *testing.T) {
 // cannot ask for an easier puzzle than the one it was given.
 func TestChallengeDifficultyCannotBeEdited(t *testing.T) {
 	s := testSigner(t)
-	c, _ := s.NewChallenge(20)
+	c, _ := s.NewChallenge(20, Bind("test"))
 
 	dot := strings.LastIndex(c.String, ".")
 	forged := flip(c.String[:dot]) + "." + c.String[dot+1:]
@@ -158,7 +158,7 @@ func TestChallengeExpires(t *testing.T) {
 	now := time.Now()
 	s.SetClock(func() time.Time { return now })
 
-	c, _ := s.NewChallenge(8)
+	c, _ := s.NewChallenge(8, Bind("test"))
 	if _, err := s.ParseChallenge(c.String, time.Minute); err != nil {
 		t.Fatalf("fresh challenge rejected: %v", err)
 	}
@@ -171,7 +171,7 @@ func TestChallengeExpires(t *testing.T) {
 
 func TestProofOfWork(t *testing.T) {
 	s := testSigner(t)
-	c, _ := s.NewChallenge(12)
+	c, _ := s.NewChallenge(12, Bind("test"))
 
 	nonce, err := Solve(c.String, c.Difficulty, 1<<22)
 	if err != nil {
@@ -182,7 +182,7 @@ func TestProofOfWork(t *testing.T) {
 	}
 	// A solution to one challenge must not satisfy another, or one proof
 	// of work would mint an unlimited supply.
-	other, _ := s.NewChallenge(12)
+	other, _ := s.NewChallenge(12, Bind("test"))
 	if err := Verify(other.String, other.Difficulty, nonce); err == nil {
 		t.Error("a nonce solved for one challenge also solved another")
 	}
@@ -250,7 +250,7 @@ func TestLeadingZeroBits(t *testing.T) {
 
 func TestNewChallengeRefusesAbsurdDifficulty(t *testing.T) {
 	s := testSigner(t)
-	if _, err := s.NewChallenge(64); err == nil {
+	if _, err := s.NewChallenge(64, Bind("test")); err == nil {
 		t.Fatal("issued a 64-bit challenge; nobody could ever solve it")
 	}
 }

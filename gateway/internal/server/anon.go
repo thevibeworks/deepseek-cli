@@ -8,8 +8,22 @@ import (
 	"time"
 
 	"github.com/thevibeworks/deepseek-cli/gateway/internal/meter"
+	"github.com/thevibeworks/deepseek-cli/gateway/internal/mint"
 	"github.com/thevibeworks/deepseek-cli/gateway/internal/quota"
 )
+
+// limitMeta throttles the read-only endpoints — info, quota, balance.
+// They cost no money, but unthrottled they are still free CPU and a
+// probe surface, and every other endpoint already pays a toll.
+func (s *Server) limitMeta(w http.ResponseWriter, r *http.Request) bool {
+	ok, wait := s.limiter.Allow("meta:" + mint.RequestBucket(s.clientIP(r)))
+	if !ok {
+		retryAfter(w, wait)
+		writeError(w, http.StatusTooManyRequests, typeQuota,
+			fmt.Sprintf("slow down — retry in %s", wait.Round(time.Second)))
+	}
+	return ok
+}
 
 // challengeTTL must match the value the mint was built with; it is
 // echoed to the client so a solver knows how long it has.
@@ -32,7 +46,10 @@ type ChallengeResponse struct {
 
 func (s *Server) handleChallenge(w http.ResponseWriter, r *http.Request) {
 	ip := s.clientIP(r)
-	if ok, wait := s.limiter.Allow("mint:" + ip); !ok {
+	// Throttled by the same /48 bucket that difficulty escalates on. Keyed
+	// on the raw address, one IPv6 /48 would be 65,536 independent
+	// throttles — the exact fan-out MintBucket exists to prevent.
+	if ok, wait := s.limiter.Allow("mint:" + mint.MintBucket(ip)); !ok {
 		retryAfter(w, wait)
 		writeError(w, http.StatusTooManyRequests, typeQuota,
 			fmt.Sprintf("too many mint attempts; retry in %s", wait.Round(time.Second)))
@@ -73,7 +90,7 @@ type TokenResponse struct {
 
 func (s *Server) handleToken(w http.ResponseWriter, r *http.Request) {
 	ip := s.clientIP(r)
-	if ok, wait := s.limiter.Allow("mint:" + ip); !ok {
+	if ok, wait := s.limiter.Allow("mint:" + mint.MintBucket(ip)); !ok {
 		retryAfter(w, wait)
 		writeError(w, http.StatusTooManyRequests, typeQuota,
 			fmt.Sprintf("too many mint attempts; retry in %s", wait.Round(time.Second)))
@@ -105,6 +122,9 @@ func (s *Server) handleToken(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleQuota(w http.ResponseWriter, r *http.Request) {
+	if !s.limitMeta(w, r) {
+		return
+	}
 	t, err := s.authenticate(r)
 	if err != nil {
 		writeError(w, http.StatusUnauthorized, typeAuth, err.Error())
@@ -140,6 +160,9 @@ type balanceInfo struct {
 }
 
 func (s *Server) handleBalance(w http.ResponseWriter, r *http.Request) {
+	if !s.limitMeta(w, r) {
+		return
+	}
 	t, err := s.authenticate(r)
 	if err != nil {
 		writeError(w, http.StatusUnauthorized, typeAuth, err.Error())

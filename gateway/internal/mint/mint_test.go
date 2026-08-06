@@ -105,7 +105,7 @@ func TestDifficultyEscalatesPerAddress(t *testing.T) {
 	if base != 4 {
 		t.Fatalf("first challenge difficulty = %d, want the base 4", base)
 	}
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 2; i++ {
 		mintOne(t, m, ip)
 	}
 	if got := m.Difficulty(ip); got != base {
@@ -129,10 +129,68 @@ func TestDifficultyIsCapped(t *testing.T) {
 	m := newTestMint(t, fastConfig())
 	const ip = "203.0.113.7"
 	for i := 0; i < 100; i++ {
-		m.mints[MintBucket(ip)] = i
+		m.issued[MintBucket(ip)] = i
 		if got := m.Difficulty(ip); got > 4+maxEscalation {
 			t.Fatalf("difficulty reached %d after %d mints; a busy NAT would be locked out for good", got, i)
 		}
+	}
+}
+
+// The escalation must price the challenge you are ASKING for, not the
+// ones you have redeemed. Otherwise an attacker collects a batch of
+// base-difficulty challenges first and solves them at leisure.
+func TestBatchedChallengesEscalate(t *testing.T) {
+	m := newTestMint(t, fastConfig())
+	const ip = "203.0.113.7"
+
+	var last uint8
+	for i := 0; i < 4; i++ {
+		c, err := m.Challenge(ip)
+		if err != nil {
+			t.Fatal(err)
+		}
+		last = c.Difficulty
+	}
+	if last <= 4 {
+		t.Fatalf("fourth unredeemed challenge still at difficulty %d; batching bypasses escalation", last)
+	}
+}
+
+// A challenge issued to one address must not be redeemable from another,
+// or one cheap address farms base-difficulty challenges for a fleet.
+func TestChallengeIsBoundToItsAddress(t *testing.T) {
+	m := newTestMint(t, fastConfig())
+	c, _ := m.Challenge("203.0.113.7")
+	nonce, _ := token.Solve(c.String, c.Difficulty, 1<<24)
+
+	if _, err := m.Redeem("198.51.100.9", c.String, nonce); err == nil {
+		t.Fatal("a challenge issued to 203.0.113.7 was redeemed from 198.51.100.9")
+	}
+	if _, err := m.Redeem("203.0.113.7", c.String, nonce); err != nil {
+		t.Fatalf("the issuing address could not redeem its own challenge: %v", err)
+	}
+}
+
+// A restart must not be a difficulty amnesty.
+func TestIssuanceCountsSurviveRestart(t *testing.T) {
+	cfg := fastConfig()
+	cfg.StatePath = t.TempDir() + "/mint.json"
+	m := newTestMint(t, cfg)
+	const ip = "203.0.113.7"
+
+	for i := 0; i < 6; i++ {
+		if _, err := m.Challenge(ip); err != nil {
+			t.Fatal(err)
+		}
+	}
+	escalated := m.Difficulty(ip)
+	if escalated <= 4 {
+		t.Fatal("difficulty did not escalate before the restart")
+	}
+
+	m2 := newTestMint(t, cfg)
+	if got := m2.Difficulty(ip); got != escalated {
+		t.Errorf("after restart difficulty = %d, want %d; a deploy resets escalation", got, escalated)
 	}
 }
 

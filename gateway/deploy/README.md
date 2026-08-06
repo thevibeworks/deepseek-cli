@@ -52,6 +52,12 @@ So: bind to loopback, terminate TLS in front, and set the flag. Caddy:
 ```caddyfile
 free.example.com {
 	reverse_proxy 127.0.0.1:8787 {
+		# OVERWRITE the forwarded address. Caddy's default is to APPEND
+		# to whatever X-Forwarded-For the client sent — and with
+		# TRUST_PROXY=1 the gateway reads the leftmost entry, which
+		# would be the client's own invention. One line closes it.
+		header_up X-Forwarded-For {client_ip}
+
 		# The API holds a connection for up to ten minutes before
 		# inference starts. A shorter timeout here turns a normal slow
 		# start into a failed request.
@@ -64,11 +70,17 @@ free.example.com {
 }
 ```
 
-`flush_interval -1` is not optional. Without it Caddy buffers the
-response and every streamed answer arrives in one lump at the end.
+`header_up X-Forwarded-For {client_ip}` is not optional: without it,
+anyone who can set a header mints identities from addresses of their
+choosing. `flush_interval -1` is not optional either — without it Caddy
+buffers the response and every streamed answer arrives in one lump at
+the end.
 
-nginx wants `proxy_buffering off;` and `proxy_read_timeout 900s;` for the
-same two reasons.
+nginx wants `proxy_set_header X-Forwarded-For $remote_addr;` (overwrite,
+never append), `proxy_buffering off;` and `proxy_read_timeout 900s;` for
+the same reasons. It also inherits an access log by default —
+`access_log off;` in the vhost, or the layer in front of the gateway
+breaks the gateway's own "no IPs logged" promise.
 
 ## What has to be backed up
 

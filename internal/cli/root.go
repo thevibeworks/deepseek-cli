@@ -88,7 +88,34 @@ func (o *Options) resolveAuth() (key, base string, free *deepseek.FreeTier, err 
 	if !ok {
 		return "", "", nil, err
 	}
+	if time.Since(f.Enrolled) > freeRenewAfter {
+		if renewed := o.renewFree(f); renewed != nil {
+			f = renewed
+		}
+	}
 	return f.Token, f.BaseURL, f, nil
+}
+
+// freeRenewAfter is the age at which an enrolment is quietly renewed.
+// The hosted gateway expires tokens after 7 days; renewing at 6 means a
+// regular user never sees the expiry error at all.
+const freeRenewAfter = 6 * 24 * time.Hour
+
+// renewFree re-runs the enrolment — about a second of CPU — and saves
+// the fresh token. Failure is not an error: the old token is kept, and
+// if it has actually expired the gateway's own 401 says what to do.
+func (o *Options) renewFree(old *deepseek.FreeTier) *deepseek.FreeTier {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	f, err := deepseek.NewFreeGateway(old.BaseURL, 30*time.Second).Enrol(ctx, nil)
+	if err != nil {
+		return nil
+	}
+	o.verbosef("free-tier enrolment renewed (subject %s)", f.Subject)
+	if err := f.Save(); err != nil {
+		o.verbosef("could not save the renewed enrolment: %v", err)
+	}
+	return f
 }
 
 // usingFree reports whether this run would go through the free tier,

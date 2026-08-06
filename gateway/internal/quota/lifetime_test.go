@@ -171,7 +171,7 @@ func TestCreditPoolStaysExhaustedAcrossARestart(t *testing.T) {
 	l, done := open(t, dir, poolLimits())
 	defer done()
 
-	err := l.Admit("a-brand-new-subject")
+	err := l.Admit("a-brand-new-subject", 0)
 	if err == nil {
 		t.Fatal("admitted a request with the credit pool already empty")
 	}

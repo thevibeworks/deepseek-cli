@@ -127,11 +127,16 @@ survive a bad day and cannot survive a bad invoice.
 - **Trap in 2:** PoW difficulty tuned for a laptop is nothing to a server.
   → Difficulty escalates per address bucket: the fourth mint from one
   address today costs 4x the first, the eighth costs 1024x. No ASN
-  database, no blocklist, self-throttling.
+  database, no blocklist, self-throttling. Escalation prices the
+  challenge being *issued*, not the redemption — counted at redemption,
+  a batch of cheap challenges collected up front would bypass the whole
+  ladder — and each challenge is signed to the bucket it was issued to.
 - **Trap in the proxy:** metering happens *after* the model runs, so a
-  single admitted request can overshoot. → Bounded by clamping
-  `max_tokens` and request size, so the worst single request is under a
-  cent, and by capping in-flight requests.
+  single admitted request could overshoot. → The worst case a request
+  could cost is *reserved* against both budgets at admission and
+  reconciled to the real charge when it settles, so the budgets are
+  ceilings, not horizons. Clamped `max_tokens` and request size keep the
+  worst case small enough that reservations do not choke concurrency.
 - **Trap in "no signup":** users may not realise their prompts transit a
   third party. → `deepseek free` prints exactly what leaves the machine
   and where it goes, before it enrols. Consent is the act of running it.
@@ -204,9 +209,16 @@ a streaming request to be able to bill it — it tees the stream, passes
 every byte through untouched, and parses the tail. That removes the one
 compromise this design would otherwise have had.
 
-If parsing fails anyway, the request is charged
-`max_tokens × output_rate + body_bytes/4 × input_rate` — deliberately
-above what it could have cost. Unbillable must never mean free.
+If parsing fails anyway, the request is charged its full reservation —
+one input token per body byte plus `max_tokens` and a chain-of-thought
+allowance of output, priced deliberately above anything it could have
+cost. Unbillable must never mean free. The same figure is what Admit
+reserves, which is why the two cannot diverge.
+
+The journal is the budget's memory, so it fails closed: if a debit
+cannot be written and fsync'd, the gateway stops admitting requests
+until it can (and retries the journal on each refused admit, so a
+recovered disk heals without a restart).
 
 ### State
 
@@ -236,6 +248,12 @@ subject doubles as the DeepSeek `user_id` (base64url of 16 random bytes
 is already inside their `[a-zA-Z0-9\-_]+` rule). Quota counters are keyed
 by subject and expire at UTC midnight.
 
+Tokens themselves expire after `DSGATE_TOKEN_TTL_DAYS` (7 by default),
+enforced against the signed `issued` timestamp — otherwise identities
+minted cheaply over months could be stockpiled and spent together. The
+CLI renews its enrolment quietly at day 6, so an honest user never sees
+the expiry.
+
 ### The mint
 
 1. `POST /v1/anon/challenge` → an HMAC-signed challenge carrying its own
@@ -244,10 +262,13 @@ by subject and expire at UTC midnight.
    leading zero bits.
 3. `POST /v1/anon/token` → verified, marked single-use, token issued.
 
-Difficulty is chosen server-side from how many tokens that address
-bucket has already minted today, and signed into the challenge so the
-client cannot argue. The first mint of the day is about a second of one
-core; the eighth is a quarter of an hour.
+Difficulty is chosen server-side from how many challenges that address
+bucket has already been *issued* today — counted at issuance and
+persisted across restarts, so neither batching challenges nor a deploy
+resets the ladder — and signed into the challenge along with a hash of
+the issuing bucket, so it can only be redeemed from where it was asked
+for. The first mint of the day is about a second of one core; the eighth
+is a quarter of an hour.
 
 Minting buckets IPv4 per address and IPv6 per **/48** — the block a site
 is delegated. Bucketing IPv6 per /64 would let anyone with an ordinary
@@ -285,7 +306,11 @@ dollar.**
 | `DSGATE_TOTAL_BUDGET_USD` | 20.00 | the credit pool; when it empties, the service says so |
 | `DSGATE_MINT_DAILY_PER_IP` | 3 | beyond this, difficulty escalates rather than refusing |
 | `DSGATE_POW_BITS` | 20 | ~1s on one core; 22 if we get farmed |
-| `DSGATE_MAX_INFLIGHT` | 8 | bounds overshoot and protects a 1 GiB box |
+| `DSGATE_MAX_INFLIGHT` | 8 | protects a 1 GiB box; spend is bounded by reservations |
+| `DSGATE_SUBJECT_REQUESTS_PER_MINUTE` | 6 | one token cannot dominate the minute |
+| `DSGATE_SUBJECT_INFLIGHT` | 2 | one token cannot park the whole service |
+| `DSGATE_TOKEN_TTL_DAYS` | 7 | identities age out instead of accumulating |
+| `DSGATE_BALANCE_CHECK_MINUTES` | 15 | the ledger's "we have credit" is checked against the real account |
 
 **Free tier is flash only.** Pro is 3x the price and the request is
 *rejected*, not silently downgraded — a user who asked for pro and got

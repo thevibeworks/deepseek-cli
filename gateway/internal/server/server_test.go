@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -92,14 +93,17 @@ func newHarness(t *testing.T, up *upstream, tune func(*Config, *quota.Limits)) *
 		TotalBudgetUSD:    10,
 	}
 	cfg := Config{
-		UpstreamBaseURL:   up.server.URL,
-		UpstreamKey:       upstreamKey,
-		Model:             "deepseek-v4-flash",
-		MaxBodyBytes:      4096,
-		MaxTokens:         256,
-		MaxInflight:       4,
-		RequestsPerMinute: 1000,
-		Origins:           []string{"https://deepseek-cli.example"},
+		UpstreamBaseURL:          up.server.URL,
+		UpstreamKey:              upstreamKey,
+		Model:                    "deepseek-v4-flash",
+		MaxBodyBytes:             4096,
+		MaxTokens:                256,
+		MaxInflight:              4,
+		RequestsPerMinute:        1000,
+		SubjectRequestsPerMinute: 1000,
+		SubjectInflight:          4,
+		TokenTTL:                 7 * 24 * time.Hour,
+		Origins:                  []string{"https://deepseek-cli.example"},
 	}
 	if tune != nil {
 		tune(&cfg, &limits)
@@ -758,4 +762,142 @@ func subjectOf(t *testing.T, raw string) string {
 		t.Fatal(err)
 	}
 	return tok.Subject.String()
+}
+
+// One token must not be able to park the whole service behind the global
+// in-flight cap.
+func TestSubjectConcurrencyIsCapped(t *testing.T) {
+	release := make(chan struct{})
+	up := newUpstream(t, func(w http.ResponseWriter, r *http.Request) {
+		<-release
+		io.WriteString(w, chatReply(10, 10))
+	})
+	defer close(release)
+	h := newHarness(t, up, func(cfg *Config, lim *quota.Limits) {
+		cfg.SubjectInflight = 1
+		lim.DailyRequests = 100
+	})
+	tok := h.enrol(t)
+
+	started := make(chan *http.Response, 1)
+	go func() {
+		resp := h.do(t, "POST", "/chat/completions", tok, `{"messages":[]}`)
+		started <- resp
+	}()
+
+	// Wait until the first request holds the subject's only slot.
+	deadline := time.Now().Add(4 * time.Second)
+	for h.upstream.count() == 0 {
+		if time.Now().After(deadline) {
+			t.Fatal("the first request never reached upstream")
+		}
+		time.Sleep(time.Millisecond)
+	}
+
+	resp := h.do(t, "POST", "/chat/completions", tok, `{"messages":[]}`)
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusTooManyRequests {
+		t.Fatalf("second concurrent request: HTTP %d, want 429", resp.StatusCode)
+	}
+
+	release <- struct{}{}
+	(<-started).Body.Close()
+	h.settle(t)
+
+	// With the slot free again the same token proceeds.
+	go func() { release <- struct{}{} }()
+	resp2 := h.do(t, "POST", "/chat/completions", tok, `{"messages":[]}`)
+	defer resp2.Body.Close()
+	if resp2.StatusCode != 200 {
+		t.Errorf("request after the slot freed: HTTP %d, want 200", resp2.StatusCode)
+	}
+}
+
+// A token past its TTL is a 401 pointing at re-enrolment, not a working
+// credential. Stockpiled identities must age out.
+func TestExpiredTokenIsRefused(t *testing.T) {
+	up := newUpstream(t, func(w http.ResponseWriter, r *http.Request) {
+		io.WriteString(w, chatReply(10, 10))
+	})
+	h := newHarness(t, up, func(cfg *Config, lim *quota.Limits) {
+		cfg.TokenTTL = time.Millisecond
+	})
+	tok := h.enrol(t)
+	time.Sleep(5 * time.Millisecond)
+
+	resp := h.do(t, "POST", "/chat/completions", tok, `{"messages":[]}`)
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("expired token: HTTP %d, want 401", resp.StatusCode)
+	}
+	if e := decodeError(t, resp); !strings.Contains(e.Message, "deepseek free") {
+		t.Errorf("the error does not say how to recover: %q", e.Message)
+	}
+	if up.count() != 0 {
+		t.Error("an expired token's request reached upstream")
+	}
+}
+
+// The second /models inside the cache window is answered locally: the
+// endpoint is deliberately uncharged, so it must not cost upstream trips.
+func TestModelsIsCached(t *testing.T) {
+	up := newUpstream(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		io.WriteString(w, `{"object":"list","data":[{"id":"deepseek-v4-flash","object":"model"}]}`)
+	})
+	h := newHarness(t, up, nil)
+	tok := h.enrol(t)
+
+	for i := 0; i < 3; i++ {
+		resp := h.do(t, "GET", "/models", tok, "")
+		raw, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode != 200 || !strings.Contains(string(raw), "deepseek-v4-flash") {
+			t.Fatalf("models call %d: HTTP %d: %s", i, resp.StatusCode, raw)
+		}
+	}
+	if got := up.count(); got != 1 {
+		t.Errorf("3 /models calls made %d upstream trips, want 1", got)
+	}
+}
+
+// When DeepSeek itself reports the account unusable, the gateway must
+// say 402 — not relay a confusing upstream error while its own ledger
+// still claims there is credit.
+func TestUpstreamDryBalanceStopsAdmissions(t *testing.T) {
+	up := newUpstream(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/user/balance" {
+			w.Header().Set("Content-Type", "application/json")
+			io.WriteString(w, `{"is_available":false,"balance_infos":[]}`)
+			return
+		}
+		io.WriteString(w, chatReply(10, 10))
+	})
+	h := newHarness(t, up, nil)
+	tok := h.enrol(t)
+
+	h.checkBalance(context.Background())
+
+	resp := h.do(t, "POST", "/chat/completions", tok, `{"messages":[]}`)
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusPaymentRequired {
+		t.Fatalf("HTTP %d with a dry upstream account, want 402", resp.StatusCode)
+	}
+
+	// And it heals when the account is topped up.
+	up.mu.Lock()
+	up.handler = func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/user/balance" {
+			io.WriteString(w, `{"is_available":true,"balance_infos":[]}`)
+			return
+		}
+		io.WriteString(w, chatReply(10, 10))
+	}
+	up.mu.Unlock()
+	h.checkBalance(context.Background())
+	resp2 := h.do(t, "POST", "/chat/completions", tok, `{"messages":[]}`)
+	defer resp2.Body.Close()
+	if resp2.StatusCode != 200 {
+		t.Errorf("HTTP %d after the account recovered, want 200", resp2.StatusCode)
+	}
 }

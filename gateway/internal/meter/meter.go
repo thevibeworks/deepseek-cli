@@ -75,21 +75,33 @@ func Cost(model string, u Usage) float64 {
 		float64(u.OutputTokens)*p.Output/perMillion
 }
 
-// Estimate is the pessimistic charge for a request whose usage could not
-// be read: the most it could possibly have cost, given the caps the
-// gateway already enforced on it.
+// Estimate is the admission-time ceiling on what a request could cost,
+// and the pessimistic charge when its usage could not be read.
 //
-// Four bytes per token under-counts nothing in practice — DeepSeek's
-// tokenizer averages closer to 3.3 bytes for English and more for code —
-// but this is a ceiling by construction anyway, because a request cannot
-// have produced more than maxTokens of output.
+// It has to be a true upper bound, because the budget breaker reserves it
+// before the request is forwarded — an estimate a request could exceed
+// would turn the hard ceiling back into a horizon. So:
+//
+//   - Input is one token per byte. DeepSeek's tokenizer averages 3–4
+//     bytes per token, but adversarial text can approach one, and it
+//     cannot go below: a token never encodes less than a byte.
+//   - Output is maxTokens plus a reasoning allowance. Thinking is on by
+//     default upstream, and DeepSeek does not document that reasoning
+//     tokens respect max_tokens — they are billed as output either way,
+//     so the bound assumes they do not.
 func Estimate(model string, requestBytes, maxTokens int) float64 {
 	return Cost(model, Usage{
-		InputTokens:  requestBytes/4 + 1,
-		OutputTokens: maxTokens,
+		InputTokens:  requestBytes + 1,
+		OutputTokens: maxTokens + reasoningAllowance,
 		Found:        false,
 	})
 }
+
+// reasoningAllowance is the output headroom reserved for chain-of-thought
+// tokens on top of the caller's visible max_tokens. 32k covers the
+// longest thinking runs measured live; at flash rates it prices at under
+// a cent, so over-reserving costs headroom, not money.
+const reasoningAllowance = 32 << 10
 
 // rawUsage is permissive on purpose: it decodes the usage object of every
 // format at once, using pointers so "absent" and "zero" stay distinct.

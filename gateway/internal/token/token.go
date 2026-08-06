@@ -26,8 +26,11 @@ import (
 
 // Wire format versions. A bump invalidates every outstanding credential,
 // which is the intended blast radius for a format change.
+//
+// Challenge v2 added the 8-byte binding. Outstanding v1 challenges died
+// with the bump, which cost at most one five-minute TTL of solvers.
 const (
-	challengeVersion = 1
+	challengeVersion = 2
 	tokenVersion     = 1
 )
 
@@ -104,8 +107,12 @@ func (s *Signer) mac(domain string, payload []byte) []byte {
 
 // --- challenges ---------------------------------------------------------
 
-// challengePayload is version(1) | difficulty(1) | issued(4) | nonce(16).
-const challengePayloadLen = 1 + 1 + 4 + 16
+// challengePayload is version(1) | difficulty(1) | issued(4) | nonce(16) |
+// binding(8).
+const challengePayloadLen = 1 + 1 + 4 + 16 + 8
+
+// BindingLen is the size of a challenge's caller binding.
+const BindingLen = 8
 
 // challengeMACLen is how much of the HMAC a challenge carries. A challenge
 // is short-lived and single-use, so 128 bits is plenty and keeps the
@@ -126,10 +133,23 @@ type Challenge struct {
 	// Difficulty is the required number of leading zero bits.
 	Difficulty uint8
 	Issued     time.Time
+	// Binding ties the challenge to whoever asked for it — in practice a
+	// hash of the caller's address bucket. It travels inside the signed
+	// payload, so a challenge issued cheaply to one address cannot be
+	// redeemed from another after that address's difficulty has climbed.
+	Binding [BindingLen]byte
 }
 
-// NewChallenge issues a puzzle at the given difficulty.
-func (s *Signer) NewChallenge(difficulty uint8) (*Challenge, error) {
+// Bind derives a challenge binding from a caller identity string.
+func Bind(identity string) [BindingLen]byte {
+	sum := sha256.Sum256([]byte(identity))
+	var b [BindingLen]byte
+	copy(b[:], sum[:])
+	return b
+}
+
+// NewChallenge issues a puzzle at the given difficulty, bound to a caller.
+func (s *Signer) NewChallenge(difficulty uint8, binding [BindingLen]byte) (*Challenge, error) {
 	if difficulty > 40 {
 		// 2^40 hashes is hours of CPU. A difficulty this high is a bug in
 		// the escalation policy, and shipping it would silently lock out
@@ -139,6 +159,7 @@ func (s *Signer) NewChallenge(difficulty uint8) (*Challenge, error) {
 	var c Challenge
 	c.Difficulty = difficulty
 	c.Issued = s.now().UTC()
+	c.Binding = binding
 	if _, err := rand.Read(c.ID[:]); err != nil {
 		return nil, err
 	}
@@ -147,7 +168,8 @@ func (s *Signer) NewChallenge(difficulty uint8) (*Challenge, error) {
 	payload[0] = challengeVersion
 	payload[1] = difficulty
 	putUint32(payload[2:6], uint32(c.Issued.Unix()))
-	copy(payload[6:], c.ID[:])
+	copy(payload[6:22], c.ID[:])
+	copy(payload[22:], binding[:])
 
 	c.String = enc.EncodeToString(payload) + "." + enc.EncodeToString(s.mac("challenge", payload)[:challengeMACLen])
 	return &c, nil
@@ -170,7 +192,8 @@ func (s *Signer) ParseChallenge(raw string, ttl time.Duration) (*Challenge, erro
 		Difficulty: payload[1],
 		Issued:     time.Unix(int64(uint32From(payload[2:6])), 0).UTC(),
 	}
-	copy(c.ID[:], payload[6:])
+	copy(c.ID[:], payload[6:22])
+	copy(c.Binding[:], payload[22:])
 
 	age := s.now().Sub(c.Issued)
 	if age > ttl {
@@ -293,10 +316,11 @@ func (s *Signer) tokenFor(sub Subject, tier Tier, issued time.Time) (*Token, err
 
 // ParseToken verifies a bearer value and returns what it vouches for.
 //
-// There is no expiry check. A free-tier token is a name, not a lease —
-// quota resets daily and is enforced by the counters, so ageing tokens
-// out would only make honest users re-mint for no security gain. Ending
-// a token's life is what revocation is for.
+// There is no expiry check here: this codec's job is to say whose token
+// it is and when it was issued. How old is too old is service policy,
+// enforced by the gateway against the Issued timestamp — it changed once
+// already (tokens were leases-for-life before 2026-08-06) and the wire
+// format did not have to.
 func (s *Signer) ParseToken(raw string) (*Token, error) {
 	if len(raw) <= len(TokenPrefix) || raw[:len(TokenPrefix)] != TokenPrefix {
 		return nil, fmt.Errorf("%w: not a free-tier token", ErrMalformed)
