@@ -14,6 +14,8 @@
 package quota
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -81,6 +83,11 @@ const (
 	ReasonDailyBudget  Reason = "daily_budget"
 	ReasonCredits      Reason = "credits_exhausted"
 	ReasonRevoked      Reason = "revoked"
+	// ReasonUnavailable means the ledger cannot durably record spend right
+	// now. Refusing is deliberate: admitting requests that cannot be
+	// journalled means a restart silently refunds them, which is exactly
+	// the fail-open hole a budget breaker must not have.
+	ReasonUnavailable Reason = "ledger_unavailable"
 )
 
 // LimitError is a refusal. It always says when the caller may try again,
@@ -99,6 +106,8 @@ func (e *LimitError) Error() string {
 		return "the free tier has spent today's budget"
 	case ReasonRevoked:
 		return "this token has been revoked"
+	case ReasonUnavailable:
+		return "the free tier cannot record spend right now"
 	default:
 		return fmt.Sprintf("daily %s limit reached", string(e.Reason))
 	}
@@ -133,8 +142,17 @@ type Ledger struct {
 	// persisted alongside priorSpend so a restart can tell which journals
 	// have already been folded in and which still have to be.
 	through string
-	revoked map[string]bool
-	journal *os.File
+	// reserved is the projected worst-case cost of every admitted request
+	// that has not yet been charged or refunded. It counts against both
+	// budgets at admission, which is what makes them ceilings rather than
+	// horizons: without it, MAX_INFLIGHT requests could all be admitted a
+	// dollar before the breaker and each overshoot it.
+	reserved float64
+	revoked  map[string]bool
+	journal  *os.File
+	// journalErr is the last durability failure. While set, Admit refuses:
+	// spend that cannot be journalled is spend a restart would refund.
+	journalErr error
 
 	now func() time.Time
 }
@@ -302,17 +320,28 @@ func (l *Ledger) sumJournal(day string) (float64, error) {
 	defer f.Close()
 
 	var total float64
-	dec := json.NewDecoder(f)
-	for {
-		var e entry
-		if err := dec.Decode(&e); err != nil {
-			// Same rule as replay: a truncated final line is a crash
-			// mid-write, and everything before it still counts.
-			break
-		}
-		total += e.USD
-	}
+	scanJournal(f, func(e entry) { total += e.USD })
 	return total, nil
+}
+
+// scanJournal feeds every parseable entry to fn, line by line. A line
+// that does not parse — a crash mid-write, a disk hiccup — is skipped
+// rather than treated as the end of the file: every line after it is
+// still real spend, and dropping it would refund that spend on restart.
+func scanJournal(f *os.File, fn func(entry)) {
+	sc := bufio.NewScanner(f)
+	sc.Buffer(make([]byte, 0, 64<<10), 1<<20)
+	for sc.Scan() {
+		line := bytes.TrimSpace(sc.Bytes())
+		if len(line) == 0 {
+			continue
+		}
+		var e entry
+		if json.Unmarshal(line, &e) != nil {
+			continue
+		}
+		fn(e)
+	}
 }
 
 func (l *Ledger) saveStateLocked(prev error) error {
@@ -341,21 +370,14 @@ func (l *Ledger) replay(day string) error {
 	}
 	defer f.Close()
 
-	dec := json.NewDecoder(f)
-	for {
-		var e entry
-		if err := dec.Decode(&e); err != nil {
-			// A truncated final line is what a crash mid-write looks like.
-			// Everything before it is still good, so stop rather than fail.
-			break
-		}
+	scanJournal(f, func(e entry) {
 		a := l.accountLocked(e.Subject)
 		a.Requests++
 		a.InputTokens += e.InputTokens
 		a.OutputTokens += e.OutputTokens
 		a.SpentUSD += e.USD
 		l.daySpend += e.USD
-	}
+	})
 	return nil
 }
 
@@ -385,25 +407,58 @@ func (l *Ledger) rollLocked() {
 	}
 	if f, err := os.OpenFile(l.journalPath(day), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600); err == nil {
 		l.journal = f
+		l.journalErr = nil
 	} else {
 		l.journal = nil
+		l.journalErr = err
 	}
-	l.saveStateLocked(nil)
+	if err := l.saveStateLocked(nil); err != nil && l.journalErr == nil {
+		l.journalErr = err
+	}
 }
 
-// Admit debits one request against a subject and reports whether it may
-// proceed.
+// reopenLocked retries the journal after a durability failure, so a full
+// disk that has been cleared heals without a restart.
+func (l *Ledger) reopenLocked() {
+	if l.journalErr == nil {
+		return
+	}
+	if l.journal != nil {
+		l.journal.Close()
+	}
+	f, err := os.OpenFile(l.journalPath(l.day), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
+	if err != nil {
+		l.journal = nil
+		return
+	}
+	// A failed write may have left a partial line behind. Terminating it
+	// costs one blank line, which replay skips; not terminating it would
+	// glue the next entry onto the partial one and lose both.
+	if _, err := f.Write([]byte("\n")); err != nil {
+		f.Close()
+		l.journal = nil
+		return
+	}
+	l.journal = f
+	l.journalErr = nil
+}
+
+// Admit debits one request against a subject and reserves its worst-case
+// cost, reporting whether it may proceed.
 //
-// The request count is spent up front because it is knowable up front;
-// token counts are only settled in Charge, once the model has answered.
-// That leaves a bounded window where admitted-but-unbilled requests can
-// overshoot a limit, which is why the server caps how many may be in
-// flight at once.
-func (l *Ledger) Admit(subject string) error {
+// The reservation is what makes the budgets hard ceilings: a request is
+// admitted only if, priced at its absolute maximum, it still fits under
+// both. Charge and Refund release the reservation, so the actual (almost
+// always much smaller) cost is what sticks.
+func (l *Ledger) Admit(subject string, reserveUSD float64) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.rollLocked()
+	l.reopenLocked()
 
+	if l.journalErr != nil {
+		return &LimitError{Reason: ReasonUnavailable}
+	}
 	if l.revoked[subject] {
 		return &LimitError{Reason: ReasonRevoked}
 	}
@@ -412,10 +467,16 @@ func (l *Ledger) Admit(subject string) error {
 	// Service-wide limits first: when the service is out of money, the
 	// caller's own remaining quota is irrelevant and saying "you have 28
 	// requests left" would be a lie.
-	if spent := l.priorSpend + l.daySpend; spent >= l.limits.TotalBudgetUSD {
+	// Refused when already spent out, and also when this request's
+	// worst case would break the ceiling — both conditions, because a
+	// pool that is exactly empty must refuse even a zero-cost admit.
+	projected := l.reserved + reserveUSD
+	if spent := l.priorSpend + l.daySpend; spent >= l.limits.TotalBudgetUSD ||
+		spent+projected > l.limits.TotalBudgetUSD {
 		return &LimitError{Reason: ReasonCredits}
 	}
-	if l.daySpend >= l.limits.DailyBudgetUSD {
+	if l.daySpend >= l.limits.DailyBudgetUSD ||
+		l.daySpend+projected > l.limits.DailyBudgetUSD {
 		return &LimitError{Reason: ReasonDailyBudget, ResetsAt: reset}
 	}
 
@@ -430,28 +491,48 @@ func (l *Ledger) Admit(subject string) error {
 	}
 
 	a.Requests++
+	l.reserved += reserveUSD
 	return nil
 }
 
-// Refund returns a request allowance taken by Admit, for a call that
-// never reached the model.
+// Refund returns everything Admit took — the request allowance and the
+// reservation — for a call that never reached the model.
 //
 // Only failures the caller cannot provoke qualify — transport errors and
 // upstream 429/5xx. Refunding on anything the client controls, such as a
 // malformed body, would turn the request counter into a free retry loop.
-func (l *Ledger) Refund(subject string) {
+func (l *Ledger) Refund(subject string, reserveUSD float64) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if a, ok := l.accounts[subject]; ok && a.Requests > 0 {
 		a.Requests--
 	}
+	l.releaseLocked(reserveUSD)
 }
 
-// Charge records what a completed request cost.
-func (l *Ledger) Charge(subject, endpoint, model string, in, cacheHit, out int, usd float64, estimated bool) {
+// Release gives back a reservation while keeping the request debit, for
+// a call that reached the model but generated nothing billable — an
+// upstream 4xx that was the caller's own doing.
+func (l *Ledger) Release(reserveUSD float64) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.releaseLocked(reserveUSD)
+}
+
+func (l *Ledger) releaseLocked(reserveUSD float64) {
+	l.reserved -= reserveUSD
+	if l.reserved < 0 {
+		l.reserved = 0
+	}
+}
+
+// Charge settles what a completed request actually cost, releasing its
+// reservation.
+func (l *Ledger) Charge(subject, endpoint, model string, in, cacheHit, out int, usd float64, reserveUSD float64, estimated bool) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.rollLocked()
+	l.releaseLocked(reserveUSD)
 
 	a := l.accountLocked(subject)
 	a.InputTokens += in
@@ -463,19 +544,29 @@ func (l *Ledger) Charge(subject, endpoint, model string, in, cacheHit, out int, 
 		Time: l.now().UTC(), Subject: subject, Endpoint: endpoint, Model: model,
 		InputTokens: in, CacheHit: cacheHit, OutputTokens: out, USD: usd, Estimated: estimated,
 	}
+	// The in-memory counters above are already debited, so a journal
+	// failure here loses no money now — but it would on restart. Recording
+	// the failure makes Admit refuse until the journal writes again.
 	if l.journal == nil {
+		if l.journalErr == nil {
+			l.journalErr = fmt.Errorf("journal is not open")
+		}
 		return
 	}
 	b, err := json.Marshal(e)
 	if err != nil {
+		l.journalErr = err
 		return
 	}
 	if _, err := l.journal.Write(append(b, '\n')); err != nil {
+		l.journalErr = err
 		return
 	}
 	// Durable per debit. At this service's volume the fsync is free, and
 	// the alternative is that a crash refunds everybody.
-	l.journal.Sync()
+	if err := l.journal.Sync(); err != nil {
+		l.journalErr = err
+	}
 }
 
 // Status reports one subject's standing.
@@ -507,9 +598,14 @@ type Health struct {
 	Day            string  `json:"day"`
 	Subjects       int     `json:"subjects_today"`
 	DaySpendUSD    float64 `json:"day_spend_usd"`
+	ReservedUSD    float64 `json:"reserved_usd"`
 	TotalSpendUSD  float64 `json:"total_spend_usd"`
 	DailyBudgetUSD float64 `json:"daily_budget_usd"`
 	TotalBudgetUSD float64 `json:"total_budget_usd"`
+	// JournalOK is false while the ledger is refusing admissions because
+	// it cannot write. It is the first thing to check when everything is
+	// suddenly 503.
+	JournalOK bool `json:"journal_ok"`
 }
 
 func (l *Ledger) Health() Health {
@@ -518,8 +614,10 @@ func (l *Ledger) Health() Health {
 	l.rollLocked()
 	return Health{
 		Day: l.day, Subjects: len(l.accounts),
-		DaySpendUSD: l.daySpend, TotalSpendUSD: l.priorSpend + l.daySpend,
+		DaySpendUSD: l.daySpend, ReservedUSD: l.reserved,
+		TotalSpendUSD:  l.priorSpend + l.daySpend,
 		DailyBudgetUSD: l.limits.DailyBudgetUSD, TotalBudgetUSD: l.limits.TotalBudgetUSD,
+		JournalOK: l.journalErr == nil,
 	}
 }
 

@@ -4,10 +4,14 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/thevibeworks/deepseek-cli/gateway/internal/mint"
@@ -34,6 +38,23 @@ type Config struct {
 	// quota so that a runaway loop is cheap to refuse.
 	RequestsPerMinute int
 
+	// SubjectRequestsPerMinute is the per-token burst limit. The address
+	// limit alone is not enough: one subject spread across addresses, or
+	// many subjects behind one address, are different attacks and need
+	// separate valves.
+	SubjectRequestsPerMinute int
+
+	// SubjectInflight caps concurrent requests per token. Without it, one
+	// token opening MaxInflight never-reading streams parks the whole
+	// service behind the global cap.
+	SubjectInflight int
+
+	// TokenTTL is how long a minted token stays valid. Re-enrolment is a
+	// second of CPU, so expiry costs honest users almost nothing — and
+	// stops an attacker stockpiling identities for months and spending
+	// them together.
+	TokenTTL time.Duration
+
 	// TrustProxy makes X-Forwarded-For authoritative. Set it only when
 	// something we control terminates TLS in front of this process:
 	// facing the internet directly, the header is attacker-supplied and
@@ -59,9 +80,29 @@ type Server struct {
 	signer *token.Signer
 	ledger *quota.Ledger
 
-	http     *http.Client
-	inflight chan struct{}
-	limiter  *limiter
+	http        *http.Client
+	inflight    chan struct{}
+	limiter     *limiter
+	subjLimiter *limiter
+
+	subjMu       sync.Mutex
+	subjInflight map[string]int
+
+	// modelsCache holds the last filtered /models answer. The list changes
+	// on the timescale of DeepSeek launches, and without a cache the one
+	// deliberately-uncharged endpoint would consume an in-flight slot and
+	// an upstream round trip per poll.
+	modelsMu   sync.Mutex
+	modelsBody []byte
+	modelsAt   time.Time
+
+	// upstreamDry is set when DeepSeek itself reports our account
+	// unusable. The local ledger only knows what this gateway spent — the
+	// account can empty underneath it (other spenders, a price change),
+	// and a gateway that keeps promising credit it does not have would
+	// fail every request with a confusing upstream error instead of an
+	// honest 402.
+	upstreamDry atomic.Bool
 
 	origins map[string]bool
 	started time.Time
@@ -91,12 +132,44 @@ func New(cfg Config, signer *token.Signer, m *mint.Mint, ledger *quota.Ledger) *
 				DisableCompression: false,
 				ForceAttemptHTTP2:  true,
 			},
+			// Never follow an upstream redirect. Our key rides on these
+			// requests, and Go strips Authorization across hosts but not
+			// x-api-key — a redirecting upstream would be handed the key.
+			CheckRedirect: func(*http.Request, []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
 		},
-		inflight: make(chan struct{}, cfg.MaxInflight),
-		limiter:  newLimiter(cfg.RequestsPerMinute, time.Minute),
-		origins:  origins,
-		started:  time.Now(),
+		inflight:     make(chan struct{}, cfg.MaxInflight),
+		limiter:      newLimiter(cfg.RequestsPerMinute, time.Minute),
+		subjLimiter:  newLimiter(cfg.SubjectRequestsPerMinute, time.Minute),
+		subjInflight: map[string]int{},
+		origins:      origins,
+		started:      time.Now(),
 	}
+}
+
+// acquireSubject takes one of a token's concurrency slots, or reports
+// that they are all in use.
+func (s *Server) acquireSubject(subject string) bool {
+	s.subjMu.Lock()
+	defer s.subjMu.Unlock()
+	if s.subjInflight[subject] >= s.cfg.SubjectInflight {
+		return false
+	}
+	s.subjInflight[subject]++
+	return true
+}
+
+func (s *Server) releaseSubject(subject string) {
+	s.subjMu.Lock()
+	defer s.subjMu.Unlock()
+	if s.subjInflight[subject] <= 1 {
+		// Deleting at zero keeps the map's size bounded by the subjects
+		// actually in flight, which the global cap already bounds.
+		delete(s.subjInflight, subject)
+		return
+	}
+	s.subjInflight[subject]--
 }
 
 // Handler builds the routing table.
@@ -221,11 +294,70 @@ func (s *Server) authenticate(r *http.Request) (*token.Token, error) {
 	if err != nil {
 		return nil, fmt.Errorf("token not valid: %w — run `deepseek free` to mint a new one", err)
 	}
+	if s.cfg.TokenTTL > 0 && time.Since(t.Issued) > s.cfg.TokenTTL {
+		// Enforced here rather than in the codec: expiry is service
+		// policy, and the codec's job is only to say whose token it is.
+		return nil, fmt.Errorf("this free-tier token has expired — run `deepseek free` to mint a new one (about a second of CPU)")
+	}
 	return t, nil
 }
 
 func (s *Server) clientIP(r *http.Request) string {
 	return mint.ClientIP(r.RemoteAddr, r.Header.Get("X-Forwarded-For"), s.cfg.TrustProxy)
+}
+
+// --- upstream balance ----------------------------------------------------
+
+// StartBalanceWatch polls DeepSeek's balance endpoint so the gateway's
+// idea of "we have credit" is checked against the account that actually
+// pays. The poll costs nothing — /user/balance is unbilled.
+func (s *Server) StartBalanceWatch(ctx context.Context, interval time.Duration) {
+	if interval <= 0 {
+		return
+	}
+	go func() {
+		s.checkBalance(ctx)
+		t := time.NewTicker(interval)
+		defer t.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-t.C:
+				s.checkBalance(ctx)
+			}
+		}
+	}()
+}
+
+func (s *Server) checkBalance(ctx context.Context) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
+		strings.TrimRight(s.cfg.UpstreamBaseURL, "/")+"/user/balance", nil)
+	if err != nil {
+		return
+	}
+	req.Header.Set("Authorization", "Bearer "+s.cfg.UpstreamKey)
+	req.Header.Set("User-Agent", "dsgate")
+
+	resp, err := s.http.Do(req)
+	if err != nil {
+		// Network trouble is not "out of money". The last known state
+		// stands until DeepSeek says otherwise.
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return
+	}
+	var b struct {
+		IsAvailable bool `json:"is_available"`
+	}
+	if json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&b) != nil {
+		return
+	}
+	s.upstreamDry.Store(!b.IsAvailable)
 }
 
 // --- simple endpoints ---------------------------------------------------
@@ -242,7 +374,10 @@ func (s *Server) handleAdminHealth(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, typeRejected, "not found")
 		return
 	}
-	writeJSON(w, http.StatusOK, s.ledger.Health())
+	writeJSON(w, http.StatusOK, struct {
+		quota.Health
+		UpstreamAvailable bool `json:"upstream_available"`
+	}{s.ledger.Health(), !s.upstreamDry.Load()})
 }
 
 // Info is the unauthenticated description of the service, so a client can
@@ -261,6 +396,9 @@ type Info struct {
 }
 
 func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
+	if !s.limitMeta(w, r) {
+		return
+	}
 	h := s.ledger.Health()
 	writeJSON(w, http.StatusOK, Info{
 		Service:   "dsgate",
@@ -275,6 +413,6 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			"/anthropic/v1/messages", "/responses", "/models",
 		},
 		Privacy:   "prompts and completions are relayed to DeepSeek and are not stored or logged by this gateway; only token counts and cost are recorded",
-		Exhausted: h.TotalSpendUSD >= h.TotalBudgetUSD,
+		Exhausted: h.TotalSpendUSD >= h.TotalBudgetUSD || s.upstreamDry.Load(),
 	})
 }

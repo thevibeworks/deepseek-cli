@@ -17,6 +17,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"os/signal"
@@ -75,12 +76,16 @@ Per-user daily limits:
   DSGATE_ANON_MAX_TOKENS           (4096)    per-request output cap
   DSGATE_MAX_BODY_BYTES            (131072)  per-request body cap
   DSGATE_REQUESTS_PER_MINUTE       (20)      per-address burst
+  DSGATE_SUBJECT_REQUESTS_PER_MINUTE (6)     per-token burst
+  DSGATE_SUBJECT_INFLIGHT          (2)       per-token concurrency
+  DSGATE_TOKEN_TTL_DAYS            (7)       token lifetime; 0 = never expires
 
 Service limits — these are what actually bound the spend:
 
   DSGATE_DAILY_BUDGET_USD    (1.00)   circuit breaker, resets 00:00 UTC
   DSGATE_TOTAL_BUDGET_USD    (20.00)  the credit pool
   DSGATE_MAX_INFLIGHT        (8)
+  DSGATE_BALANCE_CHECK_MINUTES (15)   poll upstream /user/balance; 0 = off
 
 Anti-abuse:
 
@@ -123,6 +128,13 @@ func run() error {
 		DailyBudgetUSD:    envFloat("DSGATE_DAILY_BUDGET_USD", 1.00),
 		TotalBudgetUSD:    envFloat("DSGATE_TOTAL_BUDGET_USD", 20.00),
 	}
+	// A NaN budget compares false against everything, which would make
+	// every admission check pass forever. Money limits have to be numbers.
+	if math.IsNaN(limits.DailyBudgetUSD) || math.IsInf(limits.DailyBudgetUSD, 0) ||
+		math.IsNaN(limits.TotalBudgetUSD) || math.IsInf(limits.TotalBudgetUSD, 0) ||
+		limits.DailyBudgetUSD < 0 || limits.TotalBudgetUSD < 0 {
+		return errors.New("DSGATE_DAILY_BUDGET_USD and DSGATE_TOTAL_BUDGET_USD must be finite, non-negative numbers")
+	}
 	ledger, err := quota.Open(filepath.Join(stateDir, "ledger"), limits)
 	if err != nil {
 		return err
@@ -133,25 +145,30 @@ func run() error {
 		BaseBits:  uint8(envInt("DSGATE_POW_BITS", 20)),
 		FreeMints: envInt("DSGATE_MINT_DAILY_PER_IP", 3),
 		TTL:       5 * time.Minute,
+		StatePath: filepath.Join(stateDir, "mint.json"),
 	})
 
 	cfg := server.Config{
-		UpstreamBaseURL:   env("DSGATE_UPSTREAM_BASE_URL", "https://api.deepseek.com"),
-		UpstreamKey:       key,
-		Model:             env("DSGATE_MODEL", "deepseek-v4-flash"),
-		MaxBodyBytes:      int64(envInt("DSGATE_MAX_BODY_BYTES", 131072)),
-		MaxTokens:         envInt("DSGATE_ANON_MAX_TOKENS", 4096),
-		MaxInflight:       envInt("DSGATE_MAX_INFLIGHT", 8),
-		RequestsPerMinute: envInt("DSGATE_REQUESTS_PER_MINUTE", 20),
-		TrustProxy:        envBool("DSGATE_TRUST_PROXY", false),
-		Origins:           envList("DSGATE_ORIGINS"),
-		AdminToken:        os.Getenv("DSGATE_ADMIN_TOKEN"),
-		Announce:          os.Getenv("DSGATE_ANNOUNCE"),
+		UpstreamBaseURL:          env("DSGATE_UPSTREAM_BASE_URL", "https://api.deepseek.com"),
+		UpstreamKey:              key,
+		Model:                    env("DSGATE_MODEL", "deepseek-v4-flash"),
+		MaxBodyBytes:             int64(envInt("DSGATE_MAX_BODY_BYTES", 131072)),
+		MaxTokens:                envInt("DSGATE_ANON_MAX_TOKENS", 4096),
+		MaxInflight:              envInt("DSGATE_MAX_INFLIGHT", 8),
+		RequestsPerMinute:        envInt("DSGATE_REQUESTS_PER_MINUTE", 20),
+		SubjectRequestsPerMinute: envInt("DSGATE_SUBJECT_REQUESTS_PER_MINUTE", 6),
+		SubjectInflight:          envInt("DSGATE_SUBJECT_INFLIGHT", 2),
+		TokenTTL:                 time.Duration(envInt("DSGATE_TOKEN_TTL_DAYS", 7)) * 24 * time.Hour,
+		TrustProxy:               envBool("DSGATE_TRUST_PROXY", false),
+		Origins:                  envList("DSGATE_ORIGINS"),
+		AdminToken:               os.Getenv("DSGATE_ADMIN_TOKEN"),
+		Announce:                 os.Getenv("DSGATE_ANNOUNCE"),
 	}
 
+	gw := server.New(cfg, signer, m, ledger)
 	srv := &http.Server{
 		Addr:    env("DSGATE_ADDR", ":8787"),
-		Handler: server.New(cfg, signer, m, ledger).Handler(),
+		Handler: gw.Handler(),
 		// DeepSeek documents holding a request up to ten minutes before
 		// inference starts, so anything shorter here would manufacture
 		// failures out of normal slow starts. The header timeout stays
@@ -180,6 +197,13 @@ func run() error {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	// The local ledger only knows what this gateway spent; the account can
+	// empty underneath it. Checking the real balance keeps "we have
+	// credit" honest.
+	if mins := envInt("DSGATE_BALANCE_CHECK_MINUTES", 15); mins > 0 {
+		gw.StartBalanceWatch(ctx, time.Duration(mins)*time.Minute)
+	}
 
 	go func() {
 		<-ctx.Done()

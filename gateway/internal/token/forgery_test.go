@@ -53,7 +53,7 @@ func TestTokenRejectsTruncatedMAC(t *testing.T) {
 
 func TestChallengeRejectsTruncatedMAC(t *testing.T) {
 	s := testSigner(t)
-	c, err := s.NewChallenge(8)
+	c, err := s.NewChallenge(8, Bind("test"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +112,7 @@ func TestTokenRejectsOverlongMAC(t *testing.T) {
 // even now that both lengths are pinned.
 func TestDomainSeparationHolds(t *testing.T) {
 	s := testSigner(t)
-	c, err := s.NewChallenge(8)
+	c, err := s.NewChallenge(8, Bind("test"))
 	if err != nil {
 		t.Fatal(err)
 	}

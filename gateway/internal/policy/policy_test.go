@@ -274,3 +274,26 @@ func asReject(err error, target **Reject) bool {
 	}
 	return ok
 }
+
+// Server-side tools perform billed work that never appears in the usage
+// object — outside every ceiling this gateway enforces. Client function
+// tools only declare a schema and stay allowed.
+func TestServerSideToolsAreRefused(t *testing.T) {
+	route, _ := Lookup("POST", "/responses")
+	lim := Limits{MaxTokens: 100, Model: "deepseek-v4-flash"}
+
+	_, err := Apply(route, []byte(`{"input":"hi","tools":[{"type":"web_search"}]}`), "sub", lim)
+	if err == nil {
+		t.Fatal("web_search passed policy; its per-search cost has no ceiling")
+	}
+
+	if _, err := Apply(route, []byte(`{"input":"hi","tools":[{"type":"function","name":"f"}]}`), "sub", lim); err != nil {
+		t.Errorf("a client function tool was refused: %v", err)
+	}
+
+	// The other formats have no server-side tools; their tools stay open.
+	chat, _ := Lookup("POST", "/chat/completions")
+	if _, err := Apply(chat, []byte(`{"messages":[],"tools":[{"type":"function"}]}`), "sub", lim); err != nil {
+		t.Errorf("chat function tools were refused: %v", err)
+	}
+}

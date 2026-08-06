@@ -13,9 +13,11 @@
 package mint
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/netip"
+	"os"
 	"sync"
 	"time"
 
@@ -32,6 +34,10 @@ type Config struct {
 	FreeMints int
 	// TTL is how long a challenge stays solvable.
 	TTL time.Duration
+	// StatePath, when set, persists the per-address issuance counts so a
+	// restart does not reset every address's difficulty to base. Without
+	// it a deploy would hand an attacker a fresh batch of cheap mints.
+	StatePath string
 }
 
 // DefaultConfig is the shipped policy.
@@ -49,6 +55,20 @@ const escalationBits = 2
 // busy NAT is throttled rather than permanently locked out.
 const maxEscalation = 12
 
+// maxTrackedBuckets bounds the issuance-count map. Past it, an unseen
+// bucket is treated as if it had exhausted its free mints: the map cannot
+// be grown without bound by an address-distributed attacker, and during
+// such an attack maximum difficulty for newcomers is the right answer
+// anyway. 64k buckets at ~30 bytes each is about 2 MiB, which a 192 MiB
+// container can hold.
+const maxTrackedBuckets = 1 << 16
+
+// maxOutstanding bounds the single-use set. Every entry cost its solver a
+// proof of work, so reaching this bound means someone spent tens of CPU
+// hours inside one TTL window — at which point refusing redemptions
+// beats being OOM-killed.
+const maxOutstanding = 1 << 16
+
 // Mint issues and redeems challenges.
 type Mint struct {
 	signer *token.Signer
@@ -57,8 +77,11 @@ type Mint struct {
 	mu sync.Mutex
 	// day is the UTC date the per-address counts belong to.
 	day string
-	// mints counts tokens issued per address bucket today.
-	mints map[string]int
+	// issued counts challenges handed out per address bucket today. The
+	// count moves at issuance, not redemption: difficulty priced off
+	// completed mints could be bypassed by collecting a batch of cheap
+	// challenges first and redeeming them later.
+	issued map[string]int
 	// redeemed is the single-use set for challenges, keyed by the random
 	// component. Bounded by the mint rate times the TTL, and swept.
 	redeemed map[[16]byte]time.Time
@@ -70,11 +93,12 @@ func New(signer *token.Signer, cfg Config) *Mint {
 	m := &Mint{
 		signer:   signer,
 		cfg:      cfg,
-		mints:    map[string]int{},
+		issued:   map[string]int{},
 		redeemed: map[[16]byte]time.Time{},
 		now:      time.Now,
 	}
 	m.day = m.now().UTC().Format("2006-01-02")
+	m.loadState()
 	return m
 }
 
@@ -86,23 +110,51 @@ func (m *Mint) SetClock(now func() time.Time) {
 	m.signer.SetClock(now)
 }
 
-// Challenge issues a puzzle sized to how much this address has already
-// minted today.
+// Challenge issues a puzzle sized to how many challenges this address has
+// already been given today, and bound to the address so it cannot be
+// redeemed from anywhere else.
+//
+// The issuance count is spent here, before the client has solved
+// anything. Spending it at redemption instead would let an attacker
+// collect a day's worth of base-difficulty challenges up front and solve
+// them at leisure, which is exactly the escalation this exists to prevent.
+// The cost is that an address which requests challenges and never redeems
+// them escalates itself — which only hurts someone deliberately doing that.
 func (m *Mint) Challenge(remoteIP string) (*token.Challenge, error) {
 	bucket := MintBucket(remoteIP)
 
 	m.mu.Lock()
 	m.rollLocked()
-	n := m.mints[bucket]
+	k, tracked := m.nextLocked(bucket)
+	if tracked {
+		m.issued[bucket] = k
+		m.saveStateLocked()
+	}
 	m.mu.Unlock()
 
-	return m.signer.NewChallenge(m.difficulty(n))
+	return m.signer.NewChallenge(m.difficulty(k), token.Bind(bucket))
 }
 
-// difficulty is the required leading-zero-bit count for an address that
-// has already minted n tokens today.
-func (m *Mint) difficulty(n int) uint8 {
-	extra := n - m.cfg.FreeMints
+// nextLocked is the 1-indexed number of the challenge this bucket would
+// be issued next, reporting whether the bucket can still be tracked. When
+// the map is at its bound, unseen buckets are priced at maximum: during
+// an address-distributed attack that is the right answer, and honest
+// newcomers recover at the daily reset.
+func (m *Mint) nextLocked(bucket string) (int, bool) {
+	if n, seen := m.issued[bucket]; seen {
+		return n + 1, true
+	}
+	if len(m.issued) >= maxTrackedBuckets {
+		return m.cfg.FreeMints + maxEscalation/escalationBits + 1, false
+	}
+	return 1, true
+}
+
+// difficulty is the required leading-zero-bit count for an address's k-th
+// challenge of the day. The first FreeMints are at base; every one past
+// that costs escalationBits more.
+func (m *Mint) difficulty(k int) uint8 {
+	extra := k - m.cfg.FreeMints
 	if extra < 0 {
 		extra = 0
 	}
@@ -122,8 +174,11 @@ func (m *Mint) Redeem(remoteIP, challenge string, nonce uint64) (*token.Token, e
 	if err := token.Verify(challenge, c.Difficulty, nonce); err != nil {
 		return nil, err
 	}
-
-	bucket := MintBucket(remoteIP)
+	if c.Binding != token.Bind(MintBucket(remoteIP)) {
+		// The challenge was issued to a different address bucket. Honouring
+		// it would let one cheap address farm challenges for a fleet.
+		return nil, fmt.Errorf("%w: challenge was issued to a different address", token.ErrMalformed)
+	}
 
 	m.mu.Lock()
 	m.rollLocked()
@@ -134,8 +189,11 @@ func (m *Mint) Redeem(remoteIP, challenge string, nonce uint64) (*token.Token, e
 		// of work would mint an unlimited supply.
 		return nil, fmt.Errorf("%w: challenge already redeemed", token.ErrMalformed)
 	}
+	if len(m.redeemed) >= maxOutstanding {
+		m.mu.Unlock()
+		return nil, fmt.Errorf("%w: the mint is saturated; retry shortly", token.ErrExpired)
+	}
 	m.redeemed[c.ID] = m.now()
-	m.mints[bucket]++
 	m.mu.Unlock()
 
 	return m.signer.NewToken(token.TierAnon)
@@ -148,7 +206,8 @@ func (m *Mint) Difficulty(remoteIP string) uint8 {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.rollLocked()
-	return m.difficulty(m.mints[MintBucket(remoteIP)])
+	k, _ := m.nextLocked(MintBucket(remoteIP))
+	return m.difficulty(k)
 }
 
 func (m *Mint) rollLocked() {
@@ -157,7 +216,54 @@ func (m *Mint) rollLocked() {
 		return
 	}
 	m.day = day
-	m.mints = map[string]int{}
+	m.issued = map[string]int{}
+	m.saveStateLocked()
+}
+
+// mintState is the persisted shape of the issuance counts.
+type mintState struct {
+	Day    string         `json:"day"`
+	Issued map[string]int `json:"issued"`
+}
+
+// loadState restores the day's issuance counts, so a restart is not a
+// difficulty amnesty. Only counts from the current UTC day are honoured.
+// Errors are deliberately soft: mint state is an anti-abuse position, not
+// money, and refusing to boot over a corrupt count file would be a worse
+// trade than starting the day over.
+func (m *Mint) loadState() {
+	if m.cfg.StatePath == "" {
+		return
+	}
+	b, err := os.ReadFile(m.cfg.StatePath)
+	if err != nil {
+		return
+	}
+	var st mintState
+	if json.Unmarshal(b, &st) != nil || st.Day != m.day || st.Issued == nil {
+		return
+	}
+	if len(st.Issued) > maxTrackedBuckets {
+		return
+	}
+	m.issued = st.Issued
+}
+
+// saveStateLocked persists the issuance counts. Atomic rename, so a crash
+// mid-write leaves the previous snapshot rather than a truncated one.
+func (m *Mint) saveStateLocked() {
+	if m.cfg.StatePath == "" {
+		return
+	}
+	b, err := json.Marshal(mintState{Day: m.day, Issued: m.issued})
+	if err != nil {
+		return
+	}
+	tmp := m.cfg.StatePath + ".tmp"
+	if os.WriteFile(tmp, b, 0o600) != nil {
+		return
+	}
+	os.Rename(tmp, m.cfg.StatePath)
 }
 
 // sweepLocked drops challenge IDs that can no longer be redeemed anyway,

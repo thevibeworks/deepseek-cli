@@ -131,6 +131,9 @@ func Apply(route Route, body []byte, subject string, lim Limits) (*Decision, err
 	if err := forbidFanOut(obj); err != nil {
 		return nil, err
 	}
+	if err := forbidServerTools(obj, route.Format); err != nil {
+		return nil, err
+	}
 	setIdentity(obj, route.Format, subject)
 
 	out, err := json.Marshal(obj)
@@ -224,6 +227,29 @@ func forbidFanOut(obj map[string]any) error {
 			return &Reject{
 				Message: fmt.Sprintf("the free tier does not serve %s=%d", field, v),
 				Hint:    "one completion per request; send the request twice if you need two",
+			}
+		}
+	}
+	return nil
+}
+
+// forbidServerTools refuses tools that run on DeepSeek's side. Client
+// tools ("function") only declare a schema and cost nothing extra; a
+// server-side tool like web_search performs billed work that never
+// appears in the usage object, which would put its cost outside every
+// ceiling this gateway enforces. Only the Responses format offers them.
+func forbidServerTools(obj map[string]any, f Format) error {
+	if f != FormatResponses {
+		return nil
+	}
+	tools, _ := obj["tools"].([]any)
+	for _, t := range tools {
+		tool, _ := t.(map[string]any)
+		kind, _ := tool["type"].(string)
+		if kind != "" && kind != "function" {
+			return &Reject{
+				Message: fmt.Sprintf("the free tier does not serve server-side tools (%q)", kind),
+				Hint:    "bring your own key for web search: https://platform.deepseek.com/api_keys",
 			}
 		}
 	}
