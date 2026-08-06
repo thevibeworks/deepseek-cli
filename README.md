@@ -127,7 +127,7 @@ $ deepseek free
 The free tier relays your prompts to DeepSeek through a gateway run by
 this project. No account, no API key.
 
-  gateway   https://free.deepseek.lroolle.com
+  gateway   https://freeseek.1lm.io
   model     deepseek-v4-flash
   per day   30 requests · 60k input · 20k output tokens
   privacy   prompts and completions are relayed to DeepSeek and are not
