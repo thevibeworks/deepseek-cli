@@ -59,6 +59,7 @@
       <a href="../commands/" aria-current="page">commands</a>
       <a href="../formats/">formats</a>
       <a href="../cost/">cost</a>
+      <a href="../news/">news</a>
       <a href="../agents/">agents</a>
       <a href="../playground/">playground</a>
       <a href="https://github.com/thevibeworks/deepseek-cli">github&nbsp;&#8599;</a>
@@ -171,6 +172,13 @@ live only here: JSON Schema structured output, and a <code>web_search</code>
 tool DeepSeek runs server-side.</p>
 <pre><code>ds respond "what shipped in Go 1.26" --web-search
 ds respond "Berlin" -s "Return city and country." --schema @city.json</code></pre>
+<p><code>--web-search</code> is the whole setup: the search runs on
+DeepSeek's side, there is nothing to execute locally, and the searches the
+model makes are reported on stderr as they happen. It is the one tool in the
+whole API that this CLI can &ldquo;run&rdquo; for you, because DeepSeek runs
+it. The API ignores the OpenAI knobs (<code>search_context_size</code>,
+<code>user_location</code>), and in multi-turn use the server restores
+search results replayed from earlier turns by itself.</p>
 <p>Flash only, for now.</p>
 
 <h2 id="fim">fim</h2>

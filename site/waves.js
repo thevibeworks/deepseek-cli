@@ -1,9 +1,20 @@
-// Live water, and a whale in it.
+// Live water, a whale in it, and at night a sky of stars over it.
 //
 // Four wave layers, each a sum of three sines, drawn back to front onto a
 // 2D canvas. The whale is filled between layer 1 and layer 2, so the two
 // nearest layers wash over it — that draw order, and nothing else, is what
 // makes it read as *in* the water rather than pasted on top of it.
+//
+// The stars exist only on the dark theme, and that is decided in CSS, not
+// here: their colour tokens resolve to fully transparent by day, and a
+// star with no colour is not drawn. The field itself is deterministic —
+// seeded from each star's index — so the same sky comes back on every
+// visit, and the DOM test can look at a reproducible frame. Sizes follow
+// a power law (a few bright, many faint), the faint ones twinkle more
+// than the bright ones and each on its own slow period, and everything
+// dims toward the horizon the way a real sky does. That set of rules,
+// rather than uniform white dots blinking in step, is the difference
+// between a night sky and a string of fairy lights.
 //
 // The interaction is all in the surface, never in the whale: the water
 // rises toward the pointer, a click sends a travelling packet out from
@@ -86,6 +97,60 @@
   // here down is in front of it and LAYERS[WHALE_LAYER] is the surface it
   // rides.
   var WHALE_LAYER = 2;
+
+  // ---------------------------------------------------------------- stars
+
+  // The sky band: stars live between the top of the frame and just above
+  // the farthest layer's resting waterline, so none of them ever sits in
+  // the water.
+  var SKY = 0.52;
+
+  // Deterministic pseudo-random in [0, 1), seeded by star index and a
+  // salt per property. Math.random would deal a different sky on every
+  // visit and make the rendered frame untestable; this way star #17 is
+  // the same star tomorrow.
+  function starRand(i, salt) {
+    var x = Math.sin(i * 127.1 + salt * 311.7) * 43758.5453;
+    return x - Math.floor(x);
+  }
+
+  // Lay out the sky for a given viewport. Positions are fractions, so a
+  // resize rescales the same constellations rather than dealing new ones.
+  function starField(w, h) {
+    // Density by sky area, clamped: a phone still gets a sky worth
+    // having, a cinema display does not get a snowstorm.
+    var n = Math.max(70, Math.min(220, Math.round((w * h * SKY) / 7200)));
+    var stars = [];
+    for (var i = 0; i < n; i++) {
+      var m = starRand(i, 4);   // magnitude, 0 faint .. 1 bright
+      stars.push({
+        x: starRand(i, 1),
+        y: starRand(i, 2) * SKY,
+        // Squaring the magnitude is the power law: most stars small,
+        // a handful genuinely bright.
+        r: 0.5 + m * m * 1.7,
+        a: 0.22 + m * 0.6,
+        warm: starRand(i, 3) < 0.24,
+        // Faint stars twinkle hard, bright ones barely — small apertures
+        // scintillate. Uniform twinkle is the fairy-light look.
+        tw: 0.1 + (1 - m) * 0.42,
+        spd: 0.6 + starRand(i, 5) * 1.7,
+        phase: starRand(i, 6) * Math.PI * 2,
+      });
+    }
+    return stars;
+  }
+
+  // Is a resolved colour worth drawing at all? The star tokens resolve to
+  // fully-transparent on the light theme, which is how CSS says "by day
+  // there are no stars" without this file knowing what a theme is.
+  function visibleColour(c) {
+    if (!c) return false;
+    c = String(c).trim();
+    if (c === 'transparent') return false;
+    return !/^rgba\((?:[^,]+,){3}\s*0(?:\.0+)?\s*\)$/.test(c) &&
+      !/\/\s*0(?:\.0+)?\s*\)$/.test(c);
+  }
 
   var RIPPLE_LIFE = 2.8;    // seconds until a click is fully forgotten
   var RIPPLE_SPEED = 0.52;  // canvas widths per second
@@ -225,6 +290,10 @@
       // gradient running to it puts a grey halo round the whale on the
       // light theme.
       glowFade: read('--sea-glow-fade', 'rgba(0,194,233,0)'),
+      // Transparent fallbacks: a stylesheet without the sky tokens gets
+      // no stars, not white ones on a cream page.
+      star: read('--sky-star', 'rgba(0,0,0,0)'),
+      starWarm: read('--sky-star-warm', 'rgba(0,0,0,0)'),
     };
   }
 
@@ -360,6 +429,9 @@
     this.step = Math.max(4, w / 220);
     this.n = Math.ceil(w / this.step) + 2;
     this.pts = new Float64Array(this.n);
+    // The star count follows the sky's area, so a resize deals the
+    // field again from the same seeds.
+    this.stars = null;
     return true;
   };
 
@@ -590,6 +662,49 @@
     ctx.globalAlpha = 1;
   };
 
+  // The night sky, drawn first because it is farther away than anything.
+  // On the light theme the star colour resolves to transparent and the
+  // whole pass is skipped — by day there are no stars, not dim ones.
+  Ocean.prototype.drawStars = function (t) {
+    var pal = this.palette;
+    if (!visibleColour(pal.star)) return;
+    if (!this.stars) this.stars = starField(this.w, this.h);
+    var ctx = this.ctx;
+    for (var i = 0; i < this.stars.length; i++) {
+      var s = this.stars[i];
+      var x = s.x * this.w;
+      var y = s.y * this.h;
+      // Each star breathes on its own slow period. 1 - tw is the floor:
+      // a star never blinks out, it dims.
+      var twinkle = 1 - s.tw + s.tw * (0.5 + 0.5 * Math.sin(t * s.spd + s.phase));
+      // Atmospheric extinction: the sky pales toward the horizon, so the
+      // stars go with it instead of sitting on top of it.
+      var fade = 1 - (s.y / SKY) * 0.55;
+      var alpha = s.a * twinkle * fade;
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = s.warm ? pal.starWarm : pal.star;
+      ctx.beginPath();
+      ctx.arc(x, y, s.r, 0, Math.PI * 2);
+      ctx.fill();
+      // Only the brightest few get a diffraction glint, and it is two
+      // hairlines at a third of the star's own alpha — a hint, not a
+      // sparkle sprite.
+      if (s.r > 1.7) {
+        var g = s.r * 3.2;
+        ctx.globalAlpha = alpha * 0.35;
+        ctx.strokeStyle = s.warm ? pal.starWarm : pal.star;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x - g, y);
+        ctx.lineTo(x + g, y);
+        ctx.moveTo(x, y - g);
+        ctx.lineTo(x, y + g);
+        ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1;
+  };
+
   Ocean.prototype.drawWhale = function (t) {
     if (!this.whale || !this.body) return;
     var ctx = this.ctx;
@@ -647,6 +762,7 @@
     if (!this.w || !this.h) return;
     var ctx = this.ctx;
     ctx.clearRect(0, 0, this.w, this.h);
+    this.drawStars(t);
     for (var i = 0; i < LAYERS.length; i++) {
       if (i === WHALE_LAYER) {
         this.drawWhale(t);
@@ -725,6 +841,10 @@
     SLOPE_SPAN: SLOPE_SPAN,
     TILT_GAIN: TILT_GAIN,
     TILT_MAX: TILT_MAX,
+    SKY: SKY,
+    starRand: starRand,
+    starField: starField,
+    visibleColour: visibleColour,
     waveAt: waveAt,
     rippleAt: rippleAt,
     bulgeAt: bulgeAt,

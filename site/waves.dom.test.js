@@ -315,6 +315,72 @@ console.log('\nwhale off');
     ops.filter((o) => o.op === 'fill' && o.depth === 0).length === W.LAYERS.length);
 }
 
+// --- the night sky ------------------------------------------------------
+
+console.log('\nstars');
+
+{
+  // The dark theme resolves the sky tokens to real colours.
+  const world = makeWorld({
+    palette: {
+      '--sky-star': 'rgb(214, 230, 255)',
+      '--sky-star-warm': 'rgb(255, 229, 184)',
+    },
+  });
+  world.ocean({});
+  const W = world.load();
+  const sea = W.mounted[0];
+  sea.canvas.ctx.ops.length = 0;
+  world.frame(16);
+  const ops = sea.canvas.ctx.ops;
+
+  // At 16ms there is no spout yet and the eye is inside the whale's
+  // transform, so every depth-0 arc in the frame is a star.
+  const starArcs = ops.filter((o) => o.op === 'arc' && o.depth === 0);
+  const field = W.starField(sea.w, sea.h);
+  check('a dark sky is full of stars', starArcs.length === field.length,
+    `${starArcs.length} vs ${field.length}`);
+  check('every star stays above the water',
+    starArcs.every((o) => o.args[1] < sea.h * W.SKY));
+
+  // Every star is one fill; the water is one fill per layer. If these
+  // stop adding up, something is painting that should not be.
+  const fills = ops.filter((o) => o.op === 'fill' && o.depth === 0);
+  check('every star is painted, and the water still is',
+    fills.length === field.length + W.LAYERS.length,
+    String(fills.length));
+
+  // Foam lines and glints are the only strokes in a frame, and the
+  // glints belong to exactly the stars the power law made bright.
+  const bright = field.filter((s) => s.r > 1.7).length;
+  const foamy = W.LAYERS.filter((l) => l.foam > 0).length;
+  const strokes = ops.filter((o) => o.op === 'stroke' && o.depth === 0).length;
+  check('only the bright stars glint', strokes === foamy + bright,
+    `${strokes} strokes for ${bright} bright stars + ${foamy} foam lines`);
+  check('and some are bright enough to', bright > 0, String(bright));
+
+  // Stars are scenery behind everything: all of them land before the
+  // whale is drawn.
+  const bodyAt = ops.findIndex((o) => o.op === 'fillPath');
+  const lastStar = ops.lastIndexOf(ops.filter((o) => o.op === 'arc' && o.depth === 0).pop());
+  check('the sky is behind the whale', bodyAt > lastStar);
+  sea.destroy();
+}
+
+{
+  // The light theme resolves them to transparent — the fallback the test
+  // world hands back by default — and the pass is skipped whole.
+  const world = makeWorld();
+  world.ocean({});
+  const W = world.load();
+  const sea = W.mounted[0];
+  sea.canvas.ctx.ops.length = 0;
+  world.frame(16);
+  check('daylight has no stars',
+    !sea.canvas.ctx.ops.some((o) => o.op === 'arc' && o.depth === 0));
+  sea.destroy();
+}
+
 // --- when it must stop --------------------------------------------------
 
 console.log('\nstopping');

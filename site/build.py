@@ -33,6 +33,7 @@ NAV = [
     ("commands/", "commands"),
     ("formats/", "formats"),
     ("cost/", "cost"),
+    ("news/", "news"),
     ("agents/", "agents"),
     ("playground/", "playground"),
 ]
@@ -716,6 +717,13 @@ live only here: JSON Schema structured output, and a <code>web_search</code>
 tool DeepSeek runs server-side.</p>
 <pre><code>ds respond "what shipped in Go 1.26" --web-search
 ds respond "Berlin" -s "Return city and country." --schema @city.json</code></pre>
+<p><code>--web-search</code> is the whole setup: the search runs on
+DeepSeek's side, there is nothing to execute locally, and the searches the
+model makes are reported on stderr as they happen. It is the one tool in the
+whole API that this CLI can &ldquo;run&rdquo; for you, because DeepSeek runs
+it. The API ignores the OpenAI knobs (<code>search_context_size</code>,
+<code>user_location</code>), and in multi-turn use the server restores
+search results replayed from earlier turns by itself.</p>
 <p>Flash only, for now.</p>
 
 <h2 id="fim">fim</h2>
@@ -1098,6 +1106,11 @@ rate card. Your account may bill in another currency &mdash;
 multiplier for 09:00&ndash;12:00 and 14:00&ndash;18:00 Beijing time, with no
 effective date. Applying it now would double every estimate on a guess, so it
 is deliberately left out until the date is announced.</li>
+<li><strong>A broader repricing is coming.</strong> On 2026-08-06 DeepSeek
+gave notice in the platform console that all API services will be repriced
+soon, with a substantial rise expected and no numbers yet. Until there is a
+new published card, estimates stay on the card above &mdash; details on the
+<a href="{{root}}news/">news page</a>.</li>
 <li><strong>Local only.</strong> The ledger records calls made by this CLI on
 this machine. It knows nothing about your other clients.</li>
 </ul>
@@ -1105,6 +1118,103 @@ this machine. It knows nothing about your other clients.</li>
 <p><code>--no-ledger</code> skips the write, <code>--no-stats</code> hides the
 line, and neither ever fails the command that produced it &mdash; you asked for
 a completion, not for bookkeeping.</p>
+""",
+))
+
+PAGES.append(dict(
+    slug="news/",
+    crumb="news",
+    title="DeepSeek API news — the announced price rise, peak-hour pricing, releases",
+    description="What is changing in the DeepSeek API: an across-the-board price increase announced with no date yet, the 2x peak-hour pricing policy, V4-Flash's official release — and what each one does to the cost of a call.",
+    keywords="deepseek api price increase, deepseek price rise 2026, deepseek peak hour pricing, deepseek off-peak pricing, deepseek api news, deepseek api changelog, deepseek v4 flash release, deepseek pricing change",
+    jsonld=faq([
+        ("Is DeepSeek raising its API prices?",
+         "Yes, a rise is announced but not yet in effect. On 2026-08-06 (Beijing time) DeepSeek posted a notice in the platform console saying all API services will be repriced in the near term and that the increase is expected to be substantial, advising developers to plan call volume and top-ups accordingly. No new rate card and no effective date have been published. Separately, a 2x peak-hour pricing policy has been announced since June 2026, also without an effective date."),
+        ("When does DeepSeek's peak-hour pricing start?",
+         "No effective date has been announced. The published policy: during peak hours, 09:00-12:00 and 14:00-18:00 Beijing time (01:00-04:00 and 06:00-10:00 UTC) daily, all billing items cost 2x the regular price. Until DeepSeek announces the date, the policy is not active and estimates should not apply it."),
+        ("What are DeepSeek's current API prices?",
+         "Per 1M tokens, from the rate card published 2026-08-02: deepseek-v4-flash is $0.14 input on a cache miss, $0.0028 on a cache hit, and $0.28 output; deepseek-v4-pro is $0.435 input on a miss, $0.003625 on a hit, and $0.87 output."),
+        ("Where can I follow DeepSeek API changes?",
+         "DeepSeek's own change log lives at api-docs.deepseek.com/updates. The deepseek CLI carries the same documentation inside the binary: `deepseek docs changelog` prints it offline, and `deepseek docs sync` refreshes the snapshot."),
+    ]),
+    body="""
+<h1>News</h1>
+<p class="lede">What is changing in the DeepSeek API, and what it does to the
+cost of a call. Curated from official announcements and checked against the
+live API where that is possible; the in-terminal feed is
+<code>ds docs changelog</code>.</p>
+
+<h2 id="price-rise">2026-08-06 &middot; a broad price rise is coming<span class="chip warn">date tba</span></h2>
+<p>DeepSeek posted a notice in the
+<a href="https://platform.deepseek.com/">platform console</a>: all API
+services will be repriced &ldquo;in the near term&rdquo;, and the increase is
+expected to be substantial. Developers are advised to plan call volume and
+keep top-ups sized to what they will actually use. The final schedule and the
+new numbers are &ldquo;subject to the official announcement&rdquo; &mdash; and
+as of this page's build there is none.</p>
+<p>The notice appears in the console rather than on the docs site, so it is
+easy to miss from code. It was
+<a href="https://finance.sina.com.cn/tech/roll/2026-08-06/doc-inimivft0773504.shtml">widely
+reported</a> on 2026-08-06 Beijing time.</p>
+<p><strong>What it changes here: nothing, yet.</strong> The
+<a href="{{root}}cost/">cost page</a> and <code>ds models</code> price from
+the published card of 2026-08-02 until DeepSeek publishes a new one. The
+<a href="{{root}}cost/#ledger">ledger</a> stores exact token counts rather
+than prices, deliberately &mdash; when the card changes, every historical
+call can be repriced under it.</p>
+
+<h2 id="peak-pricing">announced 2026-06-29 &middot; 2&times; during peak hours<span class="chip warn">date tba</span></h2>
+<p>The pricing page has carried this since late June: the API will move to
+peak/off-peak pricing, with every billing item &mdash; input, cached input,
+output &mdash; costing <strong>2&times; the regular price during peak
+hours</strong>. Off-peak, the current card stands.</p>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Window</th><th>Beijing (UTC+8)</th><th>UTC</th><th class="num">Multiplier</th></tr></thead>
+<tbody>
+<tr><td>peak</td><td>09:00&ndash;12:00</td><td>01:00&ndash;04:00</td><td class="num">2&times;</td></tr>
+<tr><td>peak</td><td>14:00&ndash;18:00</td><td>06:00&ndash;10:00</td><td class="num">2&times;</td></tr>
+<tr><td>off-peak</td><td>everything else</td><td>everything else</td><td class="num">1&times;</td></tr>
+</tbody>
+</table>
+</div>
+<p>The effective date is still &ldquo;subject to the official
+announcement&rdquo;. This CLI deliberately does not apply the multiplier to
+its estimates before that date exists &mdash; doubling every figure on a
+guess would be inventing data. The day it is real, the ledger's stored token
+counts make the switch a repricing, not a migration.</p>
+<p>Two practical notes. First, the <a href="{{root}}cost/#cache">context
+cache</a> discount is 50&times;; the peak multiplier is 2&times;. Prompt
+structure will still dominate your bill. Second, if batch work can move,
+move it &mdash; the off-peak window covers the whole European and American
+working day.</p>
+
+<h2 id="v4-flash">2026-07-31 &middot; V4-Flash official release</h2>
+<p>The official DeepSeek-V4-Flash API entered public beta: same model name,
+same calling convention, re-post-trained weights with substantially stronger
+agent behaviour &mdash; DeepSeek's published numbers have it ahead of
+V4-Pro-Preview on Terminal Bench, DeepSWE and the rest of the agent suite.
+It natively speaks the <a href="{{root}}formats/">Responses format</a> and is
+explicitly adapted for Codex. The official V4-Pro release &ldquo;will follow
+soon&rdquo;.</p>
+
+<h2 id="v4">2026-04-24 &middot; V4 arrives, the old names leave</h2>
+<p><code>deepseek-v4-pro</code> and <code>deepseek-v4-flash</code> became the
+API's two models, served through both the OpenAI and Anthropic interfaces.
+The legacy names <code>deepseek-chat</code> and <code>deepseek-reasoner</code>
+were aliased to flash for a grace period and retired on
+<strong>2026-07-24</strong> &mdash; anything still sending them gets an
+error, not a quiet remap.</p>
+
+<h2 id="watch">Watching this without watching this page</h2>
+<p>This page is curated, not generated, so it carries what matters and skips
+what does not. The complete feed:</p>
+<pre><code>ds docs changelog     # DeepSeek's own change log, in the terminal, offline
+ds docs sync          # refresh the snapshot the binary carries
+ds models             # the rate card the estimates use, next to the live model list</code></pre>
+<p>Upstream: the official <a href="{{docs}}/updates">change log</a> and
+<a href="{{docs}}/quick_start/pricing">pricing page</a>, and
+<a href="https://status.deepseek.com/">status.deepseek.com</a> for incidents.</p>
 """,
 ))
 
@@ -1408,7 +1518,7 @@ def build(check_only=False):
         jsonld=SOFTWARE_JSONLD,
         body="""
 <h1>404</h1>
-<p class="lede">No such page &mdash; deep water. The whole site is seven of them:</p>
+<p class="lede">No such page &mdash; deep water. The whole site is eight of them:</p>
 
 <ul>
 <li><a href="BASE/">overview</a> &mdash; what it is and why</li>
@@ -1416,6 +1526,7 @@ def build(check_only=False):
 <li><a href="BASE/commands/">commands</a> &mdash; every command and flag</li>
 <li><a href="BASE/formats/">formats</a> &mdash; DeepSeek's four wire formats compared</li>
 <li><a href="BASE/cost/">cost</a> &mdash; pricing, the context cache, the usage ledger</li>
+<li><a href="BASE/news/">news</a> &mdash; what is changing upstream, including the announced price rise</li>
 <li><a href="BASE/agents/">agents</a> &mdash; the scripting contract</li>
 <li><a href="BASE/playground/">playground</a> &mdash; the API in a browser, no key needed</li>
 </ul>

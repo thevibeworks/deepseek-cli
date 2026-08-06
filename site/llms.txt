@@ -24,6 +24,7 @@ response body unmodified. Exit codes: 0 ok, 1 error, 2 auth, 3 no balance,
 - [Commands](https://thevibeworks.github.io/deepseek-cli/commands/): every command and flag — chat (with --interactive), anthropic, respond, fim, tokens, docs, models, balance, usage, session, status, check, raw — plus global flags and exit codes
 - [Formats](https://thevibeworks.github.io/deepseek-cli/formats/): DeepSeek's four wire formats compared — auth, thinking controls, tool support, Claude model remapping, and the token-accounting convention that differs between them
 - [Cost](https://thevibeworks.github.io/deepseek-cli/cost/): the rate card, what the context cache is worth, the thinking surcharge and how it varies by effort level, the local usage ledger, and the caveats on every figure
+- [News](https://thevibeworks.github.io/deepseek-cli/news/): what is changing in the DeepSeek API — the price rise announced 2026-08-06 with no effective date yet, the 2x peak-hour pricing policy (also undated), V4-Flash's official release — and what each does to the cost of a call
 - [Agents](https://thevibeworks.github.io/deepseek-cli/agents/): the scripting contract — output streams, JSON response shapes per format, exit-code semantics, retry behaviour
 - [Playground](https://thevibeworks.github.io/deepseek-cli/playground/): the DeepSeek API in a browser with no API key — all four wire formats, streaming, and the equivalent deepseek command for every request
 

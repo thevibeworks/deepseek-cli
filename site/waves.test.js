@@ -256,6 +256,13 @@ check('whale.svg puts the eye in the same place',
 check('whale.svg declares the box the paths were drawn in',
   svg.includes(`viewBox="0 0 ${W.WHALE.view.w} ${W.WHALE.view.h}"`));
 
+// The favicon is the same animal. A favicon redrawn freehand would drift
+// the moment the whale is edited, and nobody reviews a favicon.
+const icon = fs.readFileSync(path.join(__dirname, 'favicon.svg'), 'utf8');
+check('favicon.svg draws the same whale as the canvas does',
+  icon.includes(`d="${W.WHALE.body}"`));
+check('favicon.svg draws the same flipper', icon.includes(`d="${W.WHALE.fin}"`));
+
 // readPalette names every custom property it wants; ask it what those
 // are rather than keeping a second list here that could go stale.
 const wanted = [];
@@ -286,6 +293,54 @@ for (const page of ['index.html', '404.html', 'install/index.html']) {
   const mounts = (html.match(/data-ocean/g) || []).length;
   check(`${page} loads waves.js for its ${mounts} ocean(s)`,
     mounts > 0 && /<script src="[^"]*waves\.js" defer>/.test(html));
+}
+
+// --- the night sky ------------------------------------------------------
+
+console.log('\nstars');
+
+{
+  const a = W.starField(1200, 800);
+  const b = W.starField(1200, 800);
+  check('the same viewport deals the same sky',
+    JSON.stringify(a) === JSON.stringify(b));
+  check('a phone still gets a sky worth having',
+    W.starField(360, 640).length >= 70);
+  check('a cinema display does not get a snowstorm',
+    W.starField(3840, 2160).length <= 220);
+
+  check('every star stays out of the water',
+    a.every((s) => s.y >= 0 && s.y < W.SKY),
+    String(Math.max(...a.map((s) => s.y))));
+  check('and on the canvas', a.every((s) => s.x >= 0 && s.x < 1));
+
+  // The power law: many faint stars, a few bright ones — not the other
+  // way round, and never uniform.
+  const bright = a.filter((s) => s.r > 1.7).length;
+  check('a few stars are bright enough to glint',
+    bright > 0 && bright < a.length * 0.2, String(bright));
+  const faint = a.filter((s) => s.r < 1).length;
+  check('most stars are faint', faint > a.length / 2, String(faint));
+
+  check('faint stars twinkle harder than bright ones', (() => {
+    const sorted = [...a].sort((x, y) => x.r - y.r);
+    const lo = sorted.slice(0, 20).reduce((t, s) => t + s.tw, 0) / 20;
+    const hi = sorted.slice(-20).reduce((t, s) => t + s.tw, 0) / 20;
+    return lo > hi;
+  })());
+  check('no star ever blinks out — the twinkle floor stays above zero',
+    a.every((s) => s.tw < 1 && s.a * (1 - s.tw) > 0));
+  check('the sky has both cool and warm stars',
+    a.some((s) => s.warm) && a.some((s) => !s.warm));
+}
+
+{
+  check('a transparent token means no stars',
+    !W.visibleColour('rgba(0, 0, 0, 0)') && !W.visibleColour('transparent') &&
+    !W.visibleColour('rgb(214 230 255 / 0)') && !W.visibleColour(''));
+  check('a real colour means stars',
+    W.visibleColour('rgb(214, 230, 255)') && W.visibleColour('#d6e6ff') &&
+    W.visibleColour('rgba(255, 229, 184, 0.9)'));
 }
 
 if (failures) {

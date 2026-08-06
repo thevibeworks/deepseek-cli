@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DeepSeek API news — the announced price rise, peak-hour pricing, releases</title>
+<meta name="description" content="What is changing in the DeepSeek API: an across-the-board price increase announced with no date yet, the 2x peak-hour pricing policy, V4-Flash&#x27;s official release — and what each one does to the cost of a call.">
+<meta name="keywords" content="deepseek api price increase, deepseek price rise 2026, deepseek peak hour pricing, deepseek off-peak pricing, deepseek api news, deepseek api changelog, deepseek v4 flash release, deepseek pricing change">
+<meta name="author" content="thevibeworks">
+<meta name="theme-color" content="#fbfaf7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://thevibeworks.github.io/deepseek-cli/news/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="deepseek-cli">
+<meta property="og:title" content="DeepSeek API news — the announced price rise, peak-hour pricing, releases">
+<meta property="og:description" content="What is changing in the DeepSeek API: an across-the-board price increase announced with no date yet, the 2x peak-hour pricing policy, V4-Flash&#x27;s official release — and what each one does to the cost of a call.">
+<meta property="og:url" content="https://thevibeworks.github.io/deepseek-cli/news/">
+<meta property="og:image" content="https://thevibeworks.github.io/deepseek-cli/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="deepseek-cli — the whole DeepSeek API from the terminal">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="DeepSeek API news — the announced price rise, peak-hour pricing, releases">
+<meta name="twitter:description" content="What is changing in the DeepSeek API: an across-the-board price increase announced with no date yet, the 2x peak-hour pricing policy, V4-Flash&#x27;s official release — and what each one does to the cost of a call.">
+<meta name="twitter:image" content="https://thevibeworks.github.io/deepseek-cli/og.png">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="../style.css">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
+<script>try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t}catch(e){}</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Is DeepSeek raising its API prices?","acceptedAnswer":{"@type":"Answer","text":"Yes, a rise is announced but not yet in effect. On 2026-08-06 (Beijing time) DeepSeek posted a notice in the platform console saying all API services will be repriced in the near term and that the increase is expected to be substantial, advising developers to plan call volume and top-ups accordingly. No new rate card and no effective date have been published. Separately, a 2x peak-hour pricing policy has been announced since June 2026, also without an effective date."}},{"@type":"Question","name":"When does DeepSeek's peak-hour pricing start?","acceptedAnswer":{"@type":"Answer","text":"No effective date has been announced. The published policy: during peak hours, 09:00-12:00 and 14:00-18:00 Beijing time (01:00-04:00 and 06:00-10:00 UTC) daily, all billing items cost 2x the regular price. Until DeepSeek announces the date, the policy is not active and estimates should not apply it."}},{"@type":"Question","name":"What are DeepSeek's current API prices?","acceptedAnswer":{"@type":"Answer","text":"Per 1M tokens, from the rate card published 2026-08-02: deepseek-v4-flash is $0.14 input on a cache miss, $0.0028 on a cache hit, and $0.28 output; deepseek-v4-pro is $0.435 input on a miss, $0.003625 on a hit, and $0.87 output."}},{"@type":"Question","name":"Where can I follow DeepSeek API changes?","acceptedAnswer":{"@type":"Answer","text":"DeepSeek's own change log lives at api-docs.deepseek.com/updates. The deepseek CLI carries the same documentation inside the binary: `deepseek docs changelog` prints it offline, and `deepseek docs sync` refreshes the snapshot."}}]}
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"deepseek-cli","item":"https://thevibeworks.github.io/deepseek-cli/"},{"@type":"ListItem","position":2,"name":"news","item":"https://thevibeworks.github.io/deepseek-cli/news/"}]}
+</script>
+</head>
+<body>
+<div class="sea" data-ocean></div>
+<a class="skip" href="#main">skip to content</a>
+<header class="masthead">
+  <div class="wrap">
+    <a class="brand" href="../">
+      <span class="caret">&gt;</span><span class="org">thevibeworks/</span><span class="name">deepseek-cli</span>
+    </a>
+    <nav class="sitenav" aria-label="Sections">
+      <a href="../">overview</a>
+      <a href="../install/">install</a>
+      <a href="../commands/">commands</a>
+      <a href="../formats/">formats</a>
+      <a href="../cost/">cost</a>
+      <a href="../news/" aria-current="page">news</a>
+      <a href="../agents/">agents</a>
+      <a href="../playground/">playground</a>
+      <a href="https://github.com/thevibeworks/deepseek-cli">github&nbsp;&#8599;</a>
+      <button class="themetoggle" id="theme-toggle" type="button" hidden
+              aria-label="Theme: auto. Click to change.">theme:&nbsp;<span class="val">auto</span></button>
+    </nav>
+  </div>
+</header>
+<main id="main">
+  <div class="wrap">
+<nav class="crumb" aria-label="Breadcrumb"><a href="../">deepseek-cli</a><span class="sep">/</span>news</nav>
+
+<h1>News</h1>
+<p class="lede">What is changing in the DeepSeek API, and what it does to the
+cost of a call. Curated from official announcements and checked against the
+live API where that is possible; the in-terminal feed is
+<code>ds docs changelog</code>.</p>
+
+<h2 id="price-rise">2026-08-06 &middot; a broad price rise is coming<span class="chip warn">date tba</span></h2>
+<p>DeepSeek posted a notice in the
+<a href="https://platform.deepseek.com/">platform console</a>: all API
+services will be repriced &ldquo;in the near term&rdquo;, and the increase is
+expected to be substantial. Developers are advised to plan call volume and
+keep top-ups sized to what they will actually use. The final schedule and the
+new numbers are &ldquo;subject to the official announcement&rdquo; &mdash; and
+as of this page's build there is none.</p>
+<p>The notice appears in the console rather than on the docs site, so it is
+easy to miss from code. It was
+<a href="https://finance.sina.com.cn/tech/roll/2026-08-06/doc-inimivft0773504.shtml">widely
+reported</a> on 2026-08-06 Beijing time.</p>
+<p><strong>What it changes here: nothing, yet.</strong> The
+<a href="../cost/">cost page</a> and <code>ds models</code> price from
+the published card of 2026-08-02 until DeepSeek publishes a new one. The
+<a href="../cost/#ledger">ledger</a> stores exact token counts rather
+than prices, deliberately &mdash; when the card changes, every historical
+call can be repriced under it.</p>
+
+<h2 id="peak-pricing">announced 2026-06-29 &middot; 2&times; during peak hours<span class="chip warn">date tba</span></h2>
+<p>The pricing page has carried this since late June: the API will move to
+peak/off-peak pricing, with every billing item &mdash; input, cached input,
+output &mdash; costing <strong>2&times; the regular price during peak
+hours</strong>. Off-peak, the current card stands.</p>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Window</th><th>Beijing (UTC+8)</th><th>UTC</th><th class="num">Multiplier</th></tr></thead>
+<tbody>
+<tr><td>peak</td><td>09:00&ndash;12:00</td><td>01:00&ndash;04:00</td><td class="num">2&times;</td></tr>
+<tr><td>peak</td><td>14:00&ndash;18:00</td><td>06:00&ndash;10:00</td><td class="num">2&times;</td></tr>
+<tr><td>off-peak</td><td>everything else</td><td>everything else</td><td class="num">1&times;</td></tr>
+</tbody>
+</table>
+</div>
+<p>The effective date is still &ldquo;subject to the official
+announcement&rdquo;. This CLI deliberately does not apply the multiplier to
+its estimates before that date exists &mdash; doubling every figure on a
+guess would be inventing data. The day it is real, the ledger's stored token
+counts make the switch a repricing, not a migration.</p>
+<p>Two practical notes. First, the <a href="../cost/#cache">context
+cache</a> discount is 50&times;; the peak multiplier is 2&times;. Prompt
+structure will still dominate your bill. Second, if batch work can move,
+move it &mdash; the off-peak window covers the whole European and American
+working day.</p>
+
+<h2 id="v4-flash">2026-07-31 &middot; V4-Flash official release</h2>
+<p>The official DeepSeek-V4-Flash API entered public beta: same model name,
+same calling convention, re-post-trained weights with substantially stronger
+agent behaviour &mdash; DeepSeek's published numbers have it ahead of
+V4-Pro-Preview on Terminal Bench, DeepSWE and the rest of the agent suite.
+It natively speaks the <a href="../formats/">Responses format</a> and is
+explicitly adapted for Codex. The official V4-Pro release &ldquo;will follow
+soon&rdquo;.</p>
+
+<h2 id="v4">2026-04-24 &middot; V4 arrives, the old names leave</h2>
+<p><code>deepseek-v4-pro</code> and <code>deepseek-v4-flash</code> became the
+API's two models, served through both the OpenAI and Anthropic interfaces.
+The legacy names <code>deepseek-chat</code> and <code>deepseek-reasoner</code>
+were aliased to flash for a grace period and retired on
+<strong>2026-07-24</strong> &mdash; anything still sending them gets an
+error, not a quiet remap.</p>
+
+<h2 id="watch">Watching this without watching this page</h2>
+<p>This page is curated, not generated, so it carries what matters and skips
+what does not. The complete feed:</p>
+<pre><code>ds docs changelog     # DeepSeek's own change log, in the terminal, offline
+ds docs sync          # refresh the snapshot the binary carries
+ds models             # the rate card the estimates use, next to the live model list</code></pre>
+<p>Upstream: the official <a href="https://api-docs.deepseek.com/updates">change log</a> and
+<a href="https://api-docs.deepseek.com/quick_start/pricing">pricing page</a>, and
+<a href="https://status.deepseek.com/">status.deepseek.com</a> for incidents.</p>
+<nav class="pager" aria-label="Pagination">
+<a href="../cost/"><span class="lbl">&larr; previous</span>cost</a>
+<a href="../agents/" style="text-align:right"><span class="lbl">next &rarr;</span>agents</a>
+</nav>  </div>
+</main>
+<footer class="foot">
+  <div class="wrap">
+    <span>
+      <a href="https://github.com/thevibeworks/deepseek-cli">source</a> &middot;
+      <a href="https://github.com/thevibeworks/deepseek-cli/blob/main/LICENSE">MIT</a> &middot;
+      <a href="https://thevibeworks.github.io/deepseek-cli/llms.txt">llms.txt</a> &middot;
+      <a href="https://thevibeworks.github.io/">thevibeworks</a>
+    </span>
+    <span>unofficial &mdash; not affiliated with DeepSeek</span>
+  </div>
+</footer>
+<script>
+(function () {
+  var b = document.getElementById('theme-toggle');
+  if (!b) return;
+  var order = ['auto', 'light', 'dark'];
+  var read = function () {
+    try { return localStorage.getItem('theme') || 'auto'; } catch (e) { return 'auto'; }
+  };
+  var paint = function (v) {
+    if (v === 'auto') delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = v;
+    b.querySelector('.val').textContent = v;
+    // The button reads "theme: dark" to a screen reader, and announcing
+    // the change is the whole feedback — the visual change is silent.
+    b.setAttribute('aria-label', 'Theme: ' + v + '. Click to change.');
+  };
+  b.hidden = false;
+  paint(read());
+  b.addEventListener('click', function () {
+    var next = order[(order.indexOf(read()) + 1) % order.length];
+    try { localStorage.setItem('theme', next); } catch (e) {}
+    paint(next);
+  });
+})();
+</script>
+<script src="../waves.js" defer></script>
+</body>
+</html>

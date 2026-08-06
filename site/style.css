@@ -64,6 +64,15 @@
     --measure: 68ch;
     --gutter: 1.5rem;
 
+    /* Motion. Two durations and one curve, used by every transition on
+     * the site: fast for colour and border changes that answer the
+     * pointer, slow for anything that moves or that follows the theme.
+     * One vocabulary is what makes the interactions feel designed
+     * rather than accumulated. */
+    --dur-fast: 140ms;
+    --dur-slow: 320ms;
+    --ease: cubic-bezier(0.25, 0, 0.2, 1);
+
     /* The sea. waves.js reads every one of these off :root and paints
      * with them, so the two themes are settled here with the rest of the
      * palette rather than duplicated in JavaScript.
@@ -100,6 +109,17 @@
     --whale: light-dark(#3d92b5, #123f5c);
     --whale-lit: #00c2e9;
     --whale-lit: light-dark(#ffffff, #00c2e9);
+
+    /* The night sky. Stars exist only over a black page — by day they
+     * are simply not there, which is what fully-transparent light values
+     * mean. waves.js reads these the same way it reads the sea, and
+     * skips the whole star pass when the colour resolves to nothing.
+     * Two tints because a real sky has them: most stars blue-white, a
+     * scattering of warm ones. */
+    --sky-star: #d6e6ff;
+    --sky-star: light-dark(rgba(0, 0, 0, 0), #d6e6ff);
+    --sky-star-warm: #ffe5b8;
+    --sky-star-warm: light-dark(rgba(0, 0, 0, 0), #ffe5b8);
 }
 
 /* The toggle writes one of these onto <html>. `only` pins the scheme so
@@ -145,6 +165,9 @@ body {
     line-height: 1.72;
     font-weight: 300;
     -webkit-font-smoothing: antialiased;
+    /* The theme toggle swaps every colour on the page at once. Crossfaded
+     * it reads as one deliberate change; instant it reads as a glitch. */
+    transition: background-color var(--dur-slow) var(--ease), color var(--dur-slow) var(--ease);
 }
 
 /* The org site's scan lines, dialled down. At full strength they fight
@@ -200,6 +223,10 @@ body::before {
     white-space: nowrap;
 }
 
+.brand .name {
+    transition: color var(--dur-fast) var(--ease);
+}
+
 .brand .caret {
     color: var(--pink);
 }
@@ -229,6 +256,7 @@ body::before {
     text-decoration: none;
     padding-bottom: 2px;
     border-bottom: 1px solid transparent;
+    transition: color var(--dur-fast) var(--ease), border-bottom-color var(--dur-fast) var(--ease);
 }
 
 .sitenav a:hover {
@@ -263,6 +291,7 @@ body::before {
     padding: 0.1rem 0.5rem;
     cursor: pointer;
     white-space: nowrap;
+    transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
 
 .themetoggle:hover {
@@ -282,6 +311,25 @@ body::before {
 
 main {
     padding: 2.5rem 0 4rem;
+}
+
+/* The page surfaces once, briefly, on arrival — the same direction the
+ * swell moves — and never again while you read. Reduced motion collapses
+ * it to nothing via the global rule above. */
+@keyframes surface {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+main .wrap {
+    animation: surface var(--dur-slow) var(--ease) both;
 }
 
 h1,
@@ -350,6 +398,7 @@ a {
     color: var(--cyan);
     text-underline-offset: 3px;
     text-decoration-thickness: 1px;
+    transition: color var(--dur-fast) var(--ease);
 }
 
 a:hover {
@@ -553,7 +602,8 @@ pre code {
     color: var(--cyan);
     text-decoration: none;
     font-size: 0.88rem;
-    transition: background 0.15s ease, color 0.15s ease;
+    transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease),
+        border-color var(--dur-fast) var(--ease);
 }
 
 .btn:hover {
@@ -680,6 +730,15 @@ pre code {
     background: var(--surface);
     padding: 1.1rem 1.2rem;
     margin: 0;
+    transition: border-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease),
+        background-color var(--dur-slow) var(--ease);
+}
+
+/* Cards answer the pointer the way the nav does: the accent arrives, and
+ * a lift small enough to feel rather than watch. */
+.card:hover {
+    border-color: var(--cyan);
+    transform: translateY(-2px);
 }
 
 .card h3 {
@@ -727,6 +786,13 @@ td {
     padding: 0.55rem 0.8rem;
     border-bottom: 1px solid var(--line);
     vertical-align: top;
+    transition: background-color var(--dur-fast) var(--ease);
+}
+
+/* A reading aid, not a control: rows light faintly under the pointer so
+ * a wide table can be followed without a finger on the screen. */
+tbody tr:hover td {
+    background: var(--surface);
 }
 
 th {
@@ -780,6 +846,31 @@ td code {
     color: var(--yellow);
 }
 
+/* Status chips, mostly on the news page: the one fact about an
+ * announcement that decides what you do with it, pinned next to it. */
+.chip {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 400;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--purple);
+    border: 1px solid currentColor;
+    border-radius: 3px;
+    padding: 0.05em 0.5em;
+    margin-left: 0.5rem;
+    vertical-align: 0.18em;
+    white-space: nowrap;
+}
+
+.chip.warn {
+    color: var(--yellow);
+}
+
+.chip.ok {
+    color: var(--cyan);
+}
+
 /* ---------- breadcrumb + pager ---------- */
 
 .crumb {
@@ -791,6 +882,7 @@ td code {
 .crumb a {
     color: var(--muted);
     text-decoration: none;
+    transition: color var(--dur-fast) var(--ease);
 }
 
 .crumb a:hover {
@@ -841,6 +933,7 @@ td code {
 
 .foot a {
     color: var(--muted);
+    transition: color var(--dur-fast) var(--ease);
 }
 
 .foot a:hover {
@@ -981,6 +1074,7 @@ td code {
     border: 1px solid var(--line);
     padding: 0.45rem 0.9rem;
     cursor: pointer;
+    transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
 
 .pg-enrol button:hover,
@@ -1012,6 +1106,13 @@ td code {
     background: var(--bg);
     border: 1px solid var(--line);
     padding: 0.4rem 0.55rem;
+    transition: border-color var(--dur-fast) var(--ease);
+}
+
+.pg-app input:hover,
+.pg-app select:hover,
+.pg-app textarea:hover {
+    border-color: var(--muted);
 }
 
 .pg-app textarea {
