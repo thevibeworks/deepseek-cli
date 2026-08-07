@@ -89,9 +89,17 @@ func Cost(model string, u Usage) float64 {
 //     default upstream, and DeepSeek does not document that reasoning
 //     tokens respect max_tokens — they are billed as output either way,
 //     so the bound assumes they do not.
-func Estimate(model string, requestBytes, maxTokens int) float64 {
+//
+// A search request breaks the first rule: the pages DeepSeek reads on the
+// caller's behalf arrive as input tokens the body never contained, so
+// searchInputAllowance is added to the input bound instead.
+func Estimate(model string, requestBytes, maxTokens int, search bool) float64 {
+	input := requestBytes + 1
+	if search {
+		input += searchInputAllowance
+	}
 	return Cost(model, Usage{
-		InputTokens:  requestBytes + 1,
+		InputTokens:  input,
 		OutputTokens: maxTokens + reasoningAllowance,
 		Found:        false,
 	})
@@ -102,6 +110,24 @@ func Estimate(model string, requestBytes, maxTokens int) float64 {
 // longest thinking runs measured live; at flash rates it prices at under
 // a cent, so over-reserving costs headroom, not money.
 const reasoningAllowance = 32 << 10
+
+// searchInputAllowance is the input headroom reserved for a server-side
+// web search, whose page reads land in input_tokens without ever passing
+// through the request body.
+//
+// 256k is a judgement, not a proof. A search request measured live on
+// 2026-08-07 reported 40,260 input tokens after eleven server-side calls,
+// so this is roughly six times the observed case; the model's 1M context
+// is the only true bound, and reserving 1M would price a single search at
+// more than half a day's budget and make the feature unofferable.
+//
+// The honest statement of the trade: within this allowance the budget is
+// still a hard ceiling, and beyond it a search request can overshoot by
+// the difference. Two things keep that survivable — the per-subject
+// in-flight cap means one caller cannot stack such requests, and searches
+// are rationed per user per day, so the overshoot is bounded by the few
+// distinct callers who can be mid-search at the same moment.
+const searchInputAllowance = 256 << 10
 
 // rawUsage is permissive on purpose: it decodes the usage object of every
 // format at once, using pointers so "absent" and "zero" stay distinct.

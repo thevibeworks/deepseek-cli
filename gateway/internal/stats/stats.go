@@ -47,6 +47,27 @@ type bucket struct {
 	output   int64
 }
 
+// Upstream is what the gateway has observed of DeepSeek itself.
+type Upstream struct {
+	// State is one word: ok, degraded (some calls failing) or down
+	// (nothing has succeeded since the last failure).
+	State string `json:"state"`
+	// LastOKAgoSec and LastFaultAgoSec are ages rather than timestamps so
+	// a reader does not have to trust our clock against theirs. Negative
+	// means it has not happened in this process's lifetime.
+	LastOKAgoSec    int64 `json:"last_ok_ago_sec"`
+	LastFaultAgoSec int64 `json:"last_fault_ago_sec"`
+	// LastFault is the shape of the last failure — a status code or a
+	// transport error class. Never a URL, a key or a prompt.
+	LastFault string `json:"last_fault,omitempty"`
+	Calls     int64  `json:"calls"`
+	Faults    int64  `json:"faults"`
+	// FaultStreak is consecutive failures right now. It is the number that
+	// distinguishes "one bad request" from "DeepSeek is having an outage".
+	FaultStreak int   `json:"fault_streak"`
+	LatencyMS   int64 `json:"latency_ms"`
+}
+
 // Collector accumulates the live view.
 type Collector struct {
 	mu sync.Mutex
@@ -65,6 +86,19 @@ type Collector struct {
 
 	inFlight int64
 	started  time.Time
+
+	// Upstream health: what DeepSeek did the last time we spoke to it.
+	// This is the honest answer to "is it you or them", and it is a
+	// first-party observation rather than a status page — a vendor's
+	// status page cannot see a route that is broken only from here, and
+	// DeepSeek's is not reachable from outside China anyway.
+	upLastOK    time.Time
+	upLastFault time.Time
+	upFaultWhat string
+	upCalls     int64
+	upFaults    int64
+	upStreak    int
+	upLatencyMS int64
 
 	now func() time.Time
 }
@@ -191,10 +225,11 @@ type System struct {
 
 // Snapshot is everything the dashboard needs from this package.
 type Snapshot struct {
-	Live      Live    `json:"live"`
-	Endpoints []Count `json:"endpoints"`
-	Countries []Count `json:"countries"`
-	System    System  `json:"system"`
+	Live      Live     `json:"live"`
+	Endpoints []Count  `json:"endpoints"`
+	Countries []Count  `json:"countries"`
+	System    System   `json:"system"`
+	Upstream  Upstream `json:"upstream"`
 }
 
 // Snapshot reads the live view. Cheap enough to call per request, but the
@@ -234,6 +269,7 @@ func (c *Collector) Snapshot() Snapshot {
 		},
 		Endpoints: topLocked(c.endpoints, 10),
 		Countries: topLocked(c.countries, 12),
+		Upstream:  c.upstreamLocked(),
 		System: System{
 			UptimeSec:   int64(c.now().Sub(c.started).Seconds()),
 			Load1:       loadAvg1(),
@@ -296,4 +332,64 @@ func loadAvg1() float64 {
 		}
 	}
 	return 0
+}
+
+// Upstream records one round trip to DeepSeek.
+//
+// fault is the caller's judgement, not a status code test, because the
+// gateway already distinguishes "DeepSeek is broken" (429, 5xx, transport
+// failure) from "the caller's own request came back 4xx" — and only the
+// first is an upstream fault. Counting a user's malformed JSON as a
+// DeepSeek outage would make this panel lie in the most misleading
+// direction.
+func (c *Collector) Upstream(what string, fault bool, latency time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	now := c.now()
+	c.upCalls++
+	if fault {
+		c.upFaults++
+		c.upStreak++
+		c.upLastFault = now
+		c.upFaultWhat = what
+		return
+	}
+	c.upStreak = 0
+	c.upLastOK = now
+	if ms := latency.Milliseconds(); ms >= 0 {
+		c.upLatencyMS = ms
+	}
+}
+
+// upstreamLocked reduces the counters to the shape the dashboard reads.
+func (c *Collector) upstreamLocked() Upstream {
+	now := c.now()
+	ago := func(t time.Time) int64 {
+		if t.IsZero() {
+			return -1
+		}
+		return int64(now.Sub(t).Seconds())
+	}
+	u := Upstream{
+		State:           "ok",
+		LastOKAgoSec:    ago(c.upLastOK),
+		LastFaultAgoSec: ago(c.upLastFault),
+		LastFault:       c.upFaultWhat,
+		Calls:           c.upCalls,
+		Faults:          c.upFaults,
+		FaultStreak:     c.upStreak,
+		LatencyMS:       c.upLatencyMS,
+	}
+	switch {
+	case c.upCalls == 0:
+		// Nothing has been asked of DeepSeek since this process started, so
+		// there is nothing to report either way. Saying "ok" would be a
+		// guess dressed as a measurement.
+		u.State = "unknown"
+	case c.upStreak >= 3:
+		u.State = "down"
+	case c.upStreak > 0:
+		u.State = "degraded"
+	}
+	return u
 }

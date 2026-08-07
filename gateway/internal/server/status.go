@@ -42,6 +42,16 @@ type PublicStatus struct {
 	Countries []stats.Count `json:"countries"`
 	Top       []TopSubject  `json:"top_subjects"`
 
+	// History is the last 30 UTC days of traffic, oldest first. A service
+	// this size serves a few requests an hour at best, which is why the
+	// live five-minute view is nearly always zero and cannot be the whole
+	// story — the daily series is where the traffic is actually visible.
+	History []quota.Day `json:"history"`
+
+	// Upstream is what DeepSeek has done for us lately, so a visitor can
+	// tell our outage from theirs without leaving the page.
+	Upstream stats.Upstream `json:"upstream"`
+
 	Keys   PoolStatus     `json:"key_pool"`
 	Limits quota.UserCaps `json:"daily_limits_per_user"`
 	System stats.System   `json:"system"`
@@ -107,6 +117,11 @@ func withoutMoney(t quota.Totals) quota.Totals {
 	return t
 }
 
+// historyDays is how far the daily series goes back. Thirty days is one
+// screen of bars at a readable width, and long enough that a week of
+// growth or a quiet stretch is legible rather than a rounding error.
+const historyDays = 30
+
 // publicStatusTTL caches the document. The dashboard polls, several
 // people may have it open, and every field is a five-minute rolling
 // figure — recomputing per request would spend more CPU on watching the
@@ -171,6 +186,8 @@ func (s *Server) buildStatus() *PublicStatus {
 			SubjectsToday: h.Subjects,
 		},
 		Live:      snap.Live,
+		History:   s.ledger.History(historyDays),
+		Upstream:  snap.Upstream,
 		Endpoints: snap.Endpoints,
 		Countries: snap.Countries,
 		Top:       rows,

@@ -74,6 +74,7 @@ Per-user daily limits:
   DSGATE_ANON_DAILY_REQUESTS       (30)
   DSGATE_ANON_DAILY_INPUT_TOKENS   (60000)
   DSGATE_ANON_DAILY_OUTPUT_TOKENS  (20000)
+  DSGATE_ANON_DAILY_SEARCHES       (3)      server-side web searches per user
   DSGATE_ANON_MAX_TOKENS           (4096)    per-request output cap
   DSGATE_MAX_BODY_BYTES            (131072)  per-request body cap
   DSGATE_REQUESTS_PER_MINUTE       (20)      per-address burst
@@ -132,6 +133,7 @@ func run() error {
 		DailyRequests:     envInt("DSGATE_ANON_DAILY_REQUESTS", 30),
 		DailyInputTokens:  envInt("DSGATE_ANON_DAILY_INPUT_TOKENS", 60000),
 		DailyOutputTokens: envInt("DSGATE_ANON_DAILY_OUTPUT_TOKENS", 20000),
+		DailySearches:     envInt("DSGATE_ANON_DAILY_SEARCHES", 3),
 		DailyBudgetUSD:    envFloat("DSGATE_DAILY_BUDGET_USD", 1.00),
 		TotalBudgetUSD:    envFloat("DSGATE_TOTAL_BUDGET_USD", 20.00),
 	}

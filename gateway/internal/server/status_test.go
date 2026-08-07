@@ -165,7 +165,7 @@ func TestStatusReportsExhaustion(t *testing.T) {
 	// Spend the pool for real rather than configuring it to zero: the
 	// state has to follow actual spend, which is the thing that goes
 	// wrong in production.
-	h.ledger.Admit("someone", 0)
+	h.ledger.Admit("someone", quota.Admission{})
 	h.ledger.Charge("someone", "chat", "deepseek-v4-flash", 10, 0, 10, 0.002, 0, false)
 
 	st := getStatus(t, h)
@@ -337,5 +337,108 @@ func TestEmptyPoolIsAnHonest402(t *testing.T) {
 	}
 	if st := getStatus(t, h); st.State != StateDry {
 		t.Errorf("state = %q, want %q", st.State, StateDry)
+	}
+}
+
+// The daily series is the dashboard's main chart, so it has to be a
+// calendar — every day present, quiet days as zeroes — and it has to keep
+// the same secret the rest of the document keeps: no money.
+func TestStatusHistoryIsACalendarWithoutMoney(t *testing.T) {
+	up := newUpstream(t, func(w http.ResponseWriter, r *http.Request) {
+		io.WriteString(w, chatReply(120, 80))
+	})
+	h := newHarness(t, up, nil)
+	tok := h.enrol(t)
+	h.do(t, "POST", "/chat/completions", tok, `{"messages":[]}`).Body.Close()
+	h.settle(t)
+
+	resp := h.do(t, "GET", "/v1/status", "", "")
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(resp.Body)
+
+	var st PublicStatus
+	if err := json.Unmarshal(raw, &st); err != nil {
+		t.Fatal(err)
+	}
+	if len(st.History) != historyDays {
+		t.Fatalf("history has %d days, want %d — gaps in a chart read as zero traffic, not as missing data", len(st.History), historyDays)
+	}
+	last := st.History[len(st.History)-1]
+	if last.Requests != 1 {
+		t.Errorf("today's row shows %d requests, want the 1 just served", last.Requests)
+	}
+	if last.Subjects != 1 {
+		t.Errorf("today's row shows %d subjects, want 1", last.Subjects)
+	}
+	// Dates must be ordered oldest first, or the chart draws backwards.
+	for i := 1; i < len(st.History); i++ {
+		if st.History[i-1].Date >= st.History[i].Date {
+			t.Fatalf("history is not oldest-first at %d: %q then %q", i, st.History[i-1].Date, st.History[i].Date)
+		}
+	}
+	// A per-day spend series would be a map of when we are cheapest to
+	// empty. It must not be in the public document at any nesting.
+	var probe struct {
+		History []map[string]any `json:"history"`
+	}
+	json.Unmarshal(raw, &probe)
+	for _, day := range probe.History {
+		for k := range day {
+			if strings.Contains(k, "usd") || strings.Contains(k, "spend") || strings.Contains(k, "cost") {
+				t.Errorf("the daily series carries money: %q", k)
+			}
+		}
+	}
+}
+
+// "Is it you or DeepSeek" is the question a visitor actually has when a
+// request fails, so the answer has to be on the page — and it must not
+// claim health it has not observed.
+func TestStatusReportsUpstreamHealth(t *testing.T) {
+	var fail bool
+	up := newUpstream(t, func(w http.ResponseWriter, r *http.Request) {
+		if fail {
+			w.WriteHeader(http.StatusBadGateway)
+			return
+		}
+		io.WriteString(w, chatReply(10, 10))
+	})
+	h := newHarness(t, up, nil)
+	tok := h.enrol(t)
+
+	// Before anything has been asked of DeepSeek, the honest answer is
+	// "unknown" rather than a cheerful all-clear.
+	var st PublicStatus
+	resp := h.do(t, "GET", "/v1/status", "", "")
+	json.NewDecoder(resp.Body).Decode(&st)
+	resp.Body.Close()
+	if st.Upstream.State != "unknown" {
+		t.Errorf("upstream state before any call = %q, want unknown", st.Upstream.State)
+	}
+
+	h.do(t, "POST", "/chat/completions", tok, `{"messages":[]}`).Body.Close()
+	h.settle(t)
+	h.invalidateStatus()
+	resp = h.do(t, "GET", "/v1/status", "", "")
+	json.NewDecoder(resp.Body).Decode(&st)
+	resp.Body.Close()
+	if st.Upstream.State != "ok" || st.Upstream.Calls != 1 {
+		t.Errorf("after one good call: state=%q calls=%d, want ok/1", st.Upstream.State, st.Upstream.Calls)
+	}
+
+	fail = true
+	for i := 0; i < 3; i++ {
+		h.do(t, "POST", "/chat/completions", tok, `{"messages":[]}`).Body.Close()
+		h.settle(t)
+	}
+	h.invalidateStatus()
+	resp = h.do(t, "GET", "/v1/status", "", "")
+	json.NewDecoder(resp.Body).Decode(&st)
+	resp.Body.Close()
+	if st.Upstream.State != "down" {
+		t.Errorf("after three consecutive 502s: state=%q, want down", st.Upstream.State)
+	}
+	if st.Upstream.LastFault != "502" {
+		t.Errorf("last fault = %q, want 502", st.Upstream.LastFault)
 	}
 }

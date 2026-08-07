@@ -74,21 +74,21 @@ deepseek chat "why is the sky blue"</code></pre>
   <noscript><p class="offline">Live metrics need JavaScript. The API itself does not.</p></noscript>
 
   <div class="tiles">
-    <div class="tile"><span class="tile-v" id="t-tps">—</span><span class="tile-l">tokens/sec</span></div>
-    <div class="tile"><span class="tile-v" id="t-rpm">—</span><span class="tile-l">requests/min</span></div>
-    <div class="tile"><span class="tile-v" id="t-live">—</span><span class="tile-l">live users (5m)</span></div>
-    <div class="tile"><span class="tile-v" id="t-flight">—</span><span class="tile-l">in flight</span></div>
-    <div class="tile"><span class="tile-v" id="t-today">—</span><span class="tile-l">users today</span></div>
+    <div class="tile"><span class="tile-v" id="t-req-today">—</span><span class="tile-l">requests today</span></div>
+    <div class="tile"><span class="tile-v" id="t-today">—</span><span class="tile-l">people today</span></div>
+    <div class="tile"><span class="tile-v" id="t-req-30d">—</span><span class="tile-l">requests · 30d</span></div>
+    <div class="tile"><span class="tile-v" id="t-req-life">—</span><span class="tile-l">requests · all time</span></div>
     <div class="tile"><span class="tile-v" id="t-uptime">—</span><span class="tile-l">uptime</span></div>
   </div>
 
   <figure class="card chart">
     <figcaption class="chart-cap">
-      <span>output tokens/sec — last 5 minutes</span>
+      <span>requests per day — last 30 days</span>
       <span id="spark-readout"></span>
     </figcaption>
-    <canvas id="spark" role="img" aria-label="area chart of output tokens per second over the last five minutes"></canvas>
-    <div class="chart-x" aria-hidden="true"><span>5m ago</span><span>now</span></div>
+    <canvas id="spark" role="img" aria-label="bar chart of requests served on each of the last thirty days"></canvas>
+    <div class="chart-x" aria-hidden="true"><span id="chart-x0">30 days ago</span><span>today</span></div>
+    <p class="chart-now" id="chart-now">—</p>
   </figure>
 
   <div class="cols">
@@ -127,12 +127,48 @@ deepseek chat "why is the sky blue"</code></pre>
 
   <div class="cols">
     <div class="card">
+      <h3>Is it us or DeepSeek?</h3>
+      <ul class="health">
+        <li>
+          <span class="health-dot" id="up-us-dot" aria-hidden="true"></span>
+          <span class="health-who">this gateway</span>
+          <span class="health-state" id="up-us">—</span>
+        </li>
+        <li>
+          <span class="health-dot" id="up-ds-dot" aria-hidden="true"></span>
+          <span class="health-who">DeepSeek upstream</span>
+          <span class="health-state" id="up-ds">—</span>
+        </li>
+      </ul>
+      <p class="fineprint" id="up-note">—</p>
+      <p class="fineprint">Measured from our own calls to
+      <code>api.deepseek.com</code>, not from a status page — a page cannot see
+      a route that is broken only from here. DeepSeek's own
+      <a href="https://status.deepseek.com/">incident page</a> is the place to
+      check for anything wider.</p>
+    </div>
+    <div class="card">
       <h3>Endpoints</h3>
       <ul class="barlist" id="endpoints"><li class="empty">no data yet</li></ul>
     </div>
+  </div>
+
+  <div class="cols">
     <div class="card">
       <h3>Countries</h3>
       <ul class="barlist" id="countries"><li class="empty">no data yet</li></ul>
+    </div>
+    <div class="card">
+      <h3>Right now</h3>
+      <ul class="sysline">
+        <li>in flight <span id="t-flight">—</span></li>
+        <li>tokens/sec <span id="t-tps">—</span></li>
+        <li>requests/min <span id="t-rpm">—</span></li>
+        <li>active (5m) <span id="t-live">—</span></li>
+      </ul>
+      <p class="fineprint">A pool this size is idle most of the day, so these
+      are usually zero. That is the honest reading, not a broken widget — the
+      daily chart above is where the traffic shows.</p>
     </div>
   </div>
 
@@ -186,7 +222,13 @@ deepseek chat "why is the sky blue"</code></pre>
     <li><span id="lim-req">30</span> requests</li>
     <li><span id="lim-in">60k</span> input tokens</li>
     <li><span id="lim-out">20k</span> output tokens</li>
+    <li><span id="lim-search">3</span> web searches</li>
   </ul>
+  <p class="fineprint">Server-side <code>web_search</code> works here:
+  <code>deepseek respond "…" --web-search</code>, or the <code>web_search</code>
+  tool on <code>/responses</code> from any OpenAI client. It has its own small
+  ration because one search reads whole pages into the prompt and costs about
+  what ten ordinary turns cost — see <a href="/economics">economics</a>.</p>
 </section>
 
 </main>

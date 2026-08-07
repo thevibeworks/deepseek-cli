@@ -275,20 +275,39 @@ func asReject(err error, target **Reject) bool {
 	return ok
 }
 
-// Server-side tools perform billed work that never appears in the usage
-// object — outside every ceiling this gateway enforces. Client function
-// tools only declare a schema and stay allowed.
+// web_search is carried, because measurement showed its whole cost
+// arrives as input tokens this gateway already meters. Every other
+// server-side tool is unknown work at an unknown price and stays refused.
+// Client function tools only declare a schema and were never in question.
 func TestServerSideToolsAreRefused(t *testing.T) {
 	route, _ := Lookup("POST", "/responses")
 	lim := Limits{MaxTokens: 100, Model: "deepseek-v4-flash"}
 
-	_, err := Apply(route, []byte(`{"input":"hi","tools":[{"type":"web_search"}]}`), "sub", lim)
-	if err == nil {
-		t.Fatal("web_search passed policy; its per-search cost has no ceiling")
+	for _, kind := range []string{"web_search", "web_search_2025_08_26"} {
+		d, err := Apply(route, []byte(`{"input":"hi","tools":[{"type":"`+kind+`"}]}`), "sub", lim)
+		if err != nil {
+			t.Fatalf("%s was refused: %v", kind, err)
+		}
+		if !d.Search {
+			t.Errorf("%s did not set Decision.Search, so it would be reserved and rationed as an ordinary request", kind)
+		}
 	}
 
-	if _, err := Apply(route, []byte(`{"input":"hi","tools":[{"type":"function","name":"f"}]}`), "sub", lim); err != nil {
+	// An unknown server-side tool is still a refusal, and the message has
+	// to point at the one that does work rather than only at the exit.
+	var rej *Reject
+	_, err := Apply(route, []byte(`{"input":"hi","tools":[{"type":"code_interpreter"}]}`), "sub", lim)
+	if !asReject(err, &rej) {
+		t.Fatalf("an unknown server-side tool passed policy: %v", err)
+	}
+	if !strings.Contains(rej.Hint, "web_search") {
+		t.Errorf("the refusal does not mention the tool that works: %q", rej.Hint)
+	}
+
+	if d, err := Apply(route, []byte(`{"input":"hi","tools":[{"type":"function","name":"f"}]}`), "sub", lim); err != nil {
 		t.Errorf("a client function tool was refused: %v", err)
+	} else if d.Search {
+		t.Error("a function tool was counted as a search")
 	}
 
 	// The other formats have no server-side tools; their tools stay open.

@@ -300,6 +300,7 @@ dollar.**
 | `DSGATE_ANON_DAILY_REQUESTS` | 30 | enough to be useful for a day's work, not enough to script against |
 | `DSGATE_ANON_DAILY_INPUT_TOKENS` | 60000 | ~150 pages of context per day |
 | `DSGATE_ANON_DAILY_OUTPUT_TOKENS` | 20000 | the expensive side; the real cap |
+| `DSGATE_ANON_DAILY_SEARCHES` | 3 | a `web_search` request costs ~10 ordinary turns; the request counter alone would let one caller take a quarter of the day |
 | `DSGATE_ANON_MAX_TOKENS` | 4096 | clamps a single response, bounding overshoot |
 | `DSGATE_MAX_BODY_BYTES` | 131072 | ~32K tokens; bounds the input side of overshoot |
 | `DSGATE_DAILY_BUDGET_USD` | 1.00 | the circuit breaker; the number that actually protects us |
@@ -311,6 +312,19 @@ dollar.**
 | `DSGATE_SUBJECT_INFLIGHT` | 2 | one token cannot park the whole service |
 | `DSGATE_TOKEN_TTL_DAYS` | 7 | identities age out instead of accumulating |
 | `DSGATE_BALANCE_CHECK_MINUTES` | 15 | the ledger's "we have credit" is checked against the real account |
+
+**`web_search` is carried, and rationed.** Measured on 2026-08-07, one
+search request made eleven server-side calls and billed 40,260 input
+tokens with no separate per-search fee — so its whole cost arrives as
+input tokens the meter already reads. What it breaks is the *reservation*,
+which bounded input at one token per body byte: DeepSeek chooses how many
+pages to read, so a search's input is upstream-controlled. Hence a 256k
+input allowance at admission (about 6x the observed case) plus the daily
+ration above. Within that allowance the budget is still a hard ceiling;
+past it a search can overshoot by the difference, bounded by how many
+distinct callers can be mid-search at once. Every other server-side tool
+stays refused: unknown work at an unknown price, spent from donated
+credit. Reasoning and the expiry condition are in `TASTE.md`.
 
 **Free tier is flash only.** Pro is 3x the price and the request is
 *rejected*, not silently downgraded — a user who asked for pro and got
@@ -333,6 +347,8 @@ What that document says and what it refuses to say are both deliberate:
 | subject ids **truncated to 6 chars** | whole subject ids | a whole id can be matched against the one in someone's `free.json` |
 | **per-country** request counts | anything per-IP, ever | an aggregate is a fact about the service, not about a person |
 | token counts, tok/s, live subjects | prompts, completions | the promise in `deepseek free` is the promise here |
+| **requests per day** for 30 days | per-day spend | a spend series is a map of when we are cheapest to empty |
+| **upstream** last-success, fault streak | upstream key or account detail | "is it you or DeepSeek" is the question a failing caller has |
 
 Exact money, per-key health and the full subject table live behind
 `GET /admin/status` with the operator token.
@@ -341,6 +357,24 @@ Metrics live in package `stats`: a ring of per-second buckets, bounded
 maps, everything in memory and lost on restart. That is the right trade —
 losing it costs a graph, and it keeps observability from ever becoming a
 second, weaker copy of the money.
+
+**The main chart is a day per bar, not a second.** It was output tokens
+per second over five minutes, which is the wrong instrument for a pool
+serving a few requests an hour: idle almost every second, so the line was
+flat at zero whenever anyone looked and said nothing true about whether
+the service works. The daily series comes from `quota.History`, which
+reads the journals — the same files the money settles from, so the pretty
+chart cannot disagree with the ledger. Finished days are immutable and
+memoised; only today is recomputed. Quiet days are present as zeroes,
+because a gap in a chart reads as missing data rather than as a quiet day.
+
+**Upstream health is first-party, not scraped.** Every round trip to
+DeepSeek is recorded with its outcome, and only *their* failures (429, 5xx,
+transport) count as faults — a caller's own 4xx would otherwise read as an
+outage. Three consecutive faults reads as `down`, one as `degraded`, and
+before the first forwarded request the state is `unknown` rather than a
+cheerful all-clear it has not earned. `status.deepseek.com` is deliberately
+not consumed; see `TASTE.md` for the probe results.
 
 ## The key pool
 

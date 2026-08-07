@@ -42,11 +42,11 @@ func TestRequestsAreCappedPerDay(t *testing.T) {
 	defer done()
 
 	for i := 0; i < 3; i++ {
-		if err := l.Admit("alice", 0); err != nil {
+		if err := l.Admit("alice", Admission{}); err != nil {
 			t.Fatalf("request %d refused: %v", i+1, err)
 		}
 	}
-	err := l.Admit("alice", 0)
+	err := l.Admit("alice", Admission{})
 	if err == nil {
 		t.Fatal("a fourth request was admitted against a limit of three")
 	}
@@ -55,7 +55,7 @@ func TestRequestsAreCappedPerDay(t *testing.T) {
 	}
 
 	// One subject hitting its limit must not affect another.
-	if err := l.Admit("bob", 0); err != nil {
+	if err := l.Admit("bob", Admission{}); err != nil {
 		t.Errorf("bob was refused because alice ran out: %v", err)
 	}
 }
@@ -66,12 +66,12 @@ func TestTokenLimitsAreEnforcedAfterCharging(t *testing.T) {
 	l, done := open(t, t.TempDir(), lim)
 	defer done()
 
-	if err := l.Admit("alice", 0); err != nil {
+	if err := l.Admit("alice", Admission{}); err != nil {
 		t.Fatal(err)
 	}
 	l.Charge("alice", "chat", "deepseek-v4-flash", 0, 0, 600, 0.0001, 0, false)
 
-	err := l.Admit("alice", 0)
+	err := l.Admit("alice", Admission{})
 	if err == nil {
 		t.Fatal("admitted after the output token cap was passed")
 	}
@@ -94,7 +94,7 @@ func TestDailyBudgetStopsEveryone(t *testing.T) {
 	spenders := []string{"a", "b", "c", "d", "e"}
 	tripped := ""
 	for _, who := range spenders {
-		if err := l.Admit(who, 0); err != nil {
+		if err := l.Admit(who, Admission{}); err != nil {
 			tripped = who
 			break
 		}
@@ -106,7 +106,7 @@ func TestDailyBudgetStopsEveryone(t *testing.T) {
 
 	// And it holds for someone who has spent nothing at all: the breaker
 	// is about the service's money, not the caller's behaviour.
-	err := l.Admit("someone-brand-new", 0)
+	err := l.Admit("someone-brand-new", Admission{})
 	if err == nil {
 		t.Fatal("a fresh subject was admitted after the daily budget was spent")
 	}
@@ -122,10 +122,10 @@ func TestCreditsExhaustedOutranksTheDailyBudget(t *testing.T) {
 	l, done := open(t, t.TempDir(), lim)
 	defer done()
 
-	l.Admit("a", 0)
+	l.Admit("a", Admission{})
 	l.Charge("a", "chat", "deepseek-v4-flash", 0, 0, 0, 0.10, 0, false)
 
-	err := l.Admit("b", 0)
+	err := l.Admit("b", Admission{})
 	if got := reasonOf(t, err); got != ReasonCredits {
 		t.Fatalf("reason = %q, want %q", got, ReasonCredits)
 	}
@@ -144,9 +144,9 @@ func TestCountersSurviveARestart(t *testing.T) {
 	dir := t.TempDir()
 
 	l, _ := open(t, dir, testLimits())
-	l.Admit("alice", 0)
+	l.Admit("alice", Admission{})
 	l.Charge("alice", "chat", "deepseek-v4-flash", 400, 0, 200, 0.002, 0, false)
-	l.Admit("alice", 0)
+	l.Admit("alice", Admission{})
 	l.Charge("alice", "chat", "deepseek-v4-flash", 100, 0, 50, 0.001, 0, false)
 	l.Close()
 
@@ -170,7 +170,7 @@ func TestCountersSurviveARestart(t *testing.T) {
 func TestTruncatedJournalKeepsWhatItCan(t *testing.T) {
 	dir := t.TempDir()
 	l, _ := open(t, dir, testLimits())
-	l.Admit("alice", 0)
+	l.Admit("alice", Admission{})
 	l.Charge("alice", "chat", "deepseek-v4-flash", 400, 0, 200, 0.002, 0, false)
 	day := l.day
 	l.Close()
@@ -199,7 +199,7 @@ func TestLifetimeSpendSurvivesTheDayRolling(t *testing.T) {
 
 	l, _ := open(t, dir, testLimits())
 	l.SetClock(func() time.Time { return now })
-	l.Admit("alice", 0)
+	l.Admit("alice", Admission{})
 	l.Charge("alice", "chat", "deepseek-v4-flash", 100, 0, 100, 0.05, 0, false)
 
 	now = now.Add(2 * time.Minute) // past midnight UTC
@@ -241,14 +241,14 @@ func TestRefundReturnsTheRequestAllowance(t *testing.T) {
 	l, done := open(t, t.TempDir(), testLimits())
 	defer done()
 
-	l.Admit("alice", 0)
-	l.Refund("alice", 0)
+	l.Admit("alice", Admission{})
+	l.Refund("alice", Admission{})
 	if st := l.Status("alice", "anon"); st.Used.Requests != 0 {
 		t.Errorf("requests after refund = %d, want 0", st.Used.Requests)
 	}
 	// Refunding more than was taken must not create allowance.
-	l.Refund("alice", 0)
-	l.Refund("alice", 0)
+	l.Refund("alice", Admission{})
+	l.Refund("alice", Admission{})
 	if st := l.Status("alice", "anon"); st.Used.Requests != 0 {
 		t.Errorf("over-refunding produced %d requests", st.Used.Requests)
 	}
@@ -259,7 +259,7 @@ func TestRevocation(t *testing.T) {
 	l, done := open(t, dir, testLimits())
 	defer done()
 
-	if err := l.Admit("spammer", 0); err != nil {
+	if err := l.Admit("spammer", Admission{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "revoked.txt"),
@@ -270,10 +270,10 @@ func TestRevocation(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if got := reasonOf(t, l.Admit("spammer", 0)); got != ReasonRevoked {
+	if got := reasonOf(t, l.Admit("spammer", Admission{})); got != ReasonRevoked {
 		t.Errorf("reason = %q, want %q", got, ReasonRevoked)
 	}
-	if err := l.Admit("alice", 0); err != nil {
+	if err := l.Admit("alice", Admission{}); err != nil {
 		t.Errorf("revoking one subject blocked another: %v", err)
 	}
 }
@@ -284,7 +284,7 @@ func TestRevocation(t *testing.T) {
 func TestJournalRecordsCountsAndNothingElse(t *testing.T) {
 	dir := t.TempDir()
 	l, _ := open(t, dir, testLimits())
-	l.Admit("alice", 0)
+	l.Admit("alice", Admission{})
 	l.Charge("alice", "chat", "deepseek-v4-flash", 400, 120, 200, 0.002, 0, false)
 	day := l.day
 	l.Close()
@@ -309,7 +309,7 @@ func TestJournalRecordsCountsAndNothingElse(t *testing.T) {
 func TestStatusDoesNotLeakServiceFinances(t *testing.T) {
 	l, done := open(t, t.TempDir(), testLimits())
 	defer done()
-	l.Admit("alice", 0)
+	l.Admit("alice", Admission{})
 	l.Charge("alice", "chat", "deepseek-v4-flash", 10, 0, 10, 0.005, 0, false)
 
 	st := l.Status("alice", "anon")
@@ -333,20 +333,20 @@ func TestReservationIsACeiling(t *testing.T) {
 	l, done := open(t, t.TempDir(), lim)
 	defer done()
 
-	if got := reasonOf(t, l.Admit("a", 0.02)); got != ReasonDailyBudget {
+	if got := reasonOf(t, l.Admit("a", Admission{ReserveUSD: 0.02})); got != ReasonDailyBudget {
 		t.Fatalf("a $0.02 worst case fit under a $0.01 budget: %v", got)
 	}
-	if err := l.Admit("a", 0.005); err != nil {
+	if err := l.Admit("a", Admission{ReserveUSD: 0.005}); err != nil {
 		t.Fatalf("a fitting reservation was refused: %v", err)
 	}
 	// A second request that fits the budget alone, but not alongside the
 	// first one's reservation, must wait.
-	if got := reasonOf(t, l.Admit("b", 0.006)); got != ReasonDailyBudget {
+	if got := reasonOf(t, l.Admit("b", Admission{ReserveUSD: 0.006})); got != ReasonDailyBudget {
 		t.Fatalf("overlapping reservations overshot the budget: %v", got)
 	}
 	// Settling the first request at its (small) real cost frees the room.
 	l.Charge("a", "chat", "deepseek-v4-flash", 10, 0, 10, 0.001, 0.005, false)
-	if err := l.Admit("b", 0.006); err != nil {
+	if err := l.Admit("b", Admission{ReserveUSD: 0.006}); err != nil {
 		t.Fatalf("room was not released at Charge: %v", err)
 	}
 }
@@ -357,15 +357,15 @@ func TestRefundReleasesTheReservation(t *testing.T) {
 	l, done := open(t, t.TempDir(), lim)
 	defer done()
 
-	if err := l.Admit("a", 0.009); err != nil {
+	if err := l.Admit("a", Admission{ReserveUSD: 0.009}); err != nil {
 		t.Fatal(err)
 	}
-	l.Refund("a", 0.009)
-	if err := l.Admit("b", 0.009); err != nil {
+	l.Refund("a", Admission{ReserveUSD: 0.009})
+	if err := l.Admit("b", Admission{ReserveUSD: 0.009}); err != nil {
 		t.Fatalf("a refunded reservation still held the budget: %v", err)
 	}
 	l.Release(0.009)
-	if err := l.Admit("c", 0.009); err != nil {
+	if err := l.Admit("c", Admission{ReserveUSD: 0.009}); err != nil {
 		t.Fatalf("Release did not free the room: %v", err)
 	}
 }
@@ -376,7 +376,7 @@ func TestJournalFailureFailsClosed(t *testing.T) {
 	l, done := open(t, t.TempDir(), testLimits())
 	defer done()
 
-	if err := l.Admit("a", 0); err != nil {
+	if err := l.Admit("a", Admission{}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -391,7 +391,7 @@ func TestJournalFailureFailsClosed(t *testing.T) {
 	}
 
 	l.Charge("a", "chat", "deepseek-v4-flash", 10, 0, 10, 0.0001, 0, false)
-	err := l.Admit("b", 0)
+	err := l.Admit("b", Admission{})
 	if got := reasonOf(t, err); got != ReasonUnavailable {
 		t.Fatalf("admissions continued with a dead journal: %v", err)
 	}
@@ -400,7 +400,7 @@ func TestJournalFailureFailsClosed(t *testing.T) {
 	if err := os.Chmod(path, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := l.Admit("b", 0); err != nil {
+	if err := l.Admit("b", Admission{}); err != nil {
 		t.Fatalf("the ledger did not recover after the journal came back: %v", err)
 	}
 }
@@ -410,7 +410,7 @@ func TestJournalFailureFailsClosed(t *testing.T) {
 func TestReplaySkipsACorruptLine(t *testing.T) {
 	dir := t.TempDir()
 	l, done := open(t, dir, testLimits())
-	l.Admit("a", 0)
+	l.Admit("a", Admission{})
 	l.Charge("a", "chat", "deepseek-v4-flash", 10, 0, 10, 0.002, 0, false)
 	day := l.day
 	done()
@@ -424,7 +424,7 @@ func TestReplaySkipsACorruptLine(t *testing.T) {
 	f.Close()
 
 	l2, done2 := open(t, dir, testLimits())
-	l2.Admit("a", 0)
+	l2.Admit("a", Admission{})
 	l2.Charge("a", "chat", "deepseek-v4-flash", 10, 0, 10, 0.003, 0, false)
 	done2()
 
@@ -432,5 +432,53 @@ func TestReplaySkipsACorruptLine(t *testing.T) {
 	defer done3()
 	if got := l3.Health().DaySpendUSD; got < 0.0049 {
 		t.Errorf("day spend replayed as $%.4f; the corrupt line ate the entries after it", got)
+	}
+}
+
+// A search costs roughly ten times an ordinary turn, so it has its own
+// ration. Two properties matter and neither is obvious: running out of
+// searches must not touch the rest of the tier, and a search that never
+// reached the model must give the ration back.
+func TestSearchesAreRationedWithoutBlockingOrdinaryRequests(t *testing.T) {
+	lim := testLimits()
+	lim.DailyRequests = 100
+	lim.DailySearches = 2
+	l, done := open(t, t.TempDir(), lim)
+	defer done()
+
+	for i := 0; i < 2; i++ {
+		if err := l.Admit("alice", Admission{Search: true}); err != nil {
+			t.Fatalf("search %d refused: %v", i+1, err)
+		}
+	}
+
+	err := l.Admit("alice", Admission{Search: true})
+	if err == nil {
+		t.Fatal("a third search was admitted against a ration of two")
+	}
+	if got := reasonOf(t, err); got != ReasonSearches {
+		t.Errorf("reason = %q, want %q", got, ReasonSearches)
+	}
+
+	// The point of a separate ration: everything else still works.
+	if err := l.Admit("alice", Admission{}); err != nil {
+		t.Errorf("an ordinary request was refused because searches ran out: %v", err)
+	}
+
+	// And a refunded search is not a spent one.
+	l.Refund("alice", Admission{Search: true})
+	if err := l.Admit("alice", Admission{Search: true}); err != nil {
+		t.Errorf("a refunded search ration was not returned: %v", err)
+	}
+}
+
+func TestSearchRationIsPublishedWithTheOtherLimits(t *testing.T) {
+	lim := testLimits()
+	lim.DailySearches = 3
+	l, done := open(t, t.TempDir(), lim)
+	defer done()
+
+	if got := l.Status("alice", "anon").Limits.Searches; got != 3 {
+		t.Errorf("published search limit = %d, want 3 — a limit a caller cannot read is one they can only discover by hitting it", got)
 	}
 }
