@@ -174,6 +174,7 @@ func run() error {
 		Origins:                  envList("DSGATE_ORIGINS"),
 		AdminToken:               os.Getenv("DSGATE_ADMIN_TOKEN"),
 		Announce:                 os.Getenv("DSGATE_ANNOUNCE"),
+		TurnstileSecret:          os.Getenv("DSGATE_TURNSTILE_SECRET"),
 	}
 
 	gw := server.New(cfg, signer, m, ledger)

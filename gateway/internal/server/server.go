@@ -78,6 +78,16 @@ type Config struct {
 	// AdminToken gates the operator endpoints. Empty disables them.
 	AdminToken string
 
+	// TurnstileSecret enables the browser check on the mint's browser
+	// lane: when set, a token redemption that carries an Origin header
+	// must also carry a Cloudflare Turnstile token, verified against
+	// siteverify. Empty disables the check entirely; the CLI's
+	// no-Origin lane is never subject to it. See turnstile.go.
+	TurnstileSecret string
+	// TurnstileURL overrides the siteverify endpoint, for tests. Empty
+	// means Cloudflare's real one.
+	TurnstileURL string
+
 	// Announce is the public URL of this gateway, used in the messages
 	// that tell a user where their prompts are going.
 	Announce string

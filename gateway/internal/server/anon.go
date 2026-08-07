@@ -78,6 +78,10 @@ type TokenRequest struct {
 	// through JavaScript's number type, and the playground is a first
 	// class client.
 	Nonce string `json:"nonce"`
+	// TurnstileToken is the browser check's answer, required on the
+	// browser lane when the gateway is configured with a Turnstile
+	// secret and ignored otherwise. See turnstile.go for the lane split.
+	TurnstileToken string `json:"turnstile_token,omitempty"`
 }
 
 // TokenResponse is a minted credential.
@@ -108,10 +112,29 @@ func (s *Server) handleToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The browser lane owes a Turnstile answer on top of the solve. The
+	// missing-token case is refused before Redeem so the caller's valid
+	// proof-of-work is not burned learning they forgot the widget.
+	if s.turnstileRequired(r) && req.TurnstileToken == "" {
+		writeError(w, http.StatusForbidden, typeRejected,
+			"this origin also needs the browser check; reload the playground and try again")
+		return
+	}
+
 	t, err := s.mint.Redeem(ip, req.Challenge, nonce)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, typeRejected, err.Error())
 		return
+	}
+
+	// Verified after Redeem, deliberately: reaching Cloudflare costs an
+	// outbound call, and this order means nobody can trigger one without
+	// first paying a valid proof-of-work.
+	if s.turnstileRequired(r) {
+		if err := s.verifyTurnstile(r.Context(), req.TurnstileToken, ip); err != nil {
+			writeError(w, http.StatusForbidden, typeRejected, err.Error())
+			return
+		}
 	}
 	writeJSON(w, http.StatusOK, TokenResponse{
 		Token:   t.String,
