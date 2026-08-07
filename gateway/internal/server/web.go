@@ -36,7 +36,7 @@ func (s *Server) routeWeb(mux *http.ServeMux) {
 	mux.HandleFunc("GET /style.css", s.serveAsset("web/style.css", "text/css; charset=utf-8"))
 	mux.HandleFunc("GET /app.js", s.serveAsset("web/app.js", "text/javascript; charset=utf-8"))
 
-	for _, page := range []string{"privacy", "terms", "story", "vision"} {
+	for _, page := range []string{"privacy", "terms", "story", "vision", "economics"} {
 		h := s.serveAsset("web/pages/"+page+".html", "text/html; charset=utf-8")
 		mux.HandleFunc("GET /"+page, h)
 		mux.HandleFunc("GET /"+page+"/", h)
@@ -77,7 +77,7 @@ func (s *Server) serveRobots(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	// The API paths are not content and crawling them wastes the pool's
 	// rate limits on robots. The pages are the point, so they stay open.
-	fmt.Fprintf(w, "User-agent: *\nAllow: /$\nAllow: /privacy\nAllow: /terms\nAllow: /story\nAllow: /vision\n"+
+	fmt.Fprintf(w, "User-agent: *\nAllow: /$\nAllow: /privacy\nAllow: /terms\nAllow: /story\nAllow: /vision\nAllow: /economics\n"+
 		"Disallow: /v1/\nDisallow: /admin/\nDisallow: /chat/\nDisallow: /responses\nDisallow: /anthropic/\n\nSitemap: %s/sitemap.xml\n", base)
 }
 
@@ -95,6 +95,7 @@ func (s *Server) serveSitemap(w http.ResponseWriter, r *http.Request) {
 		{"/", "1.0", "hourly"},
 		{"/story", "0.8", "monthly"},
 		{"/vision", "0.8", "monthly"},
+		{"/economics", "0.8", "monthly"},
 		{"/privacy", "0.5", "yearly"},
 		{"/terms", "0.5", "yearly"},
 	} {
