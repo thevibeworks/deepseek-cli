@@ -110,6 +110,12 @@
     --whale-lit: #00c2e9;
     --whale-lit: light-dark(#ffffff, #00c2e9);
 
+    /* Sun glitter on the water, the day's counterpart to the stars: by
+     * day the sea sparkles, by night the sky does. Transparent on dark
+     * for the same reason the stars are transparent on light. */
+    --sea-sparkle: rgba(0, 0, 0, 0);
+    --sea-sparkle: light-dark(rgba(255, 250, 235, 0.9), rgba(0, 0, 0, 0));
+
     /* The night sky. Stars exist only over a black page — by day they
      * are simply not there, which is what fully-transparent light values
      * mean. waves.js reads these the same way it reads the sea, and
@@ -201,6 +207,23 @@ body::before {
     position: sticky;
     top: 0;
     z-index: 10;
+}
+
+/* The mark: the sounding fluke, riding the masthead rule the way the
+ * 404's whale rides it — the header's border is the site's waterline,
+ * and the mark sits on it, tail up, headed for the deep. It lives in
+ * the strip of masthead padding above the rule, so it never touches
+ * the nav; sized to clear the theme toggle above it. */
+.masthead .mark {
+    position: absolute;
+    right: var(--gutter);
+    bottom: -1px;
+    width: 22px;
+    height: 14px;
+    fill: var(--cyan);
+    opacity: 0.9;
+    pointer-events: none;
+    transition: fill var(--dur-slow) var(--ease);
 }
 
 .masthead .wrap {
@@ -703,6 +726,60 @@ pre code {
     display: none;
 }
 
+/* The 404's sea is not the fixed full-viewport one: it is a band in the
+ * flow, right under the masthead, with the waterline hard up against the
+ * header rule so the whale rides it like a horizon — back, dorsal and
+ * fluke breaking the line, everything else below. Point of the redesign:
+ * on the full-viewport sea the whale surfaced under the footer and pager
+ * text; here the wayfinding links keep the clean page background. It is
+ * masked at the bottom so the water dissolves into the page instead of
+ * ending on a hard edge. */
+.sea-band {
+    position: relative;
+    inset: auto;
+    height: 13rem;
+    margin: 0 0 2rem;
+    -webkit-mask-image: linear-gradient(180deg, #000 58%, transparent 96%);
+    mask-image: linear-gradient(180deg, #000 58%, transparent 96%);
+}
+
+/* The no-JS fallback paints the same scene the canvas would: the far
+ * water as a wash just under the rule, the whale at a third of the width
+ * with its waterline 21% down the band, and the near water over its
+ * belly. The calc is the viewport fallback's trick at band size: the
+ * whale box is 43% as tall as wide, its waterline at 42% of that, so
+ * 0.42 × 0.34 × 100vw = 6.14vw. */
+.sea-band {
+    background: linear-gradient(180deg,
+            transparent 0%,
+            color-mix(in srgb, var(--sea-0) 30%, transparent) 5%,
+            color-mix(in srgb, var(--sea-1) 42%, transparent) 12%,
+            transparent 22%);
+}
+
+.sea-band::before {
+    background: var(--whale-img) no-repeat 50% calc(2.73rem - 6.14vw) / 34% auto;
+    opacity: 0.75;
+}
+
+.sea-band::after {
+    background: linear-gradient(180deg,
+            transparent 16%,
+            color-mix(in srgb, var(--sea-2) 52%, transparent) 26%,
+            color-mix(in srgb, var(--sea-3) 72%, transparent) 38%,
+            var(--sea-deep) 100%);
+}
+
+@media (max-width: 44rem) {
+    .sea-band {
+        height: 8.5rem;
+    }
+
+    .sea-band::before {
+        background: var(--whale-img) no-repeat 50% calc(1.79rem - 11.56vw) / 64% auto;
+    }
+}
+
 /* The footer sits on the water rather than on a rule. */
 .foot {
     position: relative;
@@ -771,6 +848,10 @@ pre code {
     overflow-x: auto;
     margin: 0 0 1.5rem;
     border: 1px solid var(--line);
+    /* A wash of the page colour, so table text never fights the whale
+     * swimming behind it. Translucent rather than opaque: the sea should
+     * still read through the gaps, just not through the numbers. */
+    background: color-mix(in srgb, var(--bg) 72%, transparent);
 }
 
 table {
@@ -844,6 +925,30 @@ td code {
 
 .note.warn .tag {
     color: var(--yellow);
+}
+
+/* A screenshot standing as a primary source, mostly on the news page.
+ * The image keeps its own (usually white) background: it is a document,
+ * not page furniture, so it does not follow the theme — same reasoning
+ * as the terminal blocks. */
+figure.shot {
+    margin: 0 0 1.4rem;
+    max-width: 30rem;
+}
+
+figure.shot img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--line);
+    background: #fff;
+}
+
+figure.shot figcaption {
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: var(--muted);
+    margin-top: 0.45rem;
 }
 
 /* Status chips, mostly on the news page: the one fact about an
@@ -1061,6 +1166,16 @@ td code {
     font-size: 0.85rem;
     margin: 0.75rem 0 0;
     min-height: 1.2em;
+}
+
+/* The browser check's widget, when the build carries one. Cloudflare
+ * draws the box itself; this only gives it breathing room. */
+.pg-turnstile {
+    margin: 0.75rem 0 0;
+}
+
+.pg-turnstile:empty {
+    margin: 0;
 }
 
 /* Buttons and fields. The site has no form controls anywhere else, so

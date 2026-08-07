@@ -315,6 +315,29 @@ console.log('\nwhale off');
     ops.filter((o) => o.op === 'fill' && o.depth === 0).length === W.LAYERS.length);
 }
 
+// --- a band with a whale in it ------------------------------------------
+
+console.log('\nband');
+
+{
+  const world = makeWorld();
+  world.ocean({ 'data-ocean': 'band' });
+  const W = world.load();
+  const sea = W.mounted[0];
+  check('a band mounts as a band', sea.layout === 'band');
+  check('with the band layer table', sea.layers === W.BAND_LAYERS);
+  check('and the emblem-sized whale span',
+    sea.st.whaleSpan === W.PROFILES.band.span, String(sea.st.whaleSpan));
+  sea.canvas.ctx.ops.length = 0;
+  world.frame(16);
+  const ops = sea.canvas.ctx.ops;
+  check('the band still draws its whale',
+    ops.some((o) => o.op === 'fillPath' && o.args[0] === W.WHALE.body));
+  check('and its water', ops.filter((o) => o.op === 'fill' && o.depth === 0).length ===
+    W.BAND_LAYERS.length);
+  sea.destroy();
+}
+
 // --- the night sky ------------------------------------------------------
 
 console.log('\nstars');

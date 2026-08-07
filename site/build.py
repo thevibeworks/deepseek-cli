@@ -25,6 +25,14 @@ DOCS = "https://api-docs.deepseek.com"
 OG_IMAGE = f"{SITE}/og.png"
 ROOT = pathlib.Path(__file__).resolve().parent
 
+# Cloudflare Turnstile sitekey for the playground's enrol step. Empty
+# means the widget does not exist: no third-party script, no container,
+# and playground.js takes its no-op path. Set it (and give the gateway
+# the matching DSGATE_TURNSTILE_SECRET) to require the browser check on
+# top of the proof-of-work for browser enrolments. The sitekey is
+# public by design; the secret never appears in this repository.
+TURNSTILE_SITEKEY = ""
+
 # Every page, in reading order. The order drives the nav, the pager links
 # and the sitemap, so there is exactly one list to keep correct.
 NAV = [
@@ -84,7 +92,8 @@ THEME_TOGGLE = """
 """.strip()
 
 
-def head(*, slug, title, description, keywords, jsonld, crumb_title):
+def head(*, slug, title, description, keywords, jsonld, crumb_title,
+         band_sea=False):
     """The <head> for one page: canonical, social cards, structured data."""
     url = f"{SITE}/{slug}" if slug else f"{SITE}/"
     depth = slug.count("/") if slug else 0
@@ -105,6 +114,13 @@ def head(*, slug, title, description, keywords, jsonld, crumb_title):
             '{"@type":"ListItem","position":2,"name":"%s","item":"%s"}'
             % (html.escape(crumb_title), url)
         )
+
+    # Every page gets the fixed full-viewport sea behind it, except a page
+    # that asks for the band: the 404 carries its sea as a strip under the
+    # masthead, so the whale rides the header rule like a horizon and the
+    # wayfinding links below it keep their contrast.
+    sea_fixed = "" if band_sea else '<div class="sea" data-ocean></div>\n'
+    sea_band = '<div class="sea sea-band" data-ocean="band"></div>' if band_sea else ""
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -145,9 +161,9 @@ def head(*, slug, title, description, keywords, jsonld, crumb_title):
 </script>
 </head>
 <body>
-<div class="sea" data-ocean></div>
-<a class="skip" href="#main">skip to content</a>
+{sea_fixed}<a class="skip" href="#main">skip to content</a>
 <header class="masthead">
+  <svg class="mark" viewBox="0 6 32 20" width="22" height="14" aria-hidden="true"><path d="M5.6 8.2C4 7 2.4 7.6 3.3 9.5C5.2 13.7 8.7 17.8 12.1 20.7C13.3 21.8 14.1 23.3 14.6 24.9C15.2 23.5 16 22.8 17 22.4C18.1 22.7 19.1 23.5 19.9 24.6C20.7 22.9 21.6 21.2 23 19.5C25.4 16.5 27.9 13.6 29.2 10.5C30 8.5 28.4 7.5 26.7 8.7C23 11.4 19.3 14.9 16.9 18.4C14.3 14.7 9.9 10.5 5.6 8.2Z"/></svg>
   <div class="wrap">
     <a class="brand" href="{root or './'}">
       <span class="caret">&gt;</span><span class="org">thevibeworks/</span><span class="name">deepseek-cli</span>
@@ -160,7 +176,7 @@ def head(*, slug, title, description, keywords, jsonld, crumb_title):
     </nav>
   </div>
 </header>
-<main id="main">
+{sea_band}<main id="main">
   <div class="wrap">
 """
 
@@ -236,6 +252,7 @@ def render(page):
         keywords=page["keywords"],
         jsonld=page["jsonld"],
         crumb_title=page.get("crumb", ""),
+        band_sea=page.get("band_sea", False),
     )
     body += crumb(page.get("crumb", ""), root)
     body += page["body"].replace("{{root}}", root or "./").replace("{{repo}}", REPO).replace("{{docs}}", DOCS)
@@ -1129,7 +1146,7 @@ PAGES.append(dict(
     keywords="deepseek api price increase, deepseek price rise 2026, deepseek peak hour pricing, deepseek off-peak pricing, deepseek api news, deepseek api changelog, deepseek v4 flash release, deepseek pricing change",
     jsonld=faq([
         ("Is DeepSeek raising its API prices?",
-         "Yes, a rise is announced but not yet in effect. On 2026-08-06 (Beijing time) DeepSeek posted a notice in the platform console saying all API services will be repriced in the near term and that the increase is expected to be substantial, advising developers to plan call volume and top-ups accordingly. No new rate card and no effective date have been published. Separately, a 2x peak-hour pricing policy has been announced since June 2026, also without an effective date."),
+         "Yes, a rise is announced but not yet in effect. On 2026-08-06 (Beijing time) DeepSeek posted a notice in the platform console and emailed API account holders saying all API services will be repriced in the near term and that the increase is expected to be substantial, advising developers to plan call volume and top-ups accordingly. No new rate card and no effective date have been published. Separately, a 2x peak-hour pricing policy has been announced since June 2026, also without an effective date."),
         ("When does DeepSeek's peak-hour pricing start?",
          "No effective date has been announced. The published policy: during peak hours, 09:00-12:00 and 14:00-18:00 Beijing time (01:00-04:00 and 06:00-10:00 UTC) daily, all billing items cost 2x the regular price. Until DeepSeek announces the date, the policy is not active and estimates should not apply it."),
         ("What are DeepSeek's current API prices?",
@@ -1156,6 +1173,20 @@ as of this page's build there is none.</p>
 easy to miss from code. It was
 <a href="https://finance.sina.com.cn/tech/roll/2026-08-06/doc-inimivft0773504.shtml">widely
 reported</a> on 2026-08-06 Beijing time.</p>
+<p>The same notice went out by email to API account holders the same day,
+bilingual and unambiguous about the direction. The email adds one thing
+the console banner does not: continuing to use the service after the
+adjustment counts as accepting it, and the offered alternative is
+cancelling and applying for a refund. Received and archived here as the
+primary source:</p>
+<figure class="shot">
+<a href="deepseek-api-billing-adjustment-email-2026-08-06.jpg">
+<img src="deepseek-api-billing-adjustment-email-2026-08-06.jpg"
+     alt="DeepSeek's bilingual email, subject 'DeepSeek API Billing Adjustment Announcement': the overall pricing for DeepSeek API services will rise in the near future with a significant increase expected, the specific plan subject to official notice; continued use after the adjustment counts as acceptance, otherwise users may cancel and apply for a refund."
+     width="1840" height="2470" loading="lazy"></a>
+<figcaption>DeepSeek's billing-adjustment announcement as emailed to API
+users on 2026-08-06 &mdash; click for full size.</figcaption>
+</figure>
 <p><strong>What it changes here: nothing, yet.</strong> The
 <a href="{{root}}cost/">cost page</a> and <code>ds models</code> price from
 the published card of 2026-08-02 until DeepSeek publishes a new one. The
@@ -1334,7 +1365,7 @@ about a second of CPU and nothing else &mdash; no account, no email, no card.</p
         <a href="{{root}}install/">CLI with your own key</a> has no limits at all</li>
   </ul>
   <button id="pg-enrolBtn" class="pg-primary" type="button">Enrol this browser</button>
-  <p id="pg-enrolStatus" class="pg-status" hidden></p>
+{{turnstile_widget}}  <p id="pg-enrolStatus" class="pg-status" hidden></p>
   <noscript><p class="pg-status">This page needs JavaScript. The
   <a href="{{root}}install/">command-line tool</a> does not:
   <code>deepseek free</code> does the same thing in a shell.</p></noscript>
@@ -1465,8 +1496,24 @@ PAGES.append(dict(
         "Try the DeepSeek API in a browser with no API key, and see the equivalent command-line invocation for every request.",
         "playground/",
     ),
-    body=PLAYGROUND_BODY,
-    scripts='<script src="{{root}}playground.js"></script>\n',
+    body=PLAYGROUND_BODY.replace(
+        "{{turnstile_widget}}",
+        (
+            '  <div id="pg-turnstile" class="pg-turnstile"'
+            f' data-sitekey="{TURNSTILE_SITEKEY}"></div>\n'
+        )
+        if TURNSTILE_SITEKEY
+        else "",
+    ),
+    scripts=(
+        (
+            '<script src="https://challenges.cloudflare.com/turnstile/v0/api.js'
+            '?render=explicit&amp;onload=dsTurnstileOnload" async defer></script>\n'
+            if TURNSTILE_SITEKEY
+            else ""
+        )
+        + '<script src="{{root}}playground.js"></script>\n'
+    ),
 ))
 
 def build(check_only=False):
@@ -1516,6 +1563,7 @@ def build(check_only=False):
         description="That page does not exist. The deepseek-cli documentation index.",
         keywords="deepseek cli",
         jsonld=SOFTWARE_JSONLD,
+        band_sea=True,
         body="""
 <h1>404</h1>
 <p class="lede">No such page &mdash; deep water. The whole site is eight of them:</p>

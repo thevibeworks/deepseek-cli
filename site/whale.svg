@@ -1,12 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 430" role="img"
-     aria-label="A blue whale, seen from the side">
-  <!-- The same two paths waves.js fills onto the canvas. They are pinned
-       to each other by site/waves.test.js: this file is what a reader
-       with JavaScript off sees, and a whale that had drifted from the
-       animated one would be a bug nobody would ever notice by looking. -->
+     aria-label="A blue whale, seen from the side, fluke raised">
+  <!-- The same paths waves.js fills onto the canvas. They are pinned to
+       each other by site/waves.test.js: this file is what a reader with
+       JavaScript off sees, and a whale that had drifted from the animated
+       one would be a bug nobody would ever notice by looking. -->
   <g fill="#1c6a99">
-    <path d="M22 222C40 186 96 158 178 150C268 141 352 142 430 150C560 163 654 180 716 194C726 176 738 160 756 150C764 168 766 186 764 203C784 207 797 210 808 212C840 186 898 148 986 116C946 158 902 194 872 219C902 246 946 284 986 328C898 292 840 250 808 224C782 233 750 242 714 250C640 268 556 284 452 292C348 300 262 300 186 292C100 282 42 258 22 222Z"/>
-    <path d="M232 278C282 280 328 302 366 344C392 372 410 400 424 416C406 408 380 390 342 358C306 328 268 300 232 278Z" opacity="0.55"/>
+    <path d="M30 208C58 202 92 198 122 195C152 192 186 187 206 183C216 181 223 177 229 176C237 175 245 179 251 181C276 176 306 171 331 168C371 162 431 157 471 157C516 158 561 162 601 166C641 170 676 174 703 177C713 172 723 164 731 161C735 160 735 164 734 167C737 171 741 173 745 174C763 179 783 186 799 191C815 195 831 196 843 193C860 184 878 170 894 154C914 134 934 110 945 98C952 91 959 94 956 103C951 124 942 148 934 162C930 167 924 172 920 175C937 175 954 179 966 184C973 187 972 192 964 193C943 196 918 202 900 210C881 218 862 222 850 224C805 238 748 248 700 254C650 260 590 269 540 272C480 275 415 272 360 268C305 264 245 258 200 252C168 248 133 243 110 238C86 234 60 232 48 229C38 226 26 216 30 208Z"/>
+    <path d="M258 244C284 258 320 282 352 298C374 308 390 313 385 317C378 322 340 310 310 293C286 279 264 260 252 248Z" opacity="0.55"/>
   </g>
-  <circle cx="104" cy="236" r="9" fill="#00c2e9" opacity="0.75"/>
+  <path d="M34 218C70 226 106 233 138 240" fill="none" stroke="#00c2e9"
+        stroke-width="3" stroke-linecap="round" opacity="0.3"/>
+  <circle cx="152" cy="227" r="6" fill="#00c2e9" opacity="0.75"/>
 </svg>

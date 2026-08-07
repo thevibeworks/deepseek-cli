@@ -37,32 +37,68 @@
 
   // ---------------------------------------------------------------- whale
 
-  // A blue whale, facing left, in a 1000x430 box. Hand-authored: blunt
-  // rostrum, the long taper to a thin tail stock, the small swept dorsal
-  // fin set three-quarters back, and the fluke drawn side-on the way
-  // every whale mark since Moby-Dick has cheated it — a true side view
-  // would show the fluke edge-on as a line, and nobody would read it as
-  // a whale.
+  // A blue whale, facing left, in a 1000x430 box. Hand-authored and, this
+  // time, actually looked at — drawn against a browser rather than blind:
+  // the blunt rostrum with the splash-guard bump in front of the blowhole,
+  // a long back peaking just forward of middle, the small falcate dorsal
+  // fin three-quarters back, a tail stock that thins and rises, and the
+  // fluke lifted the way a whale lifts it before sounding. The fluke is
+  // drawn three-quarter the way every whale mark since Moby-Dick has
+  // cheated it — a true side view would show it edge-on as a line, and
+  // nobody reads that as a whale. Two lobes and the notch between them
+  // are what make it a fluke instead of a shark fin, which is what the
+  // previous single-lobe tail kept reading as.
+  //
+  // Landmarks, for the next editor: rostrum tip (30,208), splash guard
+  // (229,176), back peak (471,157), dorsal tip (731,161), fluke root
+  // (843,193), upper lobe tip (956,~97), notch (920,175), lower lobe tip
+  // (966,~188), belly deepest (540,272), jaw corner (110,238).
   //
   // The flipper is a second path rather than part of the body because it
   // overlaps it. Filled together under the nonzero rule the overlap
   // cancels and punches a hole in the belly; filled separately it can
   // also take a darker shade, which reads as the far flipper and gives
-  // the silhouette its only hint of depth.
+  // the silhouette its only hint of depth. The mouth is a stroked line,
+  // not part of the fill — a silhouette with a jaw drawn into its outline
+  // stops being a silhouette; a faint line across it stays one, and the
+  // mouth line is most of what makes the head read as a whale's.
   var WHALE = {
     view: { w: 1000, h: 430 },
-    body: 'M22 222C40 186 96 158 178 150C268 141 352 142 430 150'
-        + 'C560 163 654 180 716 194C726 176 738 160 756 150'
-        + 'C764 168 766 186 764 203C784 207 797 210 808 212'
-        + 'C840 186 898 148 986 116C946 158 902 194 872 219'
-        + 'C902 246 946 284 986 328C898 292 840 250 808 224'
-        + 'C782 233 750 242 714 250C640 268 556 284 452 292'
-        + 'C348 300 262 300 186 292C100 282 42 258 22 222Z',
-    fin: 'M232 278C282 280 328 302 366 344C392 372 410 400 424 416'
-       + 'C406 408 380 390 342 358C306 328 268 300 232 278Z',
-    eye: { x: 104, y: 236, r: 9 },
-    blow: { x: 196, y: 149 },
+    body: 'M30 208C58 202 92 198 122 195C152 192 186 187 206 183'
+        + 'C216 181 223 177 229 176C237 175 245 179 251 181'
+        + 'C276 176 306 171 331 168C371 162 431 157 471 157'
+        + 'C516 158 561 162 601 166C641 170 676 174 703 177'
+        + 'C713 172 723 164 731 161C735 160 735 164 734 167'
+        + 'C737 171 741 173 745 174C763 179 783 186 799 191'
+        + 'C815 195 831 196 843 193C860 184 878 170 894 154'
+        + 'C914 134 934 110 945 98C952 91 959 94 956 103'
+        + 'C951 124 942 148 934 162C930 167 924 172 920 175'
+        + 'C937 175 954 179 966 184C973 187 972 192 964 193'
+        + 'C943 196 918 202 900 210C881 218 862 222 850 224'
+        + 'C805 238 748 248 700 254C650 260 590 269 540 272'
+        + 'C480 275 415 272 360 268C305 264 245 258 200 252'
+        + 'C168 248 133 243 110 238C86 234 60 232 48 229'
+        + 'C38 226 26 216 30 208Z',
+    fin: 'M258 244C284 258 320 282 352 298C374 308 390 313 385 317'
+       + 'C378 322 340 310 310 293C286 279 264 260 252 248Z',
+    mouth: 'M34 218C70 226 106 233 138 240',
+    eye: { x: 152, y: 227, r: 6 },
+    blow: { x: 230, y: 172 },
   };
+
+  // The site's mark: the sounding fluke, in a 32x32 box with the
+  // waterline at y≈25. A whale lifts its tail exactly once per dive, and
+  // that gesture — down into the deep — is the closest one picture gets
+  // to the name DeepSeek. It is not the illustration shrunk: a mark that
+  // reads at 16 pixels needs blades this bold, and the illustration's
+  // fluke would be a sliver. The favicon and the masthead carry this
+  // path verbatim; waves.test.js pins both, because nobody reviews a
+  // favicon and a drifted mark would never be noticed by looking.
+  var MARK = 'M5.6 8.2C4 7 2.4 7.6 3.3 9.5C5.2 13.7 8.7 17.8 12.1 20.7'
+    + 'C13.3 21.8 14.1 23.3 14.6 24.9C15.2 23.5 16 22.8 17 22.4'
+    + 'C18.1 22.7 19.1 23.5 19.9 24.6C20.7 22.9 21.6 21.2 23 19.5'
+    + 'C25.4 16.5 27.9 13.6 29.2 10.5C30 8.5 28.4 7.5 26.7 8.7'
+    + 'C23 11.4 19.3 14.9 16.9 18.4C14.3 14.7 9.9 10.5 5.6 8.2Z';
 
   // Where the resting waterline crosses the whale, as a fraction of the
   // box height. 0.42 is box y=181, just above the back at y=150, so only
@@ -85,12 +121,14 @@
   // gradient — a swell on the horizon does not care where your mouse is.
   //
   // Speeds alternate sign so the layers slide across each other instead
-  // of marching in step, which is most of what sells the parallax.
+  // of marching in step, which is most of what sells the parallax. They
+  // are also slow on purpose: water this size heaves, it does not ripple,
+  // and a surface that visibly hurries reads as a screensaver.
   var LAYERS = [
-    { base: 0.58, amp: 0.038, crests: 1.5, speed: 0.19, reach: 0.28, alpha: 0.22, foam: 0.00, tint: 0 },
-    { base: 0.68, amp: 0.033, crests: 2.3, speed: -0.27, reach: 0.52, alpha: 0.28, foam: 0.07, tint: 1 },
-    { base: 0.78, amp: 0.028, crests: 3.2, speed: 0.36, reach: 0.78, alpha: 0.38, foam: 0.15, tint: 2 },
-    { base: 0.89, amp: 0.023, crests: 4.5, speed: -0.47, reach: 1.00, alpha: 0.56, foam: 0.26, tint: 3 },
+    { base: 0.58, amp: 0.030, crests: 1.5, speed: 0.19, reach: 0.28, alpha: 0.22, foam: 0.00, tint: 0 },
+    { base: 0.68, amp: 0.026, crests: 2.3, speed: -0.27, reach: 0.52, alpha: 0.28, foam: 0.06, tint: 1 },
+    { base: 0.78, amp: 0.022, crests: 3.2, speed: 0.36, reach: 0.78, alpha: 0.38, foam: 0.13, tint: 2 },
+    { base: 0.89, amp: 0.018, crests: 4.5, speed: -0.48, reach: 1.00, alpha: 0.56, foam: 0.22, tint: 3 },
   ];
 
   // The whale is drawn immediately before this layer, so everything from
@@ -98,12 +136,35 @@
   // rides.
   var WHALE_LAYER = 2;
 
+  // The 404's sea is not the fixed full-viewport one: it is a band under
+  // the masthead, with the waterline hard up against the header rule so
+  // the whale rides the rule like a horizon — back, dorsal and fluke
+  // breaking it, everything else below. Same rules as LAYERS, different
+  // geometry; the fractions are of the band's height, not the viewport's.
+  var BAND_LAYERS = [
+    { base: 0.08, amp: 0.050, crests: 2.0, speed: 0.16, reach: 0.28, alpha: 0.22, foam: 0.00, tint: 0 },
+    { base: 0.14, amp: 0.044, crests: 2.9, speed: -0.22, reach: 0.52, alpha: 0.28, foam: 0.06, tint: 1 },
+    { base: 0.21, amp: 0.038, crests: 4.0, speed: 0.30, reach: 0.78, alpha: 0.38, foam: 0.13, tint: 2 },
+    { base: 0.42, amp: 0.032, crests: 5.5, speed: -0.40, reach: 1.00, alpha: 0.56, foam: 0.22, tint: 3 },
+  ];
+
+  // What differs between the two seas, in one place. `span` is the whale
+  // as a fraction of the width: scenery you cannot see the ends of on a
+  // page, an emblem you can see all of in the band. `sky` is the fraction
+  // of the box above the far waterline, where the stars live — a strip
+  // of nothing in the band, whose waterline kisses the header rule.
+  var PROFILES = {
+    viewport: { layers: LAYERS, sky: 0.52, span: 1.0, minSpan: 420, narrowBoost: 0.35 },
+    band: { layers: BAND_LAYERS, sky: 0.05, span: 0.34, minSpan: 300, narrowBoost: 0.30 },
+  };
+
   // ---------------------------------------------------------------- stars
 
   // The sky band: stars live between the top of the frame and just above
   // the farthest layer's resting waterline, so none of them ever sits in
-  // the water.
-  var SKY = 0.52;
+  // the water. Owned by the viewport profile; aliased here because the
+  // field arithmetic predates the profiles.
+  var SKY = PROFILES.viewport.sky;
 
   // Deterministic pseudo-random in [0, 1), seeded by star index and a
   // salt per property. Math.random would deal a different sky on every
@@ -116,16 +177,21 @@
 
   // Lay out the sky for a given viewport. Positions are fractions, so a
   // resize rescales the same constellations rather than dealing new ones.
-  function starField(w, h) {
+  // `sky` is the fraction of the box that is sky; the band sea has a thin
+  // strip of it, so the clamps come down with it or the strip snows.
+  function starField(w, h, sky, lo, hi) {
+    sky = sky == null ? SKY : sky;
+    lo = lo == null ? 70 : lo;
+    hi = hi == null ? 220 : hi;
     // Density by sky area, clamped: a phone still gets a sky worth
     // having, a cinema display does not get a snowstorm.
-    var n = Math.max(70, Math.min(220, Math.round((w * h * SKY) / 7200)));
+    var n = Math.max(lo, Math.min(hi, Math.round((w * h * sky) / 7200)));
     var stars = [];
     for (var i = 0; i < n; i++) {
       var m = starRand(i, 4);   // magnitude, 0 faint .. 1 bright
       stars.push({
         x: starRand(i, 1),
-        y: starRand(i, 2) * SKY,
+        y: starRand(i, 2) * sky,
         // Squaring the magnitude is the power law: most stars small,
         // a handful genuinely bright.
         r: 0.5 + m * m * 1.7,
@@ -141,6 +207,30 @@
     return stars;
   }
 
+  // Sun glitter: the day sea's answer to the night sky. Points scattered
+  // over the water that catch the light for a moment each — the sparkle a
+  // real sea throws when the sun is on it. Deterministic for the same
+  // reason the stars are, and owned by the same CSS contract in reverse:
+  // the sparkle token resolves to fully transparent on the dark theme,
+  // where the stars take over.
+  function glitterField(w, h) {
+    var n = Math.max(24, Math.min(90, Math.round((w * h) / 26000)));
+    var pts = [];
+    for (var i = 0; i < n; i++) {
+      pts.push({
+        x: starRand(i, 11),
+        // Which surface the glint rides, biased toward the near water
+        // where the light would actually be.
+        layer: starRand(i, 12) < 0.4 ? 2 : 3,
+        len: 2.5 + starRand(i, 13) * 4.5,
+        a: 0.3 + starRand(i, 14) * 0.5,
+        spd: 0.5 + starRand(i, 15) * 1.4,
+        phase: starRand(i, 16) * Math.PI * 2,
+      });
+    }
+    return pts;
+  }
+
   // Is a resolved colour worth drawing at all? The star tokens resolve to
   // fully-transparent on the light theme, which is how CSS says "by day
   // there are no stars" without this file knowing what a theme is.
@@ -152,11 +242,11 @@
       !/\/\s*0(?:\.0+)?\s*\)$/.test(c);
   }
 
-  var RIPPLE_LIFE = 2.8;    // seconds until a click is fully forgotten
-  var RIPPLE_SPEED = 0.52;  // canvas widths per second
-  var RIPPLE_WIDTH = 0.07;  // packet envelope, as a fraction of width
+  var RIPPLE_LIFE = 3.8;    // seconds until a click is fully forgotten
+  var RIPPLE_SPEED = 0.40;  // canvas widths per second
+  var RIPPLE_WIDTH = 0.09;  // packet envelope, as a fraction of width
   var BULGE_WIDTH = 0.13;   // pointer hill, as a fraction of width
-  var BULGE_HEIGHT = 0.05;  // ... and its peak, as a fraction of height
+  var BULGE_HEIGHT = 0.016; // ... and its peak, as a fraction of height
 
   // Sum of three sines. The multipliers are deliberately not integers:
   // at 1 : 2.17 : 3.71 the sum has no period short enough to see inside
@@ -182,7 +272,11 @@
     var travel = Math.abs(x - r.x) - RIPPLE_SPEED * w * age;
     var env = Math.exp(-(travel * travel) / (2 * sigma * sigma));
     var fade = 1 - age / RIPPLE_LIFE;
-    return r.amp * fade * fade * env * Math.cos((travel * 2 * Math.PI) / (sigma * 1.15));
+    // One long swell under the envelope, not a zigzag: at 1.9 sigma the
+    // packet holds about one visible ring, which is what a splash looks
+    // like from shore. The old 1.15 put three crests inside it and read
+    // as a wobble, not a wave.
+    return r.amp * fade * fade * env * Math.cos((travel * 2 * Math.PI) / (sigma * 1.9));
   }
 
   // The water is pulled up toward the pointer — negative, because y grows
@@ -196,9 +290,11 @@
   }
 
   // The whole height field for one layer at one x. Everything else reads
-  // the surface through this, including the whale.
+  // the surface through this, including the whale. Scroll chop roughens
+  // the water; past about double the resting amplitude it stops reading
+  // as swell and starts reading as static.
   function surfaceAt(layer, x, t, w, h, st) {
-    var y = layer.base * h + waveAt(layer, x, t, w) * h * (1 + st.chop * 1.6);
+    var y = layer.base * h + waveAt(layer, x, t, w) * h * (1 + st.chop * 0.7);
     var e = bulgeAt(st.bulge, x, w, h);
     for (var i = 0; i < st.ripples.length; i++) e += rippleAt(st.ripples[i], x, t, w);
     return y + e * layer.reach;
@@ -225,22 +321,32 @@
   var NARROW = 700;
 
   var SLOPE_SPAN = 0.42;  // where along itself the whale feels the water
-  var TILT_GAIN = 0.85;   // ... and how much of that slope it takes on
-  var TILT_MAX = 0.12;    // ~7 degrees, past which it stops reading as calm
+  var TILT_GAIN = 0.9;    // ... and how much of that slope it takes on
+  var TILT_MAX = 0.055;   // ~3 degrees: a roll you feel, not a see-saw
 
   // Where the whale sits this frame, and how far over it is leaning. Both
   // come out of the height field rather than a clock: the tilt is the
-  // slope of the surface it is floating on, sampled either side of it.
+  // slope of the surface it is floating on, sampled either side of it,
+  // and its height is the surface height — a whale animated on its own
+  // timer is a whale bobbing like a toy. Mass is the other half of the
+  // illusion: the gain stays well under the slope and the ceiling is a
+  // few degrees, so the animal follows the water the way something that
+  // heavy would — late, and not very far.
   function whaleTransform(t, w, h, st) {
     var narrow = w < NARROW;
-    // Deliberately wider than the viewport: an enormous animal is one you
-    // cannot see the ends of. Narrow screens get more again, because the
-    // same multiple of a smaller width is a smaller whale.
-    var frac = narrow ? st.whaleSpan + 0.35 : st.whaleSpan;
-    var span = Math.max(w * frac, 420);
+    // The profile decides the floor and the narrow-screen boost: the
+    // viewport whale is deliberately wider than the viewport (an enormous
+    // animal is one you cannot see the ends of), while the band whale is
+    // an emblem and has to stay whole.
+    var boost = st.narrowBoost != null ? st.narrowBoost : 0.35;
+    var floor = st.minSpan != null ? st.minSpan : 420;
+    var frac = narrow ? st.whaleSpan + boost : st.whaleSpan;
+    var span = Math.max(w * frac, floor);
     var sx = span / WHALE.view.w;
-    var x = w * st.whaleX + Math.sin(t * 0.11) * w * 0.015;
-    var lay = LAYERS[WHALE_LAYER];
+    var x = w * st.whaleX + Math.sin(t * 0.07) * w * 0.01;
+    // The instance's own layer table, so the band's whale rides the
+    // band's water; direct callers get the viewport's.
+    var lay = (st.layers || LAYERS)[WHALE_LAYER];
     // Sample the slope over the whale's own length, not some fixed small
     // distance. It is three wavelengths long; a body that size does not
     // follow the water under its middle, it bridges several crests and
@@ -252,7 +358,7 @@
     var rot = Math.atan(slope) * TILT_GAIN;
     return {
       x: x,
-      y: y + Math.sin(t * 0.37 + 1.2) * h * 0.006,
+      y: y,
       sx: sx * st.facing,
       sy: sx,
       rot: Math.max(-TILT_MAX, Math.min(TILT_MAX, rot)),
@@ -291,9 +397,11 @@
       // light theme.
       glowFade: read('--sea-glow-fade', 'rgba(0,194,233,0)'),
       // Transparent fallbacks: a stylesheet without the sky tokens gets
-      // no stars, not white ones on a cream page.
+      // no stars, not white ones on a cream page. Same rule for the
+      // glitter, which is the stars' daytime counterpart.
       star: read('--sky-star', 'rgba(0,0,0,0)'),
       starWarm: read('--sky-star-warm', 'rgba(0,0,0,0)'),
+      sparkle: read('--sea-sparkle', 'rgba(0,0,0,0)'),
     };
   }
 
@@ -334,7 +442,10 @@
       var now = win.pageYOffset || 0;
       var dv = Math.abs(now - scroll.last);
       scroll.last = now;
-      scroll.energy = Math.min(1, scroll.energy + dv / 260);
+      // Capped well under 1: a flick should stir the water, not turn it
+      // to static. At the old ceiling a fast scroll doubled the swell
+      // amplitude under the text you were trying to read.
+      scroll.energy = Math.min(0.45, scroll.energy + dv / 600);
     }, { passive: true });
   }
 
@@ -367,20 +478,32 @@
     this.frames = 0;
     this.pts = null;
 
+    // `data-ocean="band"` is the 404's strip under the masthead; anything
+    // else is the fixed full-viewport sea. The profile owns the geometry
+    // that differs between them.
+    var profile = PROFILES[opts.layout] || PROFILES.viewport;
+    this.layout = profile === PROFILES.band ? 'band' : 'viewport';
+    this.layers = profile.layers;
+    this.sky = profile.sky;
+
     this.st = {
       chop: 0,
       ripples: [],
       spout: [],
       bulge: { x: 0, strength: 0, target: 0 },
       whaleX: opts.whaleX != null ? opts.whaleX : 0.5,
-      whaleSpan: opts.whaleSpan != null ? opts.whaleSpan : 1.0,
+      whaleSpan: opts.whaleSpan != null ? opts.whaleSpan : profile.span,
       facing: opts.facing === 'right' ? -1 : 1,
       nextSpout: 6,
+      layers: profile.layers,
+      minSpan: profile.minSpan,
+      narrowBoost: profile.narrowBoost,
     };
     this.whale = opts.whale !== false;
 
     this.body = global.Path2D ? new global.Path2D(WHALE.body) : null;
     this.flipper = global.Path2D ? new global.Path2D(WHALE.fin) : null;
+    this.mouth = global.Path2D ? new global.Path2D(WHALE.mouth) : null;
 
     this.palette = readPalette(function (_, fallback) { return fallback; });
     this.refreshPalette();
@@ -400,6 +523,10 @@
     if (!this.win.getComputedStyle) return;
     if (!this.resolve) this.resolve = cssResolver(this.doc);
     this.palette = readPalette(this.resolve);
+    // A sea that is not animating — reduced motion, hidden tab — is a
+    // still picture, and a picture painted in the old theme's colours is
+    // wrong the moment the theme changes. Repaint the one frame.
+    if (!this.running()) this.draw(this.t);
   };
 
   Ocean.prototype.reduced = function () {
@@ -429,9 +556,10 @@
     this.step = Math.max(4, w / 220);
     this.n = Math.ceil(w / this.step) + 2;
     this.pts = new Float64Array(this.n);
-    // The star count follows the sky's area, so a resize deals the
-    // field again from the same seeds.
+    // The star and glitter counts follow the frame's area, so a resize
+    // deals both fields again from the same seeds.
     this.stars = null;
+    this.glints = null;
     return true;
   };
 
@@ -441,13 +569,16 @@
     wireScroll(win);
 
     // The canvas is pointer-events: none so it never shadows a link, so
-    // the pointer has to be tracked on the window and mapped in. The side
-    // effect is the right one: the water responds to the pointer anywhere
-    // on the page, not only where it happens to be painted.
+    // the pointer has to be tracked on the window and mapped in. The
+    // water answers the pointer while it is over the water or just below
+    // it — before this reached four hundred pixels past the sea, moving
+    // the mouse anywhere on the page heaved the swell, and water that
+    // answers everything reads as noise, not life.
     this.onMove = function (e) {
       var r = self.canvas.getBoundingClientRect();
       self.st.bulge.x = e.clientX - r.left;
-      var near = e.clientY > r.top - 400 && e.clientY < r.bottom + 400;
+      var near = e.clientY > r.top + r.height * 0.3 &&
+                 e.clientY < r.bottom + 120;
       self.st.bulge.target = near ? 1 : 0;
     };
     this.onLeave = function () { self.st.bulge.target = 0; };
@@ -517,7 +648,7 @@
     if (!this.visible) return;
     // Cheap guard against a held-down mouse queueing hundreds of packets.
     if (this.st.ripples.length > 12) this.st.ripples.shift();
-    this.st.ripples.push({ x: x, t0: this.t, amp: (amp || 1) * this.h * 0.055 });
+    this.st.ripples.push({ x: x, t0: this.t, amp: (amp || 1) * this.h * 0.042 });
     if (!this.running()) this.draw(this.t);
     // Clicking near the whale startles it into blowing.
     if (this.whale && Math.abs(x - this.w * this.st.whaleX) < this.w * 0.3) {
@@ -553,11 +684,13 @@
   Ocean.prototype.advance = function (dt) {
     var st = this.st;
     this.t += dt;
-    st.bulge.strength += (st.bulge.target - st.bulge.strength) * Math.min(1, dt * 4.5);
+    // Slow attack, slow release: the swell builds as the pointer arrives
+    // and settles after it leaves. Water with mass does not snap.
+    st.bulge.strength += (st.bulge.target - st.bulge.strength) * Math.min(1, dt * 2.0);
     // Scroll energy is collected by the shared listener and spent here,
     // so the chop builds while you are flicking and settles when you stop.
-    st.chop += (Math.min(1, scroll.energy) - st.chop) * Math.min(1, dt * 5);
-    scroll.energy *= Math.exp(-dt * 2.6);
+    st.chop += (Math.min(1, scroll.energy) - st.chop) * Math.min(1, dt * 3);
+    scroll.energy *= Math.exp(-dt * 2.2);
 
     var live = [];
     for (var i = 0; i < st.ripples.length; i++) {
@@ -572,7 +705,7 @@
     var alive = [];
     for (var j = 0; j < st.spout.length; j++) {
       var p = st.spout[j];
-      p.vy += 9.4 * dt;
+      p.vy += 34 * dt;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       p.age += dt;
@@ -585,18 +718,18 @@
     var tr = whaleTransform(this.t, this.w, this.h, this.st);
     var o = whaleToScreen(WHALE.blow.x, WHALE.blow.y, tr);
     var scale = tr.span / 900;
-    for (var i = 0; i < 22; i++) {
+    for (var i = 0; i < 16; i++) {
       // Deterministic spread. A plume does not need real randomness and
       // Math.random here would make the DOM test unreproducible.
-      var f = (i / 21) * 2 - 1;
+      var f = (i / 15) * 2 - 1;
       this.st.spout.push({
-        x: o.x + f * 5 * scale,
+        x: o.x + f * 4 * scale,
         y: o.y,
-        vx: f * 26 * scale,
-        vy: (-96 - Math.abs(Math.cos(i * 2.4)) * 54) * scale,
-        r: (2.2 + (i % 4) * 0.9) * scale,
+        vx: f * 12 * scale,
+        vy: (-62 - Math.abs(Math.cos(i * 2.4)) * 38) * scale,
+        r: (1.6 + (i % 4) * 0.7) * scale,
         age: 0,
-        life: 1.1 + (i % 5) * 0.16,
+        life: 1.3 + (i % 5) * 0.22,
       });
     }
   };
@@ -668,7 +801,13 @@
   Ocean.prototype.drawStars = function (t) {
     var pal = this.palette;
     if (!visibleColour(pal.star)) return;
-    if (!this.stars) this.stars = starField(this.w, this.h);
+    if (!this.stars) {
+      // The band's sky is a sliver; the viewport's is half the frame. The
+      // clamps come down with it or the strip snows.
+      var band = this.layout === 'band';
+      this.stars = starField(this.w, this.h, this.sky,
+        band ? 4 : 70, band ? 24 : 220);
+    }
     var ctx = this.ctx;
     for (var i = 0; i < this.stars.length; i++) {
       var s = this.stars[i];
@@ -679,7 +818,7 @@
       var twinkle = 1 - s.tw + s.tw * (0.5 + 0.5 * Math.sin(t * s.spd + s.phase));
       // Atmospheric extinction: the sky pales toward the horizon, so the
       // stars go with it instead of sitting on top of it.
-      var fade = 1 - (s.y / SKY) * 0.55;
+      var fade = 1 - (s.y / this.sky) * 0.55;
       var alpha = s.a * twinkle * fade;
       ctx.globalAlpha = alpha;
       ctx.fillStyle = s.warm ? pal.starWarm : pal.star;
@@ -701,6 +840,28 @@
         ctx.lineTo(x, y + g);
         ctx.stroke();
       }
+    }
+    ctx.globalAlpha = 1;
+  };
+
+  // Sun glitter, drawn last because it sits on top of the water. Each
+  // glint is a short dash lying along the surface that flashes on its own
+  // period — cubing the sine keeps it dark most of the time and bright
+  // briefly, which is what glitter does; a linear pulse just throbs.
+  Ocean.prototype.drawGlitter = function (t) {
+    var pal = this.palette;
+    if (!visibleColour(pal.sparkle)) return;
+    if (!this.glints) this.glints = glitterField(this.w, this.h);
+    var ctx = this.ctx;
+    ctx.fillStyle = pal.sparkle;
+    for (var i = 0; i < this.glints.length; i++) {
+      var g = this.glints[i];
+      var s = Math.sin(t * g.spd + g.phase);
+      if (s <= 0) continue;
+      var x = g.x * this.w;
+      var y = surfaceAt(this.layers[g.layer], x, t, this.w, this.h, this.st);
+      ctx.globalAlpha = g.a * s * s * s;
+      ctx.fillRect(x - g.len / 2, y - 0.5, g.len, 1.2);
     }
     ctx.globalAlpha = 1;
   };
@@ -733,7 +894,16 @@
     ctx.fill(this.flipper);
     ctx.globalAlpha = 1;
 
-    // The eye has to be lighter than the body or a silhouette swallows it.
+    // The mouth line and the eye have to be lighter than the body or a
+    // silhouette swallows them — and they are most of what makes the
+    // head read as a whale's rather than a submarine's.
+    if (this.mouth) {
+      ctx.strokeStyle = pal.whaleLit;
+      ctx.globalAlpha = 0.3;
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.stroke(this.mouth);
+    }
     ctx.fillStyle = pal.whaleLit;
     ctx.globalAlpha = 0.75;
     ctx.beginPath();
@@ -750,9 +920,10 @@
     ctx.fillStyle = this.palette.foam;
     for (var i = 0; i < st.spout.length; i++) {
       var p = st.spout[i];
-      ctx.globalAlpha = 0.5 * (1 - p.age / p.life);
+      // Mist, not popcorn: faint, and it spreads as it ages.
+      ctx.globalAlpha = 0.34 * (1 - p.age / p.life);
       ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, p.r * (1 + p.age * 0.7), 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
@@ -763,13 +934,14 @@
     var ctx = this.ctx;
     ctx.clearRect(0, 0, this.w, this.h);
     this.drawStars(t);
-    for (var i = 0; i < LAYERS.length; i++) {
+    for (var i = 0; i < this.layers.length; i++) {
       if (i === WHALE_LAYER) {
         this.drawWhale(t);
         this.drawSpout();
       }
-      this.drawLayer(LAYERS[i], t);
+      this.drawLayer(this.layers[i], t);
     }
+    this.drawGlitter(t);
     this.frames++;
   };
 
@@ -814,6 +986,7 @@
     for (var i = 0; i < hosts.length; i++) {
       var el = hosts[i];
       var o = mount(el, {
+        layout: el.getAttribute('data-ocean') === 'band' ? 'band' : 'viewport',
         whale: el.getAttribute('data-whale') !== 'off',
         whaleX: parseFloat(el.getAttribute('data-whale-x')) || undefined,
         whaleSpan: parseFloat(el.getAttribute('data-whale-span')) || undefined,
@@ -834,7 +1007,10 @@
     mounted: mounted,
     Ocean: Ocean,
     WHALE: WHALE,
+    MARK: MARK,
     LAYERS: LAYERS,
+    BAND_LAYERS: BAND_LAYERS,
+    PROFILES: PROFILES,
     WHALE_LAYER: WHALE_LAYER,
     WATERLINE: WATERLINE,
     RIPPLE_LIFE: RIPPLE_LIFE,
@@ -844,6 +1020,7 @@
     SKY: SKY,
     starRand: starRand,
     starField: starField,
+    glitterField: glitterField,
     visibleColour: visibleColour,
     waveAt: waveAt,
     rippleAt: rippleAt,

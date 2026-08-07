@@ -1,32 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="deepseek-cli">
-  <!-- The same whale the site's sea paints (waves.js WHALE.body, pinned by
-       waves.test.js), on the night the dark theme shows: stars over black
-       water, the spine just breaking the surface. The body runs from
-       DeepSeek's official blue (#4D6BFE) into this site's cyan (#00c2e9) —
-       family, not a copy. -->
+  <!-- The sounding fluke: the tail a whale lifts as it dives, which is
+       the one gesture that means "seeking the deep". The same mark rides
+       the masthead rule on every page; waves.test.js pins the two to the
+       MARK path waves.js exports, because nobody reviews a favicon. The
+       blade runs from DeepSeek's official blue (#4D6BFE) into this
+       site's cyan (#00c2e9) — family, not a copy. -->
   <defs>
-    <linearGradient id="b" x1="0" y1="0" x2="1" y2="0">
+    <linearGradient id="b" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#4D6BFE"/>
       <stop offset="1" stop-color="#00c2e9"/>
     </linearGradient>
-    <linearGradient id="w" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#067f9e" stop-opacity="0.55"/>
-      <stop offset="1" stop-color="#00070e" stop-opacity="0.92"/>
-    </linearGradient>
   </defs>
-  <rect width="32" height="32" fill="#000"/>
-  <circle cx="6" cy="4.6" r="0.62" fill="#d6e6ff" opacity="0.95"/>
-  <circle cx="15.5" cy="3" r="0.4" fill="#d6e6ff" opacity="0.6"/>
-  <circle cx="23" cy="7" r="0.45" fill="#d6e6ff" opacity="0.7"/>
-  <circle cx="27.8" cy="3.8" r="0.5" fill="#ffe5b8" opacity="0.75"/>
-  <path d="M-1 14.2 Q4 15.5 9 14.4 T19 14.4 T29 14.4 T39 14.4" fill="none"
-        stroke="#00a2c4" stroke-width="1" opacity="0.5"/>
-  <g transform="translate(-0.8 8.9) scale(0.034)">
-    <path d="M22 222C40 186 96 158 178 150C268 141 352 142 430 150C560 163 654 180 716 194C726 176 738 160 756 150C764 168 766 186 764 203C784 207 797 210 808 212C840 186 898 148 986 116C946 158 902 194 872 219C902 246 946 284 986 328C898 292 840 250 808 224C782 233 750 242 714 250C640 268 556 284 452 292C348 300 262 300 186 292C100 282 42 258 22 222Z" fill="url(#b)"/>
-    <path d="M232 278C282 280 328 302 366 344C392 372 410 400 424 416C406 408 380 390 342 358C306 328 268 300 232 278Z" fill="url(#b)" opacity="0.55"/>
-    <circle cx="104" cy="236" r="26" fill="#7fecff" opacity="0.8"/>
-  </g>
-  <rect y="15" width="32" height="17" fill="url(#w)"/>
-  <path d="M-1 15.6 Q4 14.3 9 15.4 T19 15.4 T29 15.4 T39 15.4" fill="none"
-        stroke="#7fecff" stroke-width="1.1" opacity="0.9"/>
+  <rect width="32" height="32" rx="6" fill="#000"/>
+  <path d="M2 25.5 Q6 24 10 25 T18 25 T26 25 T34 25" fill="none"
+        stroke="#00a2c4" stroke-width="1.6" opacity="0.85"/>
+  <path d="M5.6 8.2C4 7 2.4 7.6 3.3 9.5C5.2 13.7 8.7 17.8 12.1 20.7C13.3 21.8 14.1 23.3 14.6 24.9C15.2 23.5 16 22.8 17 22.4C18.1 22.7 19.1 23.5 19.9 24.6C20.7 22.9 21.6 21.2 23 19.5C25.4 16.5 27.9 13.6 29.2 10.5C30 8.5 28.4 7.5 26.7 8.7C23 11.4 19.3 14.9 16.9 18.4C14.3 14.7 9.9 10.5 5.6 8.2Z" fill="url(#b)"/>
 </svg>

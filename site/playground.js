@@ -299,6 +299,57 @@
     return line + ' \\\n  ' + rest.join(' \\\n  ');
   }
 
+  // --- the browser check (optional) ---------------------------------------
+
+  // Cloudflare Turnstile, present only when the build was given a
+  // sitekey: no key means no container, no third-party script, and
+  // turnstileAnswer() resolves null without waiting for anything. With a
+  // key, the gateway's browser lane wants the widget's answer alongside
+  // the solved puzzle (see gateway/internal/server/turnstile.go), so the
+  // widget renders as soon as Cloudflare's script loads and the
+  // enrolment waits for its token.
+  var TS_HOST_ID = 'turnstile';
+  var tsState = { rendered: false, token: null, error: null };
+
+  function turnstileHost() {
+    return document.getElementById('pg-' + TS_HOST_ID);
+  }
+
+  // Named as the onload callback in the api.js script tag.
+  window.dsTurnstileOnload = function () {
+    var host = turnstileHost();
+    if (!host || tsState.rendered || !window.turnstile) return;
+    tsState.rendered = true;
+    window.turnstile.render(host, {
+      sitekey: host.getAttribute('data-sitekey'),
+      callback: function (t) { tsState.token = t; tsState.error = null; },
+      'expired-callback': function () { tsState.token = null; },
+      'error-callback': function (code) { tsState.error = String(code || 'unknown'); },
+    });
+  };
+
+  // Resolves with the token to send, or null when this build has no
+  // browser check. Rejects when the check exists but will not produce a
+  // token, which is a real answer the enrolment error path can show.
+  function turnstileAnswer() {
+    if (!turnstileHost()) return Promise.resolve(null);
+    return new Promise(function (resolve, reject) {
+      var waited = 0;
+      (function poll() {
+        if (tsState.token) return resolve(tsState.token);
+        if (tsState.error) {
+          return reject(new Error('the browser check failed (' + tsState.error +
+            '); reload the page and try again'));
+        }
+        waited += 250;
+        if (waited > 60000) {
+          return reject(new Error('the browser check did not finish; reload the page and try again'));
+        }
+        setTimeout(poll, 250);
+      })();
+    });
+  }
+
   // --- enrolment ----------------------------------------------------------
 
   function showEnrolled(on) {
@@ -319,11 +370,19 @@
         return solveInWorker(ch);
       })
       .then(function (solved) {
-        setEnrolStatus('solved in ' + solved.seconds.toFixed(1) + 's (' +
-          num(solved.hashes) + ' hashes) — claiming a token…');
-        return fetchJSON('POST', '/v1/anon/token', {
-          challenge: solved.challenge,
-          nonce: String(solved.nonce),
+        if (turnstileHost() && !tsState.token) {
+          setEnrolStatus('solved in ' + solved.seconds.toFixed(1) +
+            's — waiting for the browser check…');
+        }
+        return turnstileAnswer().then(function (tsToken) {
+          setEnrolStatus('solved in ' + solved.seconds.toFixed(1) + 's (' +
+            num(solved.hashes) + ' hashes) — claiming a token…');
+          var req = {
+            challenge: solved.challenge,
+            nonce: String(solved.nonce),
+          };
+          if (tsToken) req.turnstile_token = tsToken;
+          return fetchJSON('POST', '/v1/anon/token', req);
         });
       })
       .then(function (res) {

@@ -210,16 +210,20 @@ check('and leans both ways as the swell passes', tiltedBothWays === 3,
 
 // It bridges several wavelengths, so it should roll gently rather than
 // pitch. Measuring the slope locally instead of across its own length
-// had it swinging through 25 degrees on a phone — a shipwreck.
+// had it swinging through 25 degrees on a phone — a shipwreck. The
+// ceiling pins the other side of the contract: a ~3° slow roll, not the
+// 7° see-saw against the clamp that it used to be.
 check('the tilt ceiling is a roll, not a capsize',
-  W.TILT_MAX < 0.14, `${(W.TILT_MAX * 180 / Math.PI).toFixed(1)} degrees`);
+  W.TILT_MAX < 0.08, `${(W.TILT_MAX * 180 / Math.PI).toFixed(1)} degrees`);
 for (const width of [360, 480, 760, 1200, 1600]) {
   let peak = 0;
   let moved = 0;
   for (let t = 0; t < 40; t += 0.11) {
     const rot = W.whaleTransform(t, width, h, quiet()).rot;
     peak = Math.max(peak, Math.abs(rot));
-    if (Math.abs(rot) > 0.01) moved++;
+    // 0.006 rad ≈ a third of a degree — the floor of what the eye can
+    // catch on an animal this size. The roll should stay above it.
+    if (Math.abs(rot) > 0.006) moved++;
   }
   check(`at ${width}px it stays inside that ceiling`,
     peak <= W.TILT_MAX + 1e-12, `${(peak * 180 / Math.PI).toFixed(1)} degrees`);
@@ -251,17 +255,20 @@ check('whale.svg draws the same body as the canvas does',
   'the two paths have drifted apart');
 check('whale.svg draws the same flipper',
   svg.includes(`d="${W.WHALE.fin}"`));
+check('whale.svg draws the same mouth line',
+  svg.includes(`d="${W.WHALE.mouth}"`));
 check('whale.svg puts the eye in the same place',
   svg.includes(`cx="${W.WHALE.eye.x}" cy="${W.WHALE.eye.y}" r="${W.WHALE.eye.r}"`));
 check('whale.svg declares the box the paths were drawn in',
   svg.includes(`viewBox="0 0 ${W.WHALE.view.w} ${W.WHALE.view.h}"`));
 
-// The favicon is the same animal. A favicon redrawn freehand would drift
-// the moment the whale is edited, and nobody reviews a favicon.
+// The favicon and the masthead both carry the mark — the sounding fluke.
+// Redrawn freehand in either place it would drift the moment the mark is
+// edited, and nobody reviews a favicon.
 const icon = fs.readFileSync(path.join(__dirname, 'favicon.svg'), 'utf8');
-check('favicon.svg draws the same whale as the canvas does',
-  icon.includes(`d="${W.WHALE.body}"`));
-check('favicon.svg draws the same flipper', icon.includes(`d="${W.WHALE.fin}"`));
+check('favicon.svg carries the mark', icon.includes(`d="${W.MARK}"`));
+const home = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+check('the masthead carries the same mark', home.includes(`d="${W.MARK}"`));
 
 // readPalette names every custom property it wants; ask it what those
 // are rather than keeping a second list here that could go stale.
@@ -294,6 +301,43 @@ for (const page of ['index.html', '404.html', 'install/index.html']) {
   check(`${page} loads waves.js for its ${mounts} ocean(s)`,
     mounts > 0 && /<script src="[^"]*waves\.js" defer>/.test(html));
 }
+
+// --- the band (the 404's sea under the masthead) ------------------------
+
+console.log('\nband');
+
+const B = W.BAND_LAYERS;
+check('the band has its own four layers', B.length === 4, String(B.length));
+check('and they obey the same table rules',
+  B.every((l, i) => i === 0 || (l.base > B[i - 1].base && l.reach > B[i - 1].reach &&
+    l.alpha > B[i - 1].alpha)) &&
+  B.every((l, i) => i === 0 || Math.sign(l.speed) !== Math.sign(B[i - 1].speed)) &&
+  new Set(B.map((l) => l.tint)).size === B.length);
+check('the band whale has water in front of it and behind it',
+  W.WHALE_LAYER > 0 && W.WHALE_LAYER < B.length);
+check('the band waterline starts near the top of the band',
+  B[0].base < 0.4, String(B[0].base));
+
+// The band whale is an emblem, not scenery: it must fit inside the band
+// it rides, where the viewport whale deliberately spills past the edges.
+const bandSt = quiet({
+  whaleSpan: W.PROFILES.band.span,
+  minSpan: W.PROFILES.band.minSpan,
+  narrowBoost: W.PROFILES.band.narrowBoost,
+  layers: W.BAND_LAYERS,
+});
+const bw = W.whaleTransform(4.2, 1600, 240, bandSt);
+check('the band whale stays narrower than the band', bw.span <= 1600, String(bw.span));
+check('and rides the band water, not the viewport’s',
+  Math.abs(bw.y - B[W.WHALE_LAYER].base * 240) < 240 * 0.1, String(bw.y));
+check('the viewport whale still spans the viewport',
+  W.whaleTransform(4.2, 1600, 400, quiet()).span >= 1600);
+
+// The 404 mounts the band; style.css has to know what one is.
+const notFound = fs.readFileSync(path.join(__dirname, '404.html'), 'utf8');
+check('the 404 mounts its sea as a band under the masthead',
+  /data-ocean="band"/.test(notFound) && !/<div class="sea" data-ocean><\/div>/.test(notFound));
+check('and style.css knows what a band is', css.includes('.sea-band'));
 
 // --- the night sky ------------------------------------------------------
 
