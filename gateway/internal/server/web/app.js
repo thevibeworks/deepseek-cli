@@ -107,23 +107,30 @@
     pill.className = "pill " + cls;
   }
 
-  /* ---------- sparkline chart ---------- */
+  /* ---------- daily chart ----------
+
+     Bars, one per UTC day, for the last thirty days. It used to be output
+     tokens per second over five minutes, which was the wrong instrument
+     for this service: a shared pool serving a few requests an hour is
+     idle almost every second, so the line was flat at zero whenever
+     anyone looked and said nothing true about whether the thing works.
+     A day is the smallest bucket that is usually non-empty here.        */
 
   var chart = (function () {
     var canvas = $("spark");
     var ctx = canvas.getContext("2d");
-    var target = [];      // latest series from the server
-    var shown = [];       // what is currently drawn (tweens toward target)
+    var days = [];        // [{date, requests, input_tokens, output_tokens, subjects}]
+    var shown = [];       // bar heights currently drawn (tween toward days)
     var tweenFrom = null;
     var tweenStart = 0;
     var raf = 0;
     var hoverIdx = -1;
-    var colors = { line: "#00c2e9", grid: "#9a9a9a" };
+    var colors = { bar: "#00c2e9", grid: "#9a9a9a" };
     var TWEEN_MS = 280;
 
     function refreshColors() {
       var cs = getComputedStyle(canvas);
-      colors.line = cs.color;
+      colors.bar = cs.color;
       colors.grid = cs.borderTopColor || cs.borderColor || colors.grid;
     }
 
@@ -142,13 +149,11 @@
     function draw() {
       var dim = size();
       var w = dim.w, h = dim.h;
-      var pad = 4;
+      var pad = 6;
       ctx.clearRect(0, 0, w, h);
 
-      var s = shown;
-      var n = s.length;
-
-      // baseline
+      // baseline: drawn even with no data, so an empty chart still reads
+      // as an axis rather than as a failed render.
       ctx.globalAlpha = 0.5;
       ctx.strokeStyle = colors.grid;
       ctx.lineWidth = 1;
@@ -158,40 +163,32 @@
       ctx.stroke();
       ctx.globalAlpha = 1;
 
-      if (n < 2) return;
+      var n = shown.length;
+      if (n === 0) return;
 
       var max = 1;
-      for (var i = 0; i < n; i++) if (s[i] > max) max = s[i];
+      for (var i = 0; i < n; i++) if (shown[i] > max) max = shown[i];
 
-      function x(i) { return (i / (n - 1)) * w; }
-      function y(v) { return h - pad - (v / max) * (h - pad * 2); }
+      var slot = w / n;
+      var bw = Math.max(2, Math.min(slot - 2, 18));
 
-      // area fill
-      ctx.beginPath();
-      ctx.moveTo(0, h);
-      for (var j = 0; j < n; j++) ctx.lineTo(x(j), y(s[j]));
-      ctx.lineTo(w, h);
-      ctx.closePath();
-      ctx.globalAlpha = 0.16;
-      ctx.fillStyle = colors.line;
-      ctx.fill();
+      for (var j = 0; j < n; j++) {
+        var cx = slot * (j + 0.5);
+        var v = shown[j];
+        var bh = (v / max) * (h - pad - 1);
+        var isToday = j === n - 1;
+        // A zero day still gets a one-pixel tick. Nothing drawn at all
+        // looks like missing data; a floor line reads as a quiet day.
+        if (bh < 1) bh = v > 0 ? 1.5 : 1;
+        ctx.globalAlpha = v > 0 ? (isToday ? 1 : 0.75) : 0.22;
+        ctx.fillStyle = colors.bar;
+        ctx.fillRect(Math.round(cx - bw / 2), h - 1 - bh, Math.round(bw), bh);
+      }
       ctx.globalAlpha = 1;
 
-      // line
-      ctx.beginPath();
-      for (var k = 0; k < n; k++) {
-        if (k === 0) ctx.moveTo(x(k), y(s[k]));
-        else ctx.lineTo(x(k), y(s[k]));
-      }
-      ctx.strokeStyle = colors.line;
-      ctx.lineWidth = 2;
-      ctx.lineJoin = "round";
-      ctx.stroke();
-
-      // hover crosshair
       if (hoverIdx >= 0 && hoverIdx < n) {
-        var hx = x(hoverIdx);
-        ctx.globalAlpha = 0.6;
+        var hx = slot * (hoverIdx + 0.5);
+        ctx.globalAlpha = 0.5;
         ctx.strokeStyle = colors.grid;
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -199,41 +196,57 @@
         ctx.lineTo(hx + 0.5, h);
         ctx.stroke();
         ctx.globalAlpha = 1;
-        ctx.beginPath();
-        ctx.arc(hx, y(s[hoverIdx]), 3.5, 0, Math.PI * 2);
-        ctx.fillStyle = colors.line;
-        ctx.fill();
       }
     }
 
     function step(ts) {
       var t = Math.min(1, (ts - tweenStart) / TWEEN_MS);
       var e = 1 - Math.pow(1 - t, 3); // ease-out cubic
-      for (var i = 0; i < target.length; i++) {
+      for (var i = 0; i < days.length; i++) {
         var from = tweenFrom[i] || 0;
-        shown[i] = from + (target[i] - from) * e;
+        shown[i] = from + (days[i].requests - from) * e;
       }
-      shown.length = target.length;
+      shown.length = days.length;
       draw();
       if (t < 1) raf = requestAnimationFrame(step);
     }
 
-    function update(series) {
-      if (!Array.isArray(series)) series = [];
+    function readout(i) {
+      var d = days[i];
+      if (!d) return "";
+      var when = d.date;
+      if (i === days.length - 1) when += " (today)";
+      return when + " · " + fmtInt(d.requests) + " req · " +
+        fmtCompact(d.output_tokens) + " out · " + fmtInt(d.subjects) +
+        (d.subjects === 1 ? " person" : " people");
+    }
+
+    function update(history) {
+      if (!Array.isArray(history)) history = [];
       var clean = [];
-      for (var i = 0; i < series.length; i++) {
-        var v = Number(series[i]);
-        clean.push(isFinite(v) && v > 0 ? v : 0);
+      for (var i = 0; i < history.length; i++) {
+        var row = history[i] || {};
+        var v = Number(row.requests);
+        clean.push({
+          date: String(row.date || ""),
+          requests: isFinite(v) && v > 0 ? v : 0,
+          input_tokens: Number(row.input_tokens) || 0,
+          output_tokens: Number(row.output_tokens) || 0,
+          subjects: Number(row.subjects) || 0
+        });
       }
       var prevShown = shown.slice();
-      target = clean;
+      days = clean;
+      if (clean.length) setText("chart-x0", clean[0].date);
       if (raf) cancelAnimationFrame(raf);
+      var heights = clean.map(function (d) { return d.requests; });
       if (reducedMotion.matches || prevShown.length === 0) {
-        shown = clean.slice();
+        shown = heights;
         draw();
         return;
       }
-      // align previous frame to the new series length (both end at "now")
+      // Both series end at today, so align them from the right: yesterday
+      // stays yesterday when a new day appears on the end.
       tweenFrom = [];
       var shift = clean.length - prevShown.length;
       for (var j = 0; j < clean.length; j++) {
@@ -245,14 +258,12 @@
     }
 
     canvas.addEventListener("pointermove", function (ev) {
-      var n = shown.length;
-      if (n < 2) return;
+      var n = days.length;
+      if (n === 0) return;
       var rect = canvas.getBoundingClientRect();
       var frac = (ev.clientX - rect.left) / rect.width;
-      hoverIdx = Math.max(0, Math.min(n - 1, Math.round(frac * (n - 1))));
-      var age = n - 1 - hoverIdx;
-      setText("spark-readout", Math.round(shown[hoverIdx]) + " tok/s · " +
-        (age === 0 ? "now" : age + "s ago"));
+      hoverIdx = Math.max(0, Math.min(n - 1, Math.floor(frac * n)));
+      setText("spark-readout", readout(hoverIdx));
       draw();
     });
     canvas.addEventListener("pointerleave", function () {
@@ -372,6 +383,55 @@
   }
   setInterval(tickCountdown, 1000);
 
+  /* ---------- upstream health ----------
+
+     Two rows, because a visitor whose request just failed has exactly one
+     question and it is not "what is your p99": is this you or DeepSeek?
+     Our own row is derived from the gateway's own state word; the DeepSeek
+     row is what our last calls to api.deepseek.com actually did.        */
+
+  var UP_STATES = {
+    ok:       ["reachable", "ok"],
+    degraded: ["some calls failing", "warn"],
+    down:     ["not answering us", "crit"],
+    unknown:  ["not called yet", "idle"]
+  };
+
+  function setDot(id, cls) {
+    var el = $(id);
+    if (el) el.className = "health-dot " + cls;
+  }
+
+  function renderUpstream(d) {
+    // Ours: anything that still serves requests is working, and the two
+    // exhausted states are our limit rather than a fault.
+    var st = String(d.state || "");
+    var usText = "serving requests", usCls = "ok";
+    if (st === "degraded") { usText = "refusing — cannot record spend"; usCls = "crit"; }
+    else if (st === "day_exhausted") { usText = "today's budget spent"; usCls = "warn"; }
+    else if (st === "credit_exhausted") { usText = "credit pool empty"; usCls = "warn"; }
+    else if (st === "busy") { usText = "busy — requests queue"; usCls = "warn"; }
+    else if (st !== "operational") { usText = String(d.state || "unknown"); usCls = "idle"; }
+    setText("up-us", usText);
+    setDot("up-us-dot", usCls);
+
+    var u = d.upstream || {};
+    var m = UP_STATES[u.state] || UP_STATES.unknown;
+    setText("up-ds", m[0]);
+    setDot("up-ds-dot", m[1]);
+
+    var bits = [];
+    if (u.latency_ms > 0) bits.push("last good call " + fmtInt(u.latency_ms) + " ms");
+    if (u.last_ok_ago_sec >= 0) bits.push(fmtDur(u.last_ok_ago_sec) + " ago");
+    if (u.fault_streak > 0) {
+      bits.push(fmtInt(u.fault_streak) + " failing in a row" +
+        (u.last_fault ? " (" + u.last_fault + ")" : ""));
+    } else if (u.faults > 0) {
+      bits.push(fmtInt(u.faults) + " of " + fmtInt(u.calls) + " calls failed since boot");
+    }
+    setText("up-note", bits.length ? bits.join(" · ") : "nothing forwarded since this process started");
+  }
+
   /* ---------- render ---------- */
 
   function render(d) {
@@ -387,19 +447,29 @@
     setText("t-flight", fmtInt(live.in_flight));
 
     var usage = d.usage || {};
+    var today = usage.today || {};
+    var life = usage.lifetime || {};
     setText("t-today", fmtInt(usage.subjects_today));
+    setText("t-req-today", fmtInt(today.requests));
+    setText("t-req-life", fmtCompact(life.requests));
 
     var sys = d.system || {};
     setText("t-uptime", fmtDur(sys.uptime_sec));
 
-    chart.update(live.series);
+    var history = Array.isArray(d.history) ? d.history : [];
+    var sum30 = 0;
+    history.forEach(function (row) { sum30 += Number(row && row.requests) || 0; });
+    setText("t-req-30d", fmtCompact(sum30));
+    chart.update(history);
+    setText("chart-now", "right now: " + fmtRate(live.tokens_per_sec) +
+      " tokens/sec · " + fmtInt(live.in_flight) + " in flight");
+
+    renderUpstream(d);
 
     var credit = d.credit || {};
     setGauge("g-day", credit.day_remaining_pct);
     setGauge("g-pool", credit.pool_remaining_pct);
 
-    var today = usage.today || {};
-    var life = usage.lifetime || {};
     setText("to-req", fmtCompact(today.requests));
     setText("lt-req", fmtCompact(life.requests));
     setText("to-in", fmtCompact(today.input_tokens));
@@ -430,6 +500,7 @@
     setText("lim-req", fmtInt(lim.requests));
     setText("lim-in", fmtCompact(lim.input_tokens));
     setText("lim-out", fmtCompact(lim.output_tokens));
+    setText("lim-search", fmtInt(lim.searches));
 
     var rAt = Date.parse(d.resets_at);
     var sNow = Date.parse(d.now);

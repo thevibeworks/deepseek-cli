@@ -89,6 +89,7 @@ func newHarness(t *testing.T, up *upstream, tune func(*Config, *quota.Limits)) *
 		DailyRequests:     5,
 		DailyInputTokens:  10000,
 		DailyOutputTokens: 5000,
+		DailySearches:     2,
 		DailyBudgetUSD:    1,
 		TotalBudgetUSD:    10,
 	}
@@ -899,5 +900,57 @@ func TestUpstreamDryBalanceStopsAdmissions(t *testing.T) {
 	defer resp2.Body.Close()
 	if resp2.StatusCode != 200 {
 		t.Errorf("HTTP %d after the account recovered, want 200", resp2.StatusCode)
+	}
+}
+
+// web_search has to work end to end on the free tier — it is the reason
+// `deepseek respond --web-search` exists — and it has to stay rationed,
+// because one search costs about what ten ordinary turns cost.
+func TestWebSearchIsCarriedAndRationed(t *testing.T) {
+	up := newUpstream(t, func(w http.ResponseWriter, r *http.Request) {
+		io.WriteString(w, chatReply(100, 50))
+	})
+	h := newHarness(t, up, nil) // DailySearches: 2
+	tok := h.enrol(t)
+
+	const search = `{"input":"who won","tools":[{"type":"web_search"}]}`
+	for i := 0; i < 2; i++ {
+		resp := h.do(t, "POST", "/responses", tok, search)
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("search %d: status = %d, want 200", i+1, resp.StatusCode)
+		}
+		h.settle(t)
+	}
+	// The tool must reach DeepSeek intact — a gateway that quietly dropped
+	// it would return a confidently unsourced answer.
+	tools, _ := up.last(t).Body["tools"].([]any)
+	if len(tools) != 1 {
+		t.Fatalf("upstream saw %d tools, want the one that was sent", len(tools))
+	}
+	if kind, _ := tools[0].(map[string]any)["type"].(string); kind != "web_search" {
+		t.Errorf("upstream saw tool type %q, want web_search", kind)
+	}
+
+	resp := h.do(t, "POST", "/responses", tok, search)
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusTooManyRequests {
+		t.Fatalf("a third search past a ration of two: status = %d, want 429", resp.StatusCode)
+	}
+	var body struct {
+		Error struct {
+			Type    string `json:"type"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	json.NewDecoder(resp.Body).Decode(&body)
+	if !strings.Contains(body.Error.Message, "search") {
+		t.Errorf("the refusal does not say searches ran out: %q", body.Error.Message)
+	}
+	// Ordinary requests must survive an exhausted search ration.
+	plain := h.do(t, "POST", "/responses", tok, `{"input":"hi"}`)
+	defer plain.Body.Close()
+	if plain.StatusCode != http.StatusOK {
+		t.Errorf("an ordinary request was refused after searches ran out: status = %d", plain.StatusCode)
 	}
 }

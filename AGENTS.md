@@ -155,9 +155,16 @@ deepseek free off            # forget the enrolment on this machine
 ```
 
 Free-tier limits, per UTC day: 30 requests, 60K input tokens, 20K output
-tokens, 4K output per call, 128KB per request body, `deepseek-v4-flash`
-only. A request for pro is **refused, not downgraded**. `models` and
-`status` cost no quota; everything that can generate a token does.
+tokens, 3 web searches, 4K output per call, 128KB per request body,
+`deepseek-v4-flash` only. A request for pro is **refused, not
+downgraded**. `models` and `status` cost no quota; everything that can
+generate a token does.
+
+`respond --web-search` works on the free tier and spends one of the three
+daily searches. It is rationed that tightly because DeepSeek reads whole
+pages into the prompt — one measured search request billed 40K input
+tokens, about ten ordinary turns — so treat it as a few lookups a day, not
+a research loop. Other server-side tools are still refused.
 
 Errors from the gateway carry `"type":"free_tier_*"` and a message that
 already contains the next step — do not append DeepSeek's own advice to

@@ -88,6 +88,12 @@ type Decision struct {
 	// estimate if the response turns out to be unmeterable.
 	MaxTokens int
 	Stream    bool
+	// Search is set when the request asks for DeepSeek's server-side web
+	// search. It travels because such a request costs a multiple of an
+	// ordinary one: the server injects the pages it read as input tokens,
+	// so neither the body's size nor MaxTokens predicts the bill. The
+	// reservation and the per-user ration both key off this.
+	Search bool
 }
 
 // Reject is a request refused before it cost anything.
@@ -131,7 +137,7 @@ func Apply(route Route, body []byte, subject string, lim Limits) (*Decision, err
 	if err := forbidFanOut(obj); err != nil {
 		return nil, err
 	}
-	if err := forbidServerTools(obj, route.Format); err != nil {
+	if err := checkServerTools(obj, route.Format, d); err != nil {
 		return nil, err
 	}
 	setIdentity(obj, route.Format, subject)
@@ -233,12 +239,29 @@ func forbidFanOut(obj map[string]any) error {
 	return nil
 }
 
-// forbidServerTools refuses tools that run on DeepSeek's side. Client
-// tools ("function") only declare a schema and cost nothing extra; a
-// server-side tool like web_search performs billed work that never
-// appears in the usage object, which would put its cost outside every
-// ceiling this gateway enforces. Only the Responses format offers them.
-func forbidServerTools(obj map[string]any, f Format) error {
+// checkServerTools decides which tools that run on DeepSeek's side the
+// free tier will carry. Client tools ("function") only declare a schema
+// and cost nothing extra. Only the Responses format offers server-side
+// ones at all.
+//
+// web_search is allowed, and the reason is a measurement rather than a
+// guess. Against the live API on 2026-08-07, one search request made 11
+// server-side calls (searches, page opens, an in-page find) and reported
+// 40,260 input tokens, 32,000 of them cache hits — and the account
+// balance moved by nothing beyond those tokens. So DeepSeek charges no
+// per-search fee: the whole cost of a search arrives as input tokens in
+// the usage object, which is exactly what this gateway already meters.
+// Eleven searches at a frontier vendor's $10-per-1,000 rate would have
+// been $0.11 and unmistakable in the balance; it was not there.
+//
+// What that measurement does change is the reservation. A search
+// request's input is chosen by the server, not by the caller, so the
+// request body no longer bounds it — see meter.Estimate.
+//
+// Every other server-side tool stays refused: an unknown tool is unknown
+// work at an unknown price, and the honest default for spending someone
+// else's donated credit is no.
+func checkServerTools(obj map[string]any, f Format, d *Decision) error {
 	if f != FormatResponses {
 		return nil
 	}
@@ -246,14 +269,24 @@ func forbidServerTools(obj map[string]any, f Format) error {
 	for _, t := range tools {
 		tool, _ := t.(map[string]any)
 		kind, _ := tool["type"].(string)
-		if kind != "" && kind != "function" {
+		switch {
+		case kind == "" || kind == "function":
+		case isWebSearch(kind):
+			d.Search = true
+		default:
 			return &Reject{
 				Message: fmt.Sprintf("the free tier does not serve server-side tools (%q)", kind),
-				Hint:    "bring your own key for web search: https://platform.deepseek.com/api_keys",
+				Hint:    "web_search works here; for anything else bring your own key: https://platform.deepseek.com/api_keys",
 			}
 		}
 	}
 	return nil
+}
+
+// isWebSearch matches the tool DeepSeek documents under two names, the
+// bare one and the dated one their Responses API also accepts.
+func isWebSearch(kind string) bool {
+	return kind == "web_search" || strings.HasPrefix(kind, "web_search_")
 }
 
 // setIdentity stamps the subject onto the request in whichever field the

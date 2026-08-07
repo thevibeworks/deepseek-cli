@@ -31,6 +31,7 @@ type Limits struct {
 	DailyRequests     int
 	DailyInputTokens  int
 	DailyOutputTokens int
+	DailySearches     int
 
 	// DailyBudgetUSD is the circuit breaker: the total this service may
 	// spend across all users in one UTC day. This is the number that
@@ -48,6 +49,7 @@ type Account struct {
 	Requests     int     `json:"requests"`
 	InputTokens  int     `json:"input_tokens"`
 	OutputTokens int     `json:"output_tokens"`
+	Searches     int     `json:"searches"`
 	SpentUSD     float64 `json:"spent_usd"`
 }
 
@@ -71,6 +73,22 @@ type UserCaps struct {
 	Requests     int `json:"requests"`
 	InputTokens  int `json:"input_tokens"`
 	OutputTokens int `json:"output_tokens"`
+	// Searches rations requests that use DeepSeek's server-side web
+	// search. It exists because such a request costs roughly ten times an
+	// ordinary turn — the pages it reads are billed as input tokens — so
+	// the request count alone would let one caller take a large share of
+	// the day's budget while looking like a normal user.
+	Searches int `json:"searches"`
+}
+
+// Admission is what a request asks the ledger for before it is forwarded.
+// It is a struct rather than another positional argument because the two
+// fields answer different questions — how much money to hold, and which
+// per-user ration to spend — and a bare `true` at a call site would say
+// neither.
+type Admission struct {
+	ReserveUSD float64
+	Search     bool
 }
 
 // Reason classifies a refusal so the HTTP layer can pick a status code
@@ -81,6 +99,7 @@ const (
 	ReasonRequests     Reason = "daily_requests"
 	ReasonInputTokens  Reason = "daily_input_tokens"
 	ReasonOutputTokens Reason = "daily_output_tokens"
+	ReasonSearches     Reason = "daily_searches"
 	ReasonDailyBudget  Reason = "daily_budget"
 	ReasonCredits      Reason = "credits_exhausted"
 	ReasonRevoked      Reason = "revoked"
@@ -109,6 +128,14 @@ func (e *LimitError) Error() string {
 		return "this token has been revoked"
 	case ReasonUnavailable:
 		return "the free tier cannot record spend right now"
+	case ReasonRequests:
+		return "you have used today's request allowance"
+	case ReasonInputTokens:
+		return "you have used today's input-token allowance"
+	case ReasonOutputTokens:
+		return "you have used today's output-token allowance"
+	case ReasonSearches:
+		return "you have used today's web-search allowance"
 	default:
 		return fmt.Sprintf("daily %s limit reached", string(e.Reason))
 	}
@@ -162,6 +189,12 @@ type Ledger struct {
 	journalErr error
 
 	now func() time.Time
+
+	// history memoises finished days for the dashboard's daily series. It
+	// has its own lock because it is read on a status request and must not
+	// queue behind a request being admitted.
+	histMu  sync.Mutex
+	history map[string]Day
 }
 
 // entry is one line of the journal.
@@ -492,7 +525,8 @@ func (l *Ledger) reopenLocked() {
 // admitted only if, priced at its absolute maximum, it still fits under
 // both. Charge and Refund release the reservation, so the actual (almost
 // always much smaller) cost is what sticks.
-func (l *Ledger) Admit(subject string, reserveUSD float64) error {
+func (l *Ledger) Admit(subject string, req Admission) error {
+	reserveUSD := req.ReserveUSD
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.rollLocked()
@@ -530,9 +564,17 @@ func (l *Ledger) Admit(subject string, reserveUSD float64) error {
 		return &LimitError{Reason: ReasonInputTokens, ResetsAt: reset}
 	case a.OutputTokens >= l.limits.DailyOutputTokens:
 		return &LimitError{Reason: ReasonOutputTokens, ResetsAt: reset}
+	case req.Search && a.Searches >= l.limits.DailySearches:
+		return &LimitError{Reason: ReasonSearches, ResetsAt: reset}
 	}
 
 	a.Requests++
+	if req.Search {
+		// Counted at admission rather than at settlement, because the
+		// ration has to bind before the money is spent: a search that
+		// failed still cost us the pages DeepSeek read.
+		a.Searches++
+	}
 	l.reserved += reserveUSD
 	return nil
 }
@@ -543,13 +585,18 @@ func (l *Ledger) Admit(subject string, reserveUSD float64) error {
 // Only failures the caller cannot provoke qualify — transport errors and
 // upstream 429/5xx. Refunding on anything the client controls, such as a
 // malformed body, would turn the request counter into a free retry loop.
-func (l *Ledger) Refund(subject string, reserveUSD float64) {
+func (l *Ledger) Refund(subject string, req Admission) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	if a, ok := l.accounts[subject]; ok && a.Requests > 0 {
-		a.Requests--
+	if a, ok := l.accounts[subject]; ok {
+		if a.Requests > 0 {
+			a.Requests--
+		}
+		if req.Search && a.Searches > 0 {
+			a.Searches--
+		}
 	}
-	l.releaseLocked(reserveUSD)
+	l.releaseLocked(req.ReserveUSD)
 }
 
 // Release gives back a reservation while keeping the request debit, for
@@ -629,6 +676,7 @@ func (l *Ledger) Status(subject, tier string) Status {
 			Requests:     l.limits.DailyRequests,
 			InputTokens:  l.limits.DailyInputTokens,
 			OutputTokens: l.limits.DailyOutputTokens,
+			Searches:     l.limits.DailySearches,
 		},
 		ResetsAt:  midnight(l.now()),
 		Exhausted: l.priorSpend+l.daySpend >= l.limits.TotalBudgetUSD,
@@ -793,4 +841,96 @@ func today(t time.Time) string { return t.UTC().Format("2006-01-02") }
 func midnight(t time.Time) time.Time {
 	u := t.UTC()
 	return time.Date(u.Year(), u.Month(), u.Day(), 0, 0, 0, 0, time.UTC).Add(24 * time.Hour)
+}
+
+// Day is one UTC day of traffic, for the dashboard's history.
+//
+// No money, deliberately, for the same reason the public status document
+// withholds it: a per-day spend series is a map of how much it takes to
+// empty this service and when it is cheapest to try.
+type Day struct {
+	Date         string `json:"date"`
+	Requests     int    `json:"requests"`
+	InputTokens  int    `json:"input_tokens"`
+	OutputTokens int    `json:"output_tokens"`
+	// Subjects is how many distinct anonymous identities sent something
+	// that day — the closest honest thing to "people", since no account
+	// exists. Only the count is published, never the ids.
+	Subjects int `json:"subjects"`
+}
+
+// History is the last n UTC days, oldest first, including today.
+//
+// It is read from the journals rather than from a new counter, because the
+// journals are already the record the money is settled from — a separate
+// series could disagree with the ledger, and then the pretty chart would
+// be the one people believe. A day that never had traffic is present with
+// zeroes, so the series is a calendar rather than a list of events and the
+// gaps are visible.
+//
+// Past days are immutable once the date rolls, so each is scanned at most
+// once per process; only today is recomputed, from the live counters.
+func (l *Ledger) History(days int) []Day {
+	if days < 1 {
+		days = 1
+	}
+	l.mu.Lock()
+	l.rollLocked()
+	today := l.day
+	live := Day{Date: today, Subjects: len(l.accounts)}
+	for _, a := range l.accounts {
+		live.Requests += a.Requests
+		live.InputTokens += a.InputTokens
+		live.OutputTokens += a.OutputTokens
+	}
+	end, err := time.Parse("2006-01-02", today)
+	l.mu.Unlock()
+	if err != nil {
+		return []Day{live}
+	}
+
+	out := make([]Day, 0, days)
+	for i := days - 1; i >= 0; i-- {
+		date := end.AddDate(0, 0, -i).Format("2006-01-02")
+		if date == today {
+			out = append(out, live)
+			continue
+		}
+		out = append(out, l.pastDay(date))
+	}
+	return out
+}
+
+// pastDay reads one finished day out of its journal, remembering the
+// answer: a day that has ended cannot change.
+func (l *Ledger) pastDay(date string) Day {
+	l.histMu.Lock()
+	if d, ok := l.history[date]; ok {
+		l.histMu.Unlock()
+		return d
+	}
+	l.histMu.Unlock()
+
+	d := Day{Date: date}
+	if f, err := os.Open(l.journalPath(date)); err == nil {
+		seen := make(map[string]struct{})
+		scanJournal(f, func(e entry) {
+			d.Requests++
+			d.InputTokens += e.InputTokens
+			d.OutputTokens += e.OutputTokens
+			if e.Subject != "" {
+				seen[e.Subject] = struct{}{}
+			}
+		})
+		f.Close()
+		d.Subjects = len(seen)
+	}
+
+	l.histMu.Lock()
+	if l.history == nil {
+		l.history = make(map[string]Day)
+	}
+	l.history[date] = d
+	l.histMu.Unlock()
+	return d
 }

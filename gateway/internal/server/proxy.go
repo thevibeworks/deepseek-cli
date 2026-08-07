@@ -116,7 +116,7 @@ func (s *Server) handleProxy(w http.ResponseWriter, r *http.Request) {
 	// `deepseek status` free and safe in a loop against the free tier,
 	// exactly as it is against the real API.
 	billable := route.Format != policy.FormatNone
-	var reserve float64
+	adm := quota.Admission{Search: decision.Search}
 	if billable {
 		if s.upstreamDry.Load() {
 			// DeepSeek says the account is unusable. The local ledger's
@@ -129,8 +129,8 @@ func (s *Server) handleProxy(w http.ResponseWriter, r *http.Request) {
 		// forwarded. This is what makes the budget a ceiling: without the
 		// reservation, every in-flight request is unbilled and the breaker
 		// only notices after the money is spent.
-		reserve = meter.Estimate(decision.Model, len(decision.Body), decision.MaxTokens)
-		if err := s.ledger.Admit(subject, reserve); err != nil {
+		adm.ReserveUSD = meter.Estimate(decision.Model, len(decision.Body), decision.MaxTokens, decision.Search)
+		if err := s.ledger.Admit(subject, adm); err != nil {
 			s.writeLimit(w, err)
 			return
 		}
@@ -141,7 +141,7 @@ func (s *Server) handleProxy(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.acquire(r); err != nil {
 		if billable {
-			s.ledger.Refund(subject, reserve)
+			s.ledger.Refund(subject, adm)
 		}
 		w.Header().Set("Retry-After", "5")
 		writeError(w, http.StatusServiceUnavailable, typeQuota,
@@ -153,7 +153,7 @@ func (s *Server) handleProxy(w http.ResponseWriter, r *http.Request) {
 	s.stats.InFlight(1)
 	defer s.stats.InFlight(-1)
 
-	s.forward(w, r, route, decision, subject, billable, reserve)
+	s.forward(w, r, route, decision, subject, billable, adm)
 }
 
 // edgeCountry reads the two-letter country the CDN attached to this
@@ -194,7 +194,8 @@ func (s *Server) acquire(r *http.Request) error {
 	}
 }
 
-func (s *Server) forward(w http.ResponseWriter, r *http.Request, route policy.Route, d *policy.Decision, subject string, billable bool, reserve float64) {
+func (s *Server) forward(w http.ResponseWriter, r *http.Request, route policy.Route, d *policy.Decision, subject string, billable bool, adm quota.Admission) {
+	reserve := adm.ReserveUSD
 	url := strings.TrimRight(s.cfg.UpstreamBaseURL, "/") + route.Upstream
 
 	var payload io.Reader
@@ -204,7 +205,7 @@ func (s *Server) forward(w http.ResponseWriter, r *http.Request, route policy.Ro
 	up, err := http.NewRequestWithContext(r.Context(), route.Method, url, payload)
 	if err != nil {
 		if billable {
-			s.ledger.Refund(subject, reserve)
+			s.ledger.Refund(subject, adm)
 		}
 		writeError(w, http.StatusInternalServerError, typeInternal, "could not build the upstream request")
 		return
@@ -223,7 +224,7 @@ func (s *Server) forward(w http.ResponseWriter, r *http.Request, route policy.Ro
 	secret, fingerprint, err := s.keys.Next()
 	if err != nil {
 		if billable {
-			s.ledger.Refund(subject, reserve)
+			s.ledger.Refund(subject, adm)
 		}
 		s.writeLimit(w, &quota.LimitError{Reason: quota.ReasonCredits})
 		return
@@ -239,6 +240,7 @@ func (s *Server) forward(w http.ResponseWriter, r *http.Request, route policy.Ro
 	}
 	up.Header.Set("User-Agent", "dsgate")
 
+	sent := time.Now()
 	resp, err := s.http.Do(up)
 	if err != nil {
 		if r.Context().Err() != nil {
@@ -258,12 +260,19 @@ func (s *Server) forward(w http.ResponseWriter, r *http.Request, route policy.Ro
 		// Never reached the model, so it cost nothing and the caller keeps
 		// their request allowance.
 		if billable {
-			s.ledger.Refund(subject, reserve)
+			s.ledger.Refund(subject, adm)
 		}
+		s.stats.Upstream("unreachable", true, 0)
 		writeError(w, http.StatusBadGateway, typeUpstream, "could not reach DeepSeek: "+err.Error())
 		return
 	}
 	defer resp.Body.Close()
+
+	// One observation per round trip, and only DeepSeek's own failures
+	// count as faults: a 4xx is the caller's request coming back.
+	s.stats.Upstream(strconv.Itoa(resp.StatusCode),
+		resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500,
+		time.Since(sent))
 
 	// A key that upstream refuses for money or validity is done, and
 	// leaves the rotation now rather than after it has failed everyone
@@ -326,7 +335,7 @@ func (s *Server) forward(w http.ResponseWriter, r *http.Request, route policy.Ro
 			if upstreamFault {
 				// No tokens were generated and the fault was not the
 				// caller's: give everything back.
-				s.ledger.Refund(subject, reserve)
+				s.ledger.Refund(subject, adm)
 			} else {
 				// The caller's own 4xx keeps its request debit, but the
 				// money reserved for it goes back to the pool.
@@ -491,6 +500,12 @@ func (s *Server) writeLimit(w http.ResponseWriter, err error) {
 		w.Header().Set("Retry-After", "30")
 		writeError(w, http.StatusServiceUnavailable, typeInternal,
 			"the free tier is temporarily unavailable; retry shortly")
+	case quota.ReasonSearches:
+		// A distinct message because the fix is distinct: the rest of the
+		// tier still works, so "come back tomorrow" would be wrong.
+		retryAfter(w, lim.RetryAfter(time.Now()))
+		writeError(w, http.StatusTooManyRequests, typeQuota,
+			"you have used today's web-search allowance. Ordinary requests still work — searches reset at 00:00 UTC, or bring your own key for unlimited search: https://platform.deepseek.com/api_keys")
 	case quota.ReasonDailyBudget:
 		retryAfter(w, lim.RetryAfter(time.Now()))
 		writeError(w, http.StatusTooManyRequests, typeQuota,

@@ -57,8 +57,51 @@
   </table>
   <p>Not twenty percent cheaper. Thirty to a few hundred times cheaper, depending on the model and how much of the prompt caches.</p>
 
+  <p class="note">That table is still arithmetic on a rate card, which is the weakest kind of cost claim — it assumes every model spends the same tokens on the same work, and they do not. The section below is the stronger evidence: what independent benchmarks actually paid.</p>
+
+  <h2>What the benchmarks actually paid</h2>
+  <p>Two leaderboards publish a dollar figure next to the score, measured from their own runs rather than multiplied out of a price list. <a href="https://artificialanalysis.ai/leaderboards/models">Artificial Analysis</a> reports cost per task — total spend to run its Intelligence Index divided by the number of tasks — alongside the index score itself:</p>
+  <table>
+    <thead><tr><th scope="col">model</th><th scope="col">intelligence index</th><th scope="col">cost per task</th></tr></thead>
+    <tbody>
+      <tr><td>deepseek-v4-flash (max)</td><td>52</td><td>$0.03</td></tr>
+      <tr><td>deepseek-v4-pro (max)</td><td>45</td><td>$0.05</td></tr>
+      <tr><td>GPT-5.6 Luna (max)</td><td>52</td><td>$0.05</td></tr>
+      <tr><td>Gemini 3.6 Flash</td><td>52</td><td>$0.56</td></tr>
+      <tr><td>GPT-5.6 Sol (max)</td><td>61</td><td>$1.23</td></tr>
+      <tr><td>Claude Sonnet 5 (max)</td><td>55</td><td>$1.72</td></tr>
+      <tr><td>Claude Opus 5 (max)</td><td>63</td><td>$2.34</td></tr>
+      <tr><td>Claude Fable 5</td><td>62</td><td>$3.14</td></tr>
+    </tbody>
+  </table>
+  <p>The same source publishes what the whole index cost to run per model, which is the least ambiguous number on this page: <strong>$72.03</strong> for <a href="https://artificialanalysis.ai/models/deepseek-v4-flash">deepseek-v4-flash</a> against <strong>$3,836.05</strong> for <a href="https://artificialanalysis.ai/models/claude-opus-5">Claude Opus 5</a> and <strong>$5,455.22</strong> for <a href="https://artificialanalysis.ai/models/claude-fable-5">Claude Fable 5</a> — 53× and 76× on identical work.</p>
+
+  <p>On coding specifically, <a href="https://swe-rebench.com/">SWE-rebench</a> runs one fixed harness over 111 real GitHub issues and publishes cost per problem next to the resolve rate:</p>
+  <table>
+    <thead><tr><th scope="col">model</th><th scope="col">resolved</th><th scope="col">cost per problem</th></tr></thead>
+    <tbody>
+      <tr><td>Claude Fable 5 (high)</td><td>64.5%</td><td>$4.40</td></tr>
+      <tr><td>Claude Opus 5 (high)</td><td>63.4%</td><td>$3.47</td></tr>
+      <tr><td>GPT-5.6 Sol (medium)</td><td>62.3%</td><td>$0.85</td></tr>
+      <tr><td>Claude Sonnet 5 (high)</td><td>56.8%</td><td>$1.43</td></tr>
+      <tr><td>GPT-5.6 Luna (medium)</td><td>43.6%</td><td>$0.11</td></tr>
+      <tr><td>deepseek-v4-pro (high)</td><td>40.2%</td><td>$0.15</td></tr>
+    </tbody>
+  </table>
+  <p>And one independent developer ran the same build prompt three times back to back in early August 2026 and <a href="https://genaiunplugged.substack.com/p/claude-code-deepseek-cost-comparison">published the receipts</a>: Claude Opus 5 $0.3183, Kimi K3 $0.2485, deepseek-v4-flash $0.0049. All three produced working output; DeepSeek failed silently on image handling where Claude improvised around bugs that stopped the others.</p>
+
+  <h2>Where the cheap-token argument breaks</h2>
+  <p>Two numbers in those tables cut against the story this page is telling, and leaving them out would make it propaganda. On Artificial Analysis, <strong>GPT-5.6 Luna scores the same 52 as flash for $0.05 against flash's $0.03</strong> — a 1.7× gap, not a hundredfold one. On SWE-rebench, <strong>Luna beats deepseek-v4-pro on both axes at once</strong>: more issues resolved, less money per issue. So the honest shape of the claim is narrower than "DeepSeek is the cheapest way to get work done":</p>
+  <ul>
+    <li><strong>Against the flagship tier, the gap is real and enormous.</strong> One to two orders of magnitude per task, on published same-harness runs, confirmed by two independent measurers.</li>
+    <li><strong>Against the cheap frontier tier, the gap mostly evaporates.</strong> The cheap tiers of the big labs now land within a factor of two of DeepSeek's per-task cost, sometimes with better scores.</li>
+    <li><strong>The top of the quality range is not for sale at this price.</strong> Flash's 52 sits ten-plus index points below Opus 5 and Fable 5, and Artificial Analysis pairs that $0.03 with a 37% score on Humanity's Last Exam and an 84% hallucination rate. Paying 76× more buys something; whether it buys enough for your task is your measurement to make, not ours.</li>
+  </ul>
+  <p class="note">Every figure above was read on 2026-08-07 and they drift for two reasons at once: vendors reprice (DeepSeek's own cost-to-run fell from $1,071 to $176 for v4-pro after a price cut), and benchmarks reweight their indices. Treat the ratios as this month's, not as constants.</p>
+
   <h2>What this does not claim</h2>
-  <p>Per-token is not per-task. A stronger model that solves a hard problem in one attempt can beat a cheaper model that needs three, and on the hardest work the frontier models earn their price. Tokenizers differ too — Anthropic notes that its current tokenizer produces roughly 30% more tokens for the same text than its previous one, so identical work is not identical token counts across vendors. And DeepSeek has announced peak-hour pricing at 2× the listed rates, effective date not yet set. The honest claim is narrower and still remarkable: for the broad middle of real work — summarize, translate, refactor, answer, glue — the going rate differs by two orders of magnitude depending on whose API you call.</p>
+  <p>Three smaller caveats on top of the big one. Tokenizers differ, so identical text is not identical token counts across vendors — Anthropic notes its current tokenizer emits roughly 30% more tokens for the same input than its previous one. DeepSeek has announced peak-hour pricing at 2× the listed rates, with no effective date yet, which would halve the gap during working hours in Beijing. And a harness costs money too: one comparison held flash constant across four agent frameworks and watched cost per successful task swing 2.7× — $0.073 on the cheapest, $0.195 on Claude Code — so the tool you drive the model with can matter as much as the model.</p>
+  <p>What survives all of that is still worth saying plainly: for the broad middle of real work — summarize, translate, refactor, answer, glue — the going rate differs by one to two orders of magnitude depending on whose API you call, and the cheapest credible option is no longer a toy.</p>
 
   <h2>Why it matters</h2>
   <p>Chat is measured in thousands of tokens; agents are measured in millions. The moment a model works unattended — reading files, retrying, checking its own output — token consumption stops tracking human attention and starts tracking machine patience. An overnight agent run that emits ten million output tokens costs $2.80 at flash prices and $500 at Fable prices. One of those is "leave it running"; the other is a line item that gets a meeting. At frontier prices, autonomy is a luxury good. At flash prices, it is a background process.</p>

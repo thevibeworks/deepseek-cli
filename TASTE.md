@@ -141,6 +141,24 @@ a human always has somewhere to go.
 **Expires.** If DeepSeek publishes a documented status JSON endpoint,
 consume it and report both.
 
+**2026-08-07 — expiry tested, still holds, and now for a second reason.**
+Probed for a JSON endpoint from the production host: `/api/v2/summary.json`,
+`/api/v2/status.json`, `/api/status`, `/api/v1/status` and the bare page all
+fail. `status.deepseek.com` resolves to an Aliyun Beijing load balancer
+(`statuspage.flashcat.cloud`) that accepts the TCP connection and then never
+completes the TLS handshake from outside China, while `api.deepseek.com`
+answers fine from the same box. So the page is both unparseable and
+unreachable from where our gateway runs. Consuming it would mean shipping a
+health signal that is permanently unknown — worse than the wrong all-clear
+this scar was written about, because it would also be *our* dashboard showing
+red for *their* geography. What the gateway publishes instead is a
+first-party observation: every round trip to `api.deepseek.com` is recorded,
+and `/v1/status` carries an `upstream` block with the last success, the
+consecutive-failure streak and the last fault shape. That answers the
+question a visitor actually has — is this you or them — with data a status
+page structurally cannot have, since it cannot see a route that is broken
+only from here. The incident page stays linked for humans.
+
 ---
 
 ## 2026-08-05 rejected: shipping the tokenizer, or estimating from the ratios
@@ -345,3 +363,50 @@ vectors by coincidence and fail against the gateway every time.
 
 **Expires.** If the CLI and the gateway ever merge into one module, the
 Go halves should share code and only the browser stays separate.
+
+---
+
+## 2026-08-07 accepted, after a measurement: `web_search` on the free tier
+
+Recorded here because it reverses an earlier refusal, and a reversal
+without its evidence is just a mood swing.
+
+**The refusal it replaces.** `policy.forbidServerTools` rejected every
+server-side tool with a real argument: such a tool "performs billed work
+that never appears in the usage object, which would put its cost outside
+every ceiling this gateway enforces". Correct reasoning, untested premise.
+
+**What the measurement showed.** One `respond --web-search` call against
+the live API on 2026-08-07 made eleven server-side calls (searches, page
+opens, an in-page find) and reported 40,260 input tokens, 32,000 of them
+cache hits, 3,100 output. The account balance moved by nothing beyond
+those tokens — eleven searches at a frontier vendor's $10-per-1,000 rate
+would have been $0.11, or 0.79 CNY, and unmistakable against a 14.26 CNY
+balance. So the premise was wrong in the half that mattered: there is no
+per-search fee, and the entire cost of a search arrives as input tokens
+that this gateway already meters exactly.
+
+**What the measurement did break.** The half of the premise that was
+right, in a different place than expected. `meter.Estimate` bounded a
+request's input at one token per body byte — true for every other request
+and false for this one, because DeepSeek chooses how many pages to read.
+A search request's input is upstream-controlled, so the admission
+reservation no longer bounds it from the body.
+
+**Reuse.** Allow `web_search` (both the bare and dated tool names), refuse
+every other server-side tool still, and pay for the change in two places:
+a 256k-token input allowance in the reservation, roughly six times the
+observed case; and a per-user daily ration of three searches, which is a
+new quota dimension because one search costs about what ten ordinary turns
+cost and the request counter alone would let one caller quietly take a
+quarter of the day's budget. Stating the trade honestly: within the
+allowance the budget is still a hard ceiling, and beyond it a search can
+overshoot by the difference, bounded by the few distinct callers who can
+be mid-search at once given a per-subject in-flight cap of one.
+
+**Expires.** If DeepSeek starts billing searches separately, or documents
+a cap on injected search context, redo the arithmetic — the allowance and
+the ration are both sized to a single measurement and should be re-measured
+when the tool changes. If a search request is ever observed above 256k
+input tokens in production, that is the signal to raise the allowance
+rather than to quietly accept the overshoot.
