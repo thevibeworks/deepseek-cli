@@ -116,6 +116,10 @@ type FreeInfo struct {
 		Requests     int `json:"requests"`
 		InputTokens  int `json:"input_tokens"`
 		OutputTokens int `json:"output_tokens"`
+		// Searches is the daily ration for server-side web_search. Older
+		// gateways do not send it, so zero means "not offered" rather than
+		// "none left".
+		Searches int `json:"searches"`
 	} `json:"daily_limits"`
 	Endpoints []string `json:"endpoints"`
 }
@@ -128,12 +132,14 @@ type FreeQuota struct {
 		Requests     int     `json:"requests"`
 		InputTokens  int     `json:"input_tokens"`
 		OutputTokens int     `json:"output_tokens"`
+		Searches     int     `json:"searches"`
 		SpentUSD     float64 `json:"spent_usd"`
 	} `json:"used"`
 	Limits struct {
 		Requests     int `json:"requests"`
 		InputTokens  int `json:"input_tokens"`
 		OutputTokens int `json:"output_tokens"`
+		Searches     int `json:"searches"`
 	} `json:"limits"`
 	ResetsAt  time.Time `json:"resets_at"`
 	Exhausted bool      `json:"service_exhausted"`

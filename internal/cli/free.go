@@ -142,8 +142,14 @@ func (o *Options) printFreeOffer(gateway string, info *deepseek.FreeInfo) {
 	row := func(k, v string) { fmt.Fprintf(w, "  %-9s %s\n", k, v) }
 	row("gateway", gateway)
 	row("model", info.Model)
-	row("per day", fmt.Sprintf("%s requests · %s input · %s output tokens",
-		humanTokens(info.Limits.Requests), humanTokens(info.Limits.InputTokens), humanTokens(info.Limits.OutputTokens)))
+	perDay := fmt.Sprintf("%s requests · %s input · %s output tokens",
+		humanTokens(info.Limits.Requests), humanTokens(info.Limits.InputTokens), humanTokens(info.Limits.OutputTokens))
+	// A gateway that does not offer web search sends no ration, and
+	// printing "0 searches" would read as "you have used them all".
+	if info.Limits.Searches > 0 {
+		perDay += fmt.Sprintf(" · %d web searches", info.Limits.Searches)
+	}
+	row("per day", perDay)
 	if info.MaxTokens > 0 {
 		row("per call", fmt.Sprintf("%s output tokens max", humanTokens(info.MaxTokens)))
 	}
@@ -187,10 +193,14 @@ func runFreeStatus(ctx context.Context, o *Options) error {
 	row("gateway", free.BaseURL)
 	row("subject", free.Subject)
 	row("enrolled", free.Enrolled.Local().Format("2006-01-02"))
-	row("today", fmt.Sprintf("%d/%d requests · %s/%s in · %s/%s out",
+	today := fmt.Sprintf("%d/%d requests · %s/%s in · %s/%s out",
 		quota.Used.Requests, quota.Limits.Requests,
 		humanTokens(quota.Used.InputTokens), humanTokens(quota.Limits.InputTokens),
-		humanTokens(quota.Used.OutputTokens), humanTokens(quota.Limits.OutputTokens)))
+		humanTokens(quota.Used.OutputTokens), humanTokens(quota.Limits.OutputTokens))
+	if quota.Limits.Searches > 0 {
+		today += fmt.Sprintf(" · %d/%d searches", quota.Used.Searches, quota.Limits.Searches)
+	}
+	row("today", today)
 	row("spent", money(quota.Used.SpentUSD)+" "+o.dim("(on our credits, not yours)"))
 	if d := time.Until(quota.ResetsAt); d > 0 {
 		row("resets", fmt.Sprintf("in %s %s", roundDuration(d), o.dim("(00:00 UTC)")))
