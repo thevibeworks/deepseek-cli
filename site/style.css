@@ -1416,3 +1416,14 @@ figure.shot figcaption {
     word-wrap: break-word;
     overflow-x: auto;
 }
+
+/* The playground's one checkbox. Label and box share a row so the hit
+   target is the whole phrase, not an 13px square. */
+.pg-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  margin-bottom: 4px;
+}
+.pg-check input { margin: 0; }

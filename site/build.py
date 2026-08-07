@@ -1405,6 +1405,16 @@ about a second of CPU and nothing else &mdash; no account, no email, no card.</p
     </select>
     <p id="pg-formatNote" class="pg-note"></p>
 
+    <div id="pg-searchField" hidden>
+      <label class="pg-check" for="pg-search">
+        <input id="pg-search" type="checkbox">
+        web search
+      </label>
+      <p class="pg-note">DeepSeek searches and reads pages server-side. Costs
+      one of the free tier's three daily searches, because the pages it reads
+      are billed as input tokens &mdash; about ten ordinary turns' worth.</p>
+    </div>
+
     <label for="pg-think">thinking</label>
     <select id="pg-think">
       <option value="">on (the API's default)</option>
