@@ -60,7 +60,15 @@
     <a class="brand" href="https://thevibeworks.github.io/deepseek-cli/">
       <span class="caret">&gt;</span><span class="org">thevibeworks/</span><span class="name">deepseek-cli</span>
     </a>
-    <nav class="sitenav" aria-label="Sections">
+    <!-- Nav and toggle travel together — they are the controls end of the
+         masthead — but the toggle is beside the nav rather than inside it.
+         Two reasons, and the second is the load-bearing one: a theme
+         preference is not a section of the site, and on a phone the nav
+         becomes a scrolling strip with a mask on it, which would take the
+         toggle with it. A control nobody can see is worse than a control
+         in the wrong list. -->
+    <div class="bar-end">
+      <nav class="sitenav" aria-label="Sections">
       <a href="https://thevibeworks.github.io/deepseek-cli/" aria-current="page">overview</a>
       <a href="install/">install</a>
       <a href="commands/">commands</a>
@@ -69,10 +77,11 @@
       <a href="news/">news</a>
       <a href="agents/">agents</a>
       <a href="playground/">playground</a>
-      <a href="https://github.com/thevibeworks/deepseek-cli">github&nbsp;&#8599;</a>
+        <a href="https://github.com/thevibeworks/deepseek-cli">github&nbsp;&#8599;</a>
+      </nav>
       <button class="themetoggle" id="theme-toggle" type="button" hidden
               aria-label="Theme: auto. Click to change.">theme:&nbsp;<span class="val">auto</span></button>
-    </nav>
+    </div>
   </div>
 </header>
 <div class="sea sea-band" data-ocean="band"></div><main id="main">

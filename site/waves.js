@@ -1,4 +1,17 @@
-// Live water, a whale in it, and at night a sky of stars over it.
+// Live water, a whale in it, at night a sky of stars over it — and a page
+// that sinks through the lot of it as you read.
+//
+// The name of the tool is two verbs, and the page performs both. Scrolling
+// is *deep*: the surface climbs out of the frame, the stars go out, marine
+// snow starts streaming up past you, and the water darkens toward the
+// abyss. Clicking is *seek*: a sonar ring goes out from the pointer, and
+// when it reaches the whale the whale answers. Down in the dark that
+// return is the only way to see it, which is the whole idea — the deeper
+// you are, the more you have to ping for what is down there with you.
+//
+// Both are driven by one scalar each — `scroll.depth` for the descent,
+// the ping's own age for the seek — so nothing here is on a timer that
+// runs whether you are looking or not.
 //
 // Four wave layers, each a sum of three sines, drawn back to front onto a
 // 2D canvas. The whale is filled between layer 1 and layer 2, so the two
@@ -22,6 +35,13 @@
 // rides whatever the surface is doing — its height and its tilt are read
 // back out of the same height field, which is why it looks like it is
 // floating instead of being animated on a timer.
+//
+// Scroll is read twice, and the two readings do different jobs. Scroll
+// *speed* roughs the surface up (`scroll.energy`); scroll *position* is
+// how deep you are (`scroll.depth`). Position is the one that carries the
+// descent, and it is published to CSS as `--depth` so the page furniture
+// — the gauge in the margin — descends on the same number rather than on
+// a second scroll listener that could disagree with this one.
 //
 // No dependencies, no build step, no WebGL. It runs at a few hundred
 // sine calls per frame, which is nothing, and it stops entirely when it
@@ -158,6 +178,67 @@
     band: { layers: BAND_LAYERS, sky: 0.05, span: 0.34, minSpan: 300, narrowBoost: 0.30 },
   };
 
+  // ---------------------------------------------------------------- depth
+
+  // How far the surface climbs out of the frame over a full descent, in
+  // canvas heights. Every layer has to clear the top edge by the bottom of
+  // the page or the "deep" reads as "the sea moved up a bit".
+  var DIVE_RISE = 0.95;
+
+  // ... and the parallax while it climbs. Near layers rise faster than far
+  // ones, which is the same rule that makes the surface read as a surface
+  // when it is sitting still. `reach` is already a nearness gradient, so
+  // it does this job too rather than a second table of numbers.
+  var DIVE_PARALLAX = 0.5;
+
+  // The whale sinks with you, but not as fast — it lags the surface, so it
+  // is still in frame (dim, and well above you) once you are in the dark
+  // rather than having left with the light. Losing the animal entirely at
+  // the point the page gets interesting is not a descent, it is an empty
+  // canvas.
+  var WHALE_LAG = 0.55;
+
+  // The surface for one layer, at this depth. Everything that asks where
+  // the water is goes through here, including the whale, so the descent
+  // costs one term rather than a special case per caller.
+  // A state with no depth in it is at the surface. Defaulting rather than
+  // requiring it keeps `surfaceAt` callable with the state a caller would
+  // naturally write, which is how it was callable before there was a
+  // descent at all.
+  function layerBase(layer, st) {
+    var d = st.depth || 0;
+    return layer.base - d * DIVE_RISE * (1 - DIVE_PARALLAX + layer.reach * DIVE_PARALLAX);
+  }
+
+  // The same state at a different depth, for a caller that wants to know
+  // where the water would be if it had not sunk so far. Only the whale
+  // uses it, and it borrows the live ripples and bulge by reference so the
+  // surface it rides is the one everyone else can see.
+  function shallow(st, depth) {
+    // Copied wholesale rather than field by field: the profile fields
+    // (layers, span floors) live on this state too, and a list of names
+    // here would quietly drop whatever was added last.
+    var out = {};
+    for (var k in st) out[k] = st[k];
+    out.depth = depth;
+    return out;
+  }
+
+  // ---------------------------------------------------------------- seek
+
+  // A ping is a sonar pulse: one expanding ring, thinning and fading as it
+  // spends itself. It is drawn over the water rather than in it because it
+  // is not water — it is the instrument, and instruments read on top.
+  var PING_LIFE = 2.6;     // seconds until it is spent
+  var PING_SPEED = 0.58;   // canvas widths per second
+
+  // The return. When a ring's radius passes the whale, the whale answers
+  // for about as long as it takes to notice — bright, then gone.
+  var ECHO_BAND = 0.06;    // how near the ring has to be, as a fraction of width
+  var ECHO_DECAY = 1.7;    // per second
+
+  function pingRadius(p, t, w) { return (t - p.t0) * PING_SPEED * w; }
+
   // ---------------------------------------------------------------- stars
 
   // The sky band: stars live between the top of the frame and just above
@@ -231,6 +312,42 @@
     return pts;
   }
 
+  // ---------------------------------------------------------------- snow
+
+  // Marine snow: the drift of dead matter falling through the water
+  // column, and the one cue that says *descending* rather than merely
+  // *dark*. It streams up past you because you are going down — the
+  // movement is yours, not its, which is why the parallax below is keyed
+  // to depth and not to the clock. The slow constant sink on top of that
+  // is the snow's own, and it is what keeps the field alive when you stop
+  // scrolling.
+  var SNOW_START = 0.10;   // depth at which any of it is visible
+  var SNOW_FULL = 0.34;    // ... and at which it is at full strength
+  var SNOW_RISE = 2.4;     // screens travelled per unit of depth, nearest fleck
+
+  // Dealt from the same seeded generator as the sky, on its own salts: a
+  // reproducible field, for the same two reasons the stars are one.
+  function snowField(w, h) {
+    var n = Math.max(40, Math.min(150, Math.round((w * h) / 12000)));
+    var out = [];
+    for (var i = 0; i < n; i++) {
+      var near = starRand(i, 21);            // 0 far .. 1 near
+      out.push({
+        x: starRand(i, 22),
+        y: starRand(i, 23),
+        // Nearer flecks are bigger, brighter and move more. One parameter
+        // driving all three is what makes a flat field read as a volume.
+        r: 0.6 + near * near * 2.2,
+        a: 0.14 + near * 0.32,
+        near: 0.25 + near * 0.75,
+        // A little sideways set, so it is a drift rather than a lift.
+        drift: (starRand(i, 24) - 0.5) * 0.05,
+        sink: 0.010 + starRand(i, 25) * 0.026,
+      });
+    }
+    return out;
+  }
+
   // Is a resolved colour worth drawing at all? The star tokens resolve to
   // fully-transparent on the light theme, which is how CSS says "by day
   // there are no stars" without this file knowing what a theme is.
@@ -294,7 +411,7 @@
   // the water; past about double the resting amplitude it stops reading
   // as swell and starts reading as static.
   function surfaceAt(layer, x, t, w, h, st) {
-    var y = layer.base * h + waveAt(layer, x, t, w) * h * (1 + st.chop * 0.7);
+    var y = layerBase(layer, st) * h + waveAt(layer, x, t, w) * h * (1 + st.chop * 0.7);
     var e = bulgeAt(st.bulge, x, w, h);
     for (var i = 0; i < st.ripples.length; i++) e += rippleAt(st.ripples[i], x, t, w);
     return y + e * layer.reach;
@@ -334,6 +451,9 @@
   // heavy would — late, and not very far.
   function whaleTransform(t, w, h, st) {
     var narrow = w < NARROW;
+    // It reads the water through a shallower copy of the descent, which is
+    // the whole of WHALE_LAG: the surface leaves, the whale stays a while.
+    if (st.depth) st = shallow(st, st.depth * WHALE_LAG);
     // The profile decides the floor and the narrow-screen boost: the
     // viewport whale is deliberately wider than the viewport (an enormous
     // animal is one you cannot see the ends of), while the band whale is
@@ -387,6 +507,10 @@
     return {
       sea: sea,
       deep: read('--sea-deep', '#00131c'),
+      // Where the light has stopped reaching. Distinct from --sea-deep,
+      // which is the floor of a layer's gradient at the surface: this one
+      // is the colour of being *in* it.
+      abyss: read('--sea-abyss', '#00131c'),
       foam: read('--sea-foam', '#ffffff'),
       whale: read('--whale', '#0b2f4a'),
       whaleLit: read('--whale-lit', '#00c2e9'),
@@ -413,6 +537,20 @@
   // The var() fallback does double duty — an undefined token resolves to
   // the default here rather than making the declaration invalid and
   // leaving `color` at whatever it inherited.
+  // The same colour at a chosen alpha. Everything cssResolver hands back
+  // has been through `getComputedStyle().color`, so it is `rgb(r, g, b)`
+  // or `rgba(r, g, b, a)` and nothing else — which is what makes this
+  // three lines instead of a colour parser. A string in any other shape is
+  // handed back untouched rather than turned into a canvas exception.
+  function withAlpha(colour, a) {
+    var m = /^rgba?\(([^)]+)\)$/.exec(String(colour).trim());
+    if (!m) return colour;
+    var p = m[1].split(',');
+    if (p.length < 3) return colour;
+    var base = p.length > 3 ? parseFloat(p[3]) : 1;
+    return 'rgba(' + p[0].trim() + ',' + p[1].trim() + ',' + p[2].trim() + ',' + (base * a) + ')';
+  }
+
   function cssResolver(doc) {
     var probe = doc.createElement('span');
     probe.style.cssText = 'position:absolute;width:0;height:0;visibility:hidden';
@@ -429,16 +567,57 @@
 
   // ------------------------------------------------------------ instances
 
-  // One scroll listener for the whole page. Every ocean on the page reads
-  // the same energy, so scrolling roughs up all of them together — which
-  // is what one body of water would do.
-  var scroll = { last: 0, energy: 0, wired: false };
+  // One scroll listener for the whole page, reporting two different
+  // things. Every ocean reads the same `energy`, so scrolling roughs up
+  // all of them together — which is what one body of water would do — and
+  // the same `depth`, so they are all at the same depth, which is what one
+  // body of water would also do.
+  var scroll = { last: 0, energy: 0, depth: 0, wired: false };
 
-  function wireScroll(win) {
+  // The deepest the gauge will admit to. A round number rather than a
+  // per-page one: a fixed scale means "-400 m" means the same thing on
+  // every page, and the alternative — metres derived from document height
+  // — would have a short page reaching the abyss in two flicks.
+  var FLOOR_M = 1000;
+
+  // Scroll position as a fraction of the scrollable range. A page shorter
+  // than the window has no range and is therefore never deep — clamping
+  // rather than dividing by zero is the whole of that case.
+  function depthOf(win, doc) {
+    var el = doc.documentElement || {};
+    var body = doc.body || {};
+    var height = Math.max(el.scrollHeight || 0, body.scrollHeight || 0);
+    var range = height - (win.innerHeight || el.clientHeight || 0);
+    if (!(range > 0)) return 0;
+    return Math.max(0, Math.min(1, (win.pageYOffset || 0) / range));
+  }
+
+  // Publish the descent to the page: as `--depth` on the root, so CSS can
+  // read it, and as text in any depth gauge. One number, one owner — a
+  // second scroll listener somewhere in a stylesheet's worth of JS is how
+  // the margin ends up disagreeing with the water.
+  function publishDepth(doc, d) {
+    var el = doc.documentElement;
+    if (el && el.style && el.style.setProperty) {
+      el.style.setProperty('--depth', d.toFixed(4));
+    }
+    // At the surface it is zero, not minus zero. The sign means "below",
+    // and there is no below at the top of the page.
+    var m = Math.round(d * FLOOR_M);
+    var label = (m > 0 ? '-' + m : '0') + ' m';
+    var gauges = doc.querySelectorAll ? doc.querySelectorAll('[data-depth-gauge]') : [];
+    for (var i = 0; i < gauges.length; i++) {
+      var read = gauges[i].querySelector && gauges[i].querySelector('.gauge-read');
+      if (read) read.textContent = label;
+    }
+  }
+
+  function wireScroll(win, doc) {
     if (scroll.wired || !win.addEventListener) return;
     scroll.wired = true;
     scroll.last = win.pageYOffset || 0;
-    win.addEventListener('scroll', function () {
+    doc = doc || win.document;
+    var sync = function () {
       var now = win.pageYOffset || 0;
       var dv = Math.abs(now - scroll.last);
       scroll.last = now;
@@ -446,7 +625,15 @@
       // to static. At the old ceiling a fast scroll doubled the swell
       // amplitude under the text you were trying to read.
       scroll.energy = Math.min(0.45, scroll.energy + dv / 600);
-    }, { passive: true });
+      scroll.depth = depthOf(win, doc);
+      if (doc) publishDepth(doc, scroll.depth);
+    };
+    win.addEventListener('scroll', sync, { passive: true });
+    // A resize changes the scrollable range, so the same offset is now a
+    // different depth. Reloading onto an anchor lands mid-page too, which
+    // is why this runs once here rather than only on the first scroll.
+    win.addEventListener('resize', sync, { passive: true });
+    sync();
   }
 
   function Ocean(host, opts) {
@@ -488,7 +675,10 @@
 
     this.st = {
       chop: 0,
+      depth: 0,
+      echo: 0,
       ripples: [],
+      pings: [],
       spout: [],
       bulge: { x: 0, strength: 0, target: 0 },
       whaleX: opts.whaleX != null ? opts.whaleX : 0.5,
@@ -556,17 +746,19 @@
     this.step = Math.max(4, w / 220);
     this.n = Math.ceil(w / this.step) + 2;
     this.pts = new Float64Array(this.n);
-    // The star and glitter counts follow the frame's area, so a resize
-    // deals both fields again from the same seeds.
+    // The star, glitter and snow counts all follow the frame's area, so a
+    // resize deals every field again from the same seeds.
     this.stars = null;
     this.glints = null;
+    this.snow = null;
     return true;
   };
 
   Ocean.prototype.wire = function () {
     var self = this;
     var win = this.win;
-    wireScroll(win);
+    wireScroll(win, this.doc);
+    this.st.depth = scroll.depth;
 
     // The canvas is pointer-events: none so it never shadows a link, so
     // the pointer has to be tracked on the window and mapped in. The
@@ -585,6 +777,7 @@
     this.onDown = function (e) {
       var r = self.canvas.getBoundingClientRect();
       self.splash(e.clientX - r.left, 1);
+      self.ping(e.clientX - r.left, e.clientY - r.top);
     };
 
     if (win.addEventListener) {
@@ -656,6 +849,24 @@
     }
   };
 
+  // The seek half of the name: a sonar pulse from where you clicked.
+  // Separate from `splash` because they are two different claims about the
+  // same click — the splash is what the water does, the ping is what you
+  // did. They also live for different lengths of time and are drawn on
+  // opposite sides of the whale.
+  Ocean.prototype.ping = function (x, y) {
+    if (!this.visible) return;
+    // A pulse that cannot travel is not a quieter pulse, it is a ring
+    // painted on the page and left there — the still frame reduced motion
+    // gets would freeze it at whatever radius it had reached. The water's
+    // own answer to a click is a bump in a height field and survives being
+    // frozen; a circle does not.
+    if (this.reduced()) return;
+    if (this.st.pings.length > 6) this.st.pings.shift();
+    this.st.pings.push({ x: x, y: y, t0: this.t });
+    if (!this.running()) this.draw(this.t);
+  };
+
   Ocean.prototype.running = function () { return !!this.raf; };
 
   Ocean.prototype.start = function () {
@@ -691,12 +902,35 @@
     // so the chop builds while you are flicking and settles when you stop.
     st.chop += (Math.min(1, scroll.energy) - st.chop) * Math.min(1, dt * 3);
     scroll.energy *= Math.exp(-dt * 2.2);
+    // The descent is chased rather than tracked. A scrollbar drag would
+    // otherwise teleport the sea, and water does not teleport; the lag is
+    // small enough to read as mass and large enough to smooth a jump.
+    st.depth += (scroll.depth - st.depth) * Math.min(1, dt * 3.4);
 
     var live = [];
     for (var i = 0; i < st.ripples.length; i++) {
       if (this.t - st.ripples[i].t0 <= RIPPLE_LIFE) live.push(st.ripples[i]);
     }
     st.ripples = live;
+
+    // Pings, and what comes back off them. The whale's position is the one
+    // the last frame drew, which is a frame stale and invisibly so — the
+    // alternative is computing the transform twice per frame for a flash
+    // that lasts a fifth of a second.
+    var pings = [];
+    st.echo *= Math.exp(-dt * ECHO_DECAY);
+    for (var k = 0; k < st.pings.length; k++) {
+      var p = st.pings[k];
+      if (this.t - p.t0 > PING_LIFE) continue;
+      pings.push(p);
+      if (!this.whalePos) continue;
+      var dx = this.whalePos.x - p.x;
+      var dy = this.whalePos.y - p.y;
+      var band = this.w * ECHO_BAND;
+      var miss = Math.abs(pingRadius(p, this.t, this.w) - Math.sqrt(dx * dx + dy * dy));
+      if (miss < band) st.echo = Math.max(st.echo, 1 - miss / band);
+    }
+    st.pings = pings;
 
     if (this.whale && this.t > st.nextSpout) {
       this.blow();
@@ -775,10 +1009,19 @@
     ctx.lineTo(0, h + 2);
     ctx.closePath();
 
-    var g = ctx.createLinearGradient(0, layer.base * h - h * 0.1, 0, h);
+    // The gradient has to start where the surface actually is, not where
+    // it rests. Anchored to the resting base instead, a descent fills the
+    // whole frame with the *top* of the ramp — canvas clamps to the first
+    // stop above it — and the deep comes out brighter than the surface,
+    // which is the exact opposite of the thing being drawn.
+    var g = ctx.createLinearGradient(0, layerBase(layer, this.st) * h - h * 0.1, 0, h);
     g.addColorStop(0, pal.sea[layer.tint]);
     g.addColorStop(1, pal.deep);
-    ctx.globalAlpha = layer.alpha;
+    // A layer that has climbed out of the frame is behind you. It still
+    // has to paint — it is what the water between you and it looks like —
+    // but four full-strength layers stacked over the whole frame is a
+    // wall, not a depth.
+    ctx.globalAlpha = layer.alpha * (1 - this.st.depth * 0.45);
     ctx.fillStyle = g;
     ctx.fill();
 
@@ -787,7 +1030,7 @@
     // they are water.
     if (layer.foam > 0) {
       this.surfacePath();
-      ctx.globalAlpha = layer.foam;
+      ctx.globalAlpha = layer.foam * (1 - this.st.depth * 0.45);
       ctx.strokeStyle = pal.foam;
       ctx.lineWidth = 1;
       ctx.stroke();
@@ -801,6 +1044,12 @@
   Ocean.prototype.drawStars = function (t) {
     var pal = this.palette;
     if (!visibleColour(pal.star)) return;
+    // Under water there is no sky. They go out over the first eighth of
+    // the descent, which is about one screen on a docs page — long enough
+    // to watch happen, short enough that you are not reading a paragraph
+    // next to stars you have supposedly left above you.
+    var above = 1 - Math.min(1, this.st.depth / 0.12);
+    if (above <= 0) return;
     if (!this.stars) {
       // The band's sky is a sliver; the viewport's is half the frame. The
       // clamps come down with it or the strip snows.
@@ -819,7 +1068,7 @@
       // Atmospheric extinction: the sky pales toward the horizon, so the
       // stars go with it instead of sitting on top of it.
       var fade = 1 - (s.y / this.sky) * 0.55;
-      var alpha = s.a * twinkle * fade;
+      var alpha = s.a * twinkle * fade * above;
       ctx.globalAlpha = alpha;
       ctx.fillStyle = s.warm ? pal.starWarm : pal.star;
       ctx.beginPath();
@@ -871,16 +1120,30 @@
     var ctx = this.ctx;
     var pal = this.palette;
     var tr = whaleTransform(t, this.w, this.h, this.st);
+    // Kept for the echo test in `advance`, which needs to know where the
+    // thing it is pinging actually ended up.
+    this.whalePos = { x: tr.x, y: tr.y };
+
+    // Distance dims it: down in the dark it is a suggestion of a shape,
+    // not an illustration. `echo` is the answer to a ping, and it is
+    // deliberately strongest exactly where the dimming is — the deeper you
+    // are, the more of what you see is something you asked for.
+    var echo = Math.min(1, this.st.echo);
+    var lost = Math.min(1, this.st.depth * 1.15);
+    var seen = (1 - lost * 0.72) + echo * (0.25 + lost * 0.7);
 
     // A soft light behind it, so a dark silhouette on a dark page still
     // has an edge to sit against.
     var g = ctx.createRadialGradient(tr.x, tr.y, 0, tr.x, tr.y, tr.span * 0.62);
     g.addColorStop(0, pal.glow);
     g.addColorStop(1, pal.glowFade);
+    ctx.globalAlpha = Math.max(0, Math.min(1, seen));
     ctx.fillStyle = g;
     ctx.fillRect(tr.x - tr.span * 0.7, tr.y - tr.span * 0.7, tr.span * 1.4, tr.span * 1.4);
+    ctx.globalAlpha = 1;
 
     ctx.save();
+    ctx.globalAlpha = Math.max(0.05, Math.min(1, seen));
     ctx.translate(tr.x, tr.y);
     ctx.rotate(tr.rot);
     ctx.scale(tr.sx, tr.sy);
@@ -889,10 +1152,26 @@
     ctx.fillStyle = pal.whale;
     ctx.fill(this.body);
 
-    // The far flipper, a shade darker than the body.
-    ctx.globalAlpha = 0.55;
+    // The far flipper, a shade darker than the body. Canvas alpha is
+    // absolute rather than multiplied into what is already set, so every
+    // part that wants to be dimmer than the body has to say `seen` again
+    // — otherwise a fading whale keeps a bright flipper and a bright eye,
+    // which is a whale wearing jewellery in the dark.
+    ctx.globalAlpha = 0.55 * seen;
     ctx.fill(this.flipper);
-    ctx.globalAlpha = 1;
+
+    // The sonar return: the outline lights up where the ring passed. It is
+    // a stroke rather than a brighter fill because that is what coming
+    // back off an edge looks like, and because the shape is the
+    // information — you are being told *what* is down there, not how
+    // brightly it glows. The line width is divided back through the
+    // whale's own scale so it stays a hairline on screen at any size.
+    if (echo > 0.02) {
+      ctx.globalAlpha = Math.min(1, echo * 0.9);
+      ctx.strokeStyle = pal.whaleLit;
+      ctx.lineWidth = 3 / Math.max(0.001, Math.abs(tr.sx));
+      ctx.stroke(this.body);
+    }
 
     // The mouth line and the eye have to be lighter than the body or a
     // silhouette swallows them — and they are most of what makes the
@@ -905,7 +1184,7 @@
       ctx.stroke(this.mouth);
     }
     ctx.fillStyle = pal.whaleLit;
-    ctx.globalAlpha = 0.75;
+    ctx.globalAlpha = Math.min(1, 0.75 * seen + echo * 0.6);
     ctx.beginPath();
     ctx.arc(WHALE.eye.x, WHALE.eye.y, WHALE.eye.r, 0, Math.PI * 2);
     ctx.fill();
@@ -929,6 +1208,91 @@
     ctx.globalAlpha = 1;
   };
 
+  // The water you are inside, as opposed to the water you are looking at.
+  // Once the surface has climbed out of the frame the layers stop covering
+  // the bottom of it, and without this the deep is just the page
+  // background — which is to say, nothing happened.
+  //
+  // It is a gradient rather than a flat wash because the light in real
+  // water comes from above: even at the bottom, up is brighter than down.
+  Ocean.prototype.drawAbyss = function () {
+    var d = this.st.depth;
+    if (d <= 0.01) return;
+    var ctx = this.ctx;
+    var g = ctx.createLinearGradient(0, 0, 0, this.h);
+    // Not transparent at the top: at full depth the dark is *everywhere*,
+    // and a veil that fades out upward reads as a surface just overhead —
+    // which is the one thing you are supposed to have left behind. The
+    // gradient that remains is the light still coming from above.
+    g.addColorStop(0, withAlpha(this.palette.abyss, 0.5));
+    g.addColorStop(1, this.palette.abyss);
+    ctx.globalAlpha = Math.min(1, d * 1.25);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, this.w, this.h);
+    ctx.globalAlpha = 1;
+  };
+
+  // Marine snow, in front of the water because it is between you and it.
+  Ocean.prototype.drawSnow = function (t) {
+    var d = this.st.depth;
+    if (d <= SNOW_START) return;
+    var pal = this.palette;
+    if (!visibleColour(pal.foam)) return;
+    if (!this.snow) this.snow = snowField(this.w, this.h);
+    var strength = Math.min(1, (d - SNOW_START) / (SNOW_FULL - SNOW_START));
+    var ctx = this.ctx;
+    ctx.fillStyle = pal.foam;
+    for (var i = 0; i < this.snow.length; i++) {
+      var s = this.snow[i];
+      // Depth moves it up (that is you, going down); time moves it down
+      // (that is the snow, falling). Wrapping on 1 keeps the field
+      // seamless without dealing new flecks at the edges.
+      var y = s.y - d * SNOW_RISE * s.near + t * s.sink;
+      y = y - Math.floor(y);
+      var x = s.x + s.drift * (d * SNOW_RISE * s.near) + Math.sin(t * 0.2 + s.x * 9) * 0.004;
+      x = x - Math.floor(x);
+      ctx.globalAlpha = s.a * strength;
+      ctx.beginPath();
+      ctx.arc(x * this.w, y * this.h, s.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  };
+
+  // The pulse itself. Two arcs: the ring, and a fainter one just behind it
+  // for the trail. Both thin — a sonar sweep is a line, and a thick soft
+  // ring reads as a button's ripple, which is the wrong idea entirely.
+  Ocean.prototype.drawPings = function (t) {
+    var st = this.st;
+    if (!st.pings.length) return;
+    var ctx = this.ctx;
+    var pal = this.palette;
+    for (var i = 0; i < st.pings.length; i++) {
+      var p = st.pings[i];
+      var age = t - p.t0;
+      if (age < 0) continue;
+      var r = pingRadius(p, t, this.w);
+      if (r <= 0) continue;
+      // Squared, so it dies out of sight rather than switching off — the
+      // same fade the water ripple uses, for the same reason.
+      var fade = 1 - age / PING_LIFE;
+      fade = fade * fade;
+      ctx.strokeStyle = pal.foam;
+      ctx.lineWidth = 1;
+      ctx.globalAlpha = 0.5 * fade;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+      ctx.stroke();
+      if (r > this.w * 0.06) {
+        ctx.globalAlpha = 0.16 * fade;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r - this.w * 0.045, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1;
+  };
+
   Ocean.prototype.draw = function (t) {
     if (!this.w || !this.h) return;
     var ctx = this.ctx;
@@ -941,7 +1305,16 @@
       }
       this.drawLayer(this.layers[i], t);
     }
+    // Order is the whole argument for where these four go. Glitter is
+    // light lying on the water, so it belongs with the water and ahead of
+    // the dark that has to be able to swallow it; the dark is between you
+    // and the water; the snow is between you and the dark; and the ping is
+    // not in the water at all — it is the instrument reading, so it sits
+    // on top of everything.
     this.drawGlitter(t);
+    this.drawAbyss();
+    this.drawSnow(t);
+    this.drawPings(t);
     this.frames++;
   };
 
@@ -963,6 +1336,42 @@
     if (this.canvas.remove) this.canvas.remove();
   };
 
+  // -------------------------------------------------------------- controls
+
+  // The same gesture, on the things that are genuinely clickable. A click
+  // on the page pings the water; a click on a control pings from the
+  // control. Without this second half the page has two click languages —
+  // one for the scenery and one for the buttons — and the scenery's is the
+  // better one.
+  //
+  // The ring itself is CSS, on a pseudo-element of the control, so it
+  // starts at the control's own edge rather than somewhere behind it. All
+  // this does is start it: add a class, take it off when the animation
+  // ends. A second click mid-animation has to see the class removed and
+  // re-added or nothing restarts, which is what the reflow read is for.
+  var SEEKABLE = '.btn, .sitenav a, .themetoggle, .pager a, .pg-primary';
+
+  function wireSeek(doc) {
+    if (doc.dsSeekWired || !doc.addEventListener) return;
+    doc.dsSeekWired = true;
+    var win = doc.defaultView || global;
+    doc.addEventListener('pointerdown', function (e) {
+      if (win.matchMedia && win.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      var el = e.target && e.target.closest && e.target.closest(SEEKABLE);
+      if (!el || !el.classList) return;
+      el.classList.remove('is-seeking');
+      // Reading a layout property forces the class removal to take effect
+      // before it goes back on, which is what restarts the animation.
+      void el.offsetWidth;
+      el.classList.add('is-seeking');
+    }, { passive: true, capture: true });
+    doc.addEventListener('animationend', function (e) {
+      if (e.animationName === 'seek-out' && e.target.classList) {
+        e.target.classList.remove('is-seeking');
+      }
+    }, true);
+  }
+
   // ----------------------------------------------------------------- mount
 
   function mount(el, opts) {
@@ -982,6 +1391,7 @@
 
   function auto(doc) {
     var out = [];
+    wireSeek(doc);
     var hosts = doc.querySelectorAll('[data-ocean]');
     for (var i = 0; i < hosts.length; i++) {
       var el = hosts[i];
@@ -1018,14 +1428,29 @@
     TILT_GAIN: TILT_GAIN,
     TILT_MAX: TILT_MAX,
     SKY: SKY,
+    DIVE_RISE: DIVE_RISE,
+    WHALE_LAG: WHALE_LAG,
+    SNOW_START: SNOW_START,
+    SNOW_FULL: SNOW_FULL,
+    PING_LIFE: PING_LIFE,
+    PING_SPEED: PING_SPEED,
+    FLOOR_M: FLOOR_M,
+    scroll: scroll,
     starRand: starRand,
     starField: starField,
     glitterField: glitterField,
+    snowField: snowField,
     visibleColour: visibleColour,
     waveAt: waveAt,
     rippleAt: rippleAt,
     bulgeAt: bulgeAt,
     surfaceAt: surfaceAt,
+    layerBase: layerBase,
+    pingRadius: pingRadius,
+    depthOf: depthOf,
+    publishDepth: publishDepth,
+    wireSeek: wireSeek,
+    SEEKABLE: SEEKABLE,
     whaleTransform: whaleTransform,
     whaleToScreen: whaleToScreen,
     readPalette: readPalette,

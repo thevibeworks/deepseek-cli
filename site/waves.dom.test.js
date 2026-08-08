@@ -103,7 +103,30 @@ function makeEl(tag, doc) {
     width: 0,
     height: 0,
     box: { width: 1200, height: 400, left: 0, top: 0, right: 1200, bottom: 400 },
-    classList: { added: [], add(c) { this.added.push(c); } },
+    classList: {
+      added: [],
+      add(c) { if (this.added.indexOf(c) < 0) this.added.push(c); },
+      remove(c) { this.added = this.added.filter((x) => x !== c); },
+      contains(c) { return this.added.indexOf(c) >= 0; },
+    },
+    textContent: '',
+    offsetWidth: 0,
+    closest(sel) {
+      // Enough of a match for the seek test: the class list against a
+      // comma-separated list of class selectors, walking up parents.
+      const want = sel.split(',').map((s) => s.trim().replace(/^\./, ''));
+      let node = el;
+      while (node) {
+        const have = String(node.className).split(/\s+/);
+        if (want.some((w) => have.indexOf(w) >= 0)) return node;
+        node = node.parent;
+      }
+      return null;
+    },
+    querySelector(sel) {
+      const want = sel.replace(/^\./, '');
+      return this.children.filter((c) => String(c.className).split(/\s+/).indexOf(want) >= 0)[0] || null;
+    },
     getContext(kind) { return kind === '2d' ? (this.ctx = this.ctx || makeCtx()) : null; },
     getBoundingClientRect() { return this.box; },
     getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; },
@@ -127,8 +150,14 @@ function makeWorld(opts) {
     readyState: 'complete',
     documentElement: null,
     oceans: [],
+    gauges: [],
     createElement(tag) { return makeEl(tag, doc); },
-    querySelectorAll() { return doc.oceans; },
+    // The page holds two kinds of thing waves.js goes looking for, and
+    // they are not the same list — handing the oceans back for every
+    // selector would have the gauge lookup find canvases.
+    querySelectorAll(sel) {
+      return String(sel).indexOf('depth-gauge') >= 0 ? doc.gauges : doc.oceans;
+    },
     addEventListener(k, fn) { (listeners.document[k] = listeners.document[k] || []).push(fn); },
     removeEventListener(k, fn) {
       listeners.document[k] = (listeners.document[k] || []).filter((f) => f !== fn);
@@ -136,6 +165,8 @@ function makeWorld(opts) {
     fire(k, ev) { (listeners.document[k] || []).forEach((fn) => fn(ev || {})); },
   };
   doc.documentElement = makeEl('html', doc);
+  doc.documentElement.scrollHeight = opts.pageHeight || 0;
+  doc.documentElement.style.setProperty = function (k, v) { this[k] = v; };
   doc.defaultView = null;
 
   const sandbox = {
@@ -183,6 +214,7 @@ function makeWorld(opts) {
       listeners.window[k] = (listeners.window[k] || []).filter((f) => f !== fn);
     },
     pageYOffset: 0,
+    innerHeight: opts.innerHeight || 0,
   };
   if (!opts.noObservers) {
     sandbox.ResizeObserver = function (fn) {
@@ -216,6 +248,22 @@ function makeWorld(opts) {
       el.attrs = attrs || {};
       doc.oceans.push(el);
       return el;
+    },
+    // A depth gauge, shaped like the one build.py emits: a rail with a
+    // fill in it, and a reading the descent writes into.
+    gauge() {
+      const el = makeEl('div', doc);
+      const read = makeEl('span', doc);
+      read.className = 'gauge-read';
+      el.appendChild(read);
+      doc.gauges.push(el);
+      return el;
+    },
+    // Scroll to a fraction of the page and let the shared listener see it.
+    scrollTo(fraction) {
+      const range = (opts.pageHeight || 0) - (opts.innerHeight || 0);
+      sandbox.pageYOffset = Math.round(range * fraction);
+      world.fireWindow('scroll');
     },
     // Run one animation frame. The engine re-queues itself from inside
     // the callback, so drain a snapshot rather than the live list.
@@ -505,6 +553,160 @@ console.log('\ninteraction');
   sea.destroy();
 }
 
+// --- the descent --------------------------------------------------------
+
+// Scroll *position*, as opposed to the scroll *speed* the block above
+// covers. The two are separate signals into the same state and the easy
+// mistake is wiring one to the other's job, so they are tested apart.
+
+console.log('\ngoing deep');
+
+{
+  const world = makeWorld({ pageHeight: 5000, innerHeight: 1000 });
+  world.ocean({});
+  world.gauge();
+  const W = world.load();
+  const sea = W.mounted[0];
+
+  check('a page at the top is at the surface', W.scroll.depth === 0, String(W.scroll.depth));
+  world.scrollTo(0.5);
+  check('halfway down the page is halfway down the water',
+    Math.abs(W.scroll.depth - 0.5) < 0.001, String(W.scroll.depth));
+  check('and it is published to CSS for the page furniture',
+    parseFloat(world.doc.documentElement.style['--depth']) === 0.5,
+    String(world.doc.documentElement.style['--depth']));
+  check('and written into the gauge',
+    world.doc.gauges[0].children[0].textContent === '-500 m',
+    world.doc.gauges[0].children[0].textContent);
+  world.scrollTo(0);
+  check('the surface reads zero, not minus zero',
+    world.doc.gauges[0].children[0].textContent === '0 m',
+    world.doc.gauges[0].children[0].textContent);
+  world.scrollTo(0.5);
+
+  // The sea chases the published depth rather than snapping to it.
+  check('the water does not teleport to it', sea.st.depth < 0.5, String(sea.st.depth));
+  for (let i = 0; i < 200; i++) sea.advance(0.05);
+  check('but it does get there', Math.abs(sea.st.depth - 0.5) < 0.01, String(sea.st.depth));
+
+  // Every layer has to clear the top of the frame by the bottom of the
+  // page, or the deep is just the sea sitting slightly higher up.
+  const atBottom = { depth: 1, chop: 0, ripples: [], bulge: { strength: 0 } };
+  const cleared = W.LAYERS.every((l) => W.layerBase(l, atBottom) < 0);
+  check('at the bottom of the page the surface is overhead', cleared);
+  check('and nearer layers climbed further than far ones',
+    W.layerBase(W.LAYERS[3], atBottom) < W.layerBase(W.LAYERS[0], atBottom) + 0.31,
+    String(W.layerBase(W.LAYERS[0], atBottom) - W.layerBase(W.LAYERS[3], atBottom)));
+  check('a state with no depth in it is at the surface',
+    W.layerBase(W.LAYERS[0], { depth: 0 }) === W.layerBase(W.LAYERS[0], {}));
+
+  // The whale lags the surface. Without that it leaves with the light and
+  // the deep is an empty canvas.
+  const surface = W.layerBase(W.LAYERS[W.WHALE_LAYER], atBottom);
+  const whale = W.whaleTransform(0, 1200, 400, {
+    depth: 1, chop: 0, ripples: [], bulge: { strength: 0 },
+    whaleX: 0.5, whaleSpan: 1, facing: 1,
+  });
+  check('the whale sinks with you but stays in frame',
+    whale.y > surface * 400 && whale.y > 0 && whale.y < 400,
+    `${Math.round(whale.y)} vs surface ${Math.round(surface * 400)}`);
+
+  sea.destroy();
+}
+
+{
+  // A page no longer than its window cannot be descended, and the
+  // arithmetic for that is a division by zero.
+  const world = makeWorld({ pageHeight: 800, innerHeight: 800 });
+  world.ocean({});
+  const W = world.load();
+  world.scrollTo(1);
+  check('a page with nothing to scroll is never deep', W.scroll.depth === 0, String(W.scroll.depth));
+  W.mounted[0].destroy();
+}
+
+// --- seek ---------------------------------------------------------------
+
+console.log('\nseek');
+
+{
+  const world = makeWorld();
+  world.ocean({});
+  const W = world.load();
+  const sea = W.mounted[0];
+  const fire = (x, y) => world.fireWindow('pointerdown', { clientX: x, clientY: y });
+
+  fire(200, 100);
+  check('a click sends a ping', sea.st.pings.length === 1);
+  check('from where it was clicked',
+    sea.st.pings[0].x === 200 && sea.st.pings[0].y === 100);
+  check('and the ring starts at nothing and grows',
+    W.pingRadius(sea.st.pings[0], sea.t, sea.w) === 0);
+  sea.advance(0.5);
+  check('outward', W.pingRadius(sea.st.pings[0], sea.t, sea.w) > 0);
+
+  for (let i = 0; i < 20; i++) fire(200, 100);
+  check('a held button does not queue them up without limit',
+    sea.st.pings.length <= 7, String(sea.st.pings.length));
+
+  for (let i = 0; i < 100; i++) sea.advance(0.05);
+  check('and a spent ping is forgotten', sea.st.pings.length === 0);
+  sea.destroy();
+}
+
+{
+  // The return. A ping aimed at where the whale is has to light it up
+  // when the ring gets there — and not before, which is the half that
+  // makes it read as an echo rather than a highlight.
+  const world = makeWorld();
+  world.ocean({});
+  const W = world.load();
+  const sea = W.mounted[0];
+  world.frame(16);
+  const pos = sea.whalePos;
+  check('the whale reports where it was drawn', !!pos && pos.x > 0);
+
+  world.fireWindow('pointerdown', { clientX: pos.x + 400, clientY: pos.y });
+  sea.advance(0.05);
+  check('nothing comes back straight away', sea.st.echo === 0, String(sea.st.echo));
+  let peak = 0;
+  for (let i = 0; i < 40; i++) { sea.advance(0.05); peak = Math.max(peak, sea.st.echo); }
+  check('the ring reaches it and it answers', peak > 0.3, String(peak));
+  for (let i = 0; i < 60; i++) sea.advance(0.05);
+  check('and the answer fades', sea.st.echo < 0.02, String(sea.st.echo));
+  sea.destroy();
+}
+
+{
+  // The DOM half of the same gesture.
+  const world = makeWorld();
+  world.ocean({});
+  const W = world.load();
+  const btn = makeEl('a', world.doc);
+  btn.className = 'btn';
+  world.doc.fire('pointerdown', { target: btn });
+  check('clicking a control pings the control too', btn.classList.contains('is-seeking'));
+  world.doc.fire('animationend', { animationName: 'seek-out', target: btn });
+  check('and it is cleaned up when the pulse ends', !btn.classList.contains('is-seeking'));
+  W.mounted[0].destroy();
+}
+
+{
+  const world = makeWorld({ reducedMotion: true });
+  world.ocean({});
+  const W = world.load();
+  const sea = W.mounted[0];
+  const btn = makeEl('a', world.doc);
+  btn.className = 'btn';
+  world.doc.fire('pointerdown', { target: btn });
+  check('reduced motion gets no pulse at all', !btn.classList.contains('is-seeking'));
+  world.fireWindow('pointerdown', { clientX: 100, clientY: 100 });
+  check('and no ring frozen on the canvas either', sea.st.pings.length === 0);
+  check('though the water still answers the click',
+    sea.st.ripples.length === 1, String(sea.st.ripples.length));
+  sea.destroy();
+}
+
 // --- sizing and theme ---------------------------------------------------
 
 console.log('\nsizing and theme');
@@ -598,8 +800,13 @@ console.log('\ndegrading');
   check('no ResizeObserver still leaves a working sea', sea && sea.frames >= 0);
   world.frame(16);
   check('and it draws', sea.canvas.ctx.ops.length > 0);
+  // Two of them, and they are not a double-wire: one re-measures the
+  // canvas, the other re-measures the scrollable range, because a window
+  // that changed shape puts the same scroll offset at a different depth.
+  // Counting is still how a genuine double-wire would be caught.
   check('falling back to a window resize listener',
-    (world.listeners.window.resize || []).length === 1);
+    (world.listeners.window.resize || []).length === 2,
+    String((world.listeners.window.resize || []).length));
   sea.destroy();
 }
 
