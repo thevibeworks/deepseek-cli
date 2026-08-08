@@ -5,9 +5,63 @@ with its why — a rule without a why fossilizes into style police. Read
 this before any design verdict; delete a scar when its expiry condition
 arrives.
 
+The material these rulings are about is in `DESIGN.md`.
+
 The test behind all of them: a surface that gets prettier while the task
 gets harder is a costume, and it fails no matter how clean it looks in a
 screenshot.
+
+---
+
+## 2026-08-07 rejected: rebuilding the sea in three.js
+
+**Why.** The obvious way to make a page about depth feel deep is WebGL: a
+real volume, real caustics, real particles, and three.js is right there.
+The cost is not the frame budget, it is everything the site currently is.
+`waves.js` has no dependencies and no build step, it reads every colour it
+paints from a CSS custom property so both themes live in the stylesheet,
+its star and snow fields are seeded so a rendered frame is reproducible
+and testable, and the whole thing degrades to a CSS gradient and an SVG
+whale with JavaScript off. three.js is ~600KB before a line of ours, needs
+a bundler on a site whose pitch includes not having one, cannot read the
+theme without a colour bridge written by hand anyway, and turns a
+deterministic frame into something no test can assert about. It would buy
+a better-looking sea and sell the reasons the sea is good.
+
+**Reuse.** The 2D canvas already had the right substrate — four sine
+layers with a nearness gradient, a whale reading its height out of the
+same field. Depth came from making those layers respond to scroll
+position, which is arithmetic on numbers that were already there: about
+sixty lines, no new dependency, and the descent is testable because the
+fields are still seeded. Parallax, an abyss veil and marine snow do the
+job WebGL was wanted for, at a few hundred sine calls a frame.
+
+**Expires.** If the site ever grows something that genuinely needs a
+scene graph — a 3D model of something, real lighting — this is worth
+revisiting for that thing, on that page, not for the background.
+
+---
+
+## 2026-08-07 rejected: a scroll-position effect that is only an effect
+
+**Why.** "Scrolling should feel like going deeper" is a mood, and the
+first version of it was exactly that: the water darkened as you scrolled
+and nothing else was true. It photographs well and it tells the reader
+nothing they did not already know — which is the definition of the costume
+this file exists to catch. On a docs page long enough to want the effect,
+the reader's actual question is *how much of this is left*, and the native
+scrollbar autohides on every platform that matters.
+
+**Reuse.** The descent publishes one number, `--depth`, and the same
+number is legible as text in the margin the 68ch measure was already
+wasting. It is the scroll position — the thing the scrollbar shows — said
+in the page's own vocabulary and left on screen. That is the difference
+between an effect and an instrument: the effect makes you feel deep, the
+instrument tells you how deep. We shipped the second one and got the first
+for free.
+
+**Expires.** If the gauge ever has to move over the text column to fit, it
+has stopped being free and should be deleted rather than shrunk.
 
 ---
 

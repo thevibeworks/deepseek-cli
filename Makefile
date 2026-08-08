@@ -100,8 +100,9 @@ price-check:
 # generator has its own --check; these cover the parts it cannot see —
 # that the playground's script and markup still agree, that all three
 # implementations of the enrolment puzzle still produce the same answers,
-# and that the sea still runs, stops when it should, and draws the same
-# whale on the canvas as whale.svg draws for readers without JavaScript.
+# that the sea still runs, stops when it should, and draws the same whale
+# on the canvas as whale.svg draws for readers without JavaScript, and
+# that the design rules in DESIGN.md still describe the stylesheet.
 .PHONY: site-check
 site-check:
 	python3 site/build.py --check
@@ -110,6 +111,7 @@ site-check:
 	node site/playground.dom.test.js
 	node site/waves.test.js
 	node site/waves.dom.test.js
+	./site/bans.sh
 
 .PHONY: site
 site:

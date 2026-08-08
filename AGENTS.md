@@ -296,3 +296,21 @@ Every call prints a usage line to stderr and appends to
 - **The free tier can run out mid-task.** A 402 means the shared credit
   pool is empty and will not recover today; a 429 with `free_tier_quota`
   resets at 00:00 UTC. Neither is worth retrying — switch to a key.
+
+## Working on this repo
+
+Everything above is about using the tool. If you are changing it:
+
+- `make check` before proposing anything. It builds, vets, runs the Go
+  tests, and checks the rate card, the docs corpus, the gateway and the
+  site.
+- **Touching `site/`?** Read `DESIGN.md` first — it is the material
+  contract: the tokens, the two gestures the page is built on, and the
+  responsive rules. `TASTE.md` holds prior rulings, each with the reason
+  it was rejected; read it before re-proposing something it already
+  refused. Run `site/bans.sh` before you ship (`make site-check` does).
+- The site's HTML is generated. Edit `site/build.py`, not the committed
+  `index.html` files, and rerun `python3 site/build.py`.
+- Visual changes get looked at in a browser at more than one width before
+  they are called done. The stylesheet has three breakpoints and a
+  document that must never scroll sideways.

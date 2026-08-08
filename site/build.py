@@ -119,7 +119,18 @@ def head(*, slug, title, description, keywords, jsonld, crumb_title,
     # that asks for the band: the 404 carries its sea as a strip under the
     # masthead, so the whale rides the header rule like a horizon and the
     # wayfinding links below it keep their contrast.
-    sea_fixed = "" if band_sea else '<div class="sea" data-ocean></div>\n'
+    # The depth gauge rides with the fixed sea and only with it. It reads
+    # how far down the water column you have scrolled, and a band page has
+    # no column to descend -- a gauge there would be an instrument wired to
+    # nothing. waves.js treats it as optional for the same reason.
+    sea_fixed = (
+        ""
+        if band_sea
+        else '<div class="sea" data-ocean></div>\n'
+        '<div class="gauge" data-depth-gauge aria-hidden="true">'
+        '<span class="gauge-rail"><span class="gauge-fill"></span></span>'
+        '<span class="gauge-read">0 m</span></div>\n'
+    )
     sea_band = '<div class="sea sea-band" data-ocean="band"></div>' if band_sea else ""
 
     return f"""<!DOCTYPE html>
@@ -168,12 +179,21 @@ def head(*, slug, title, description, keywords, jsonld, crumb_title,
     <a class="brand" href="{root or './'}">
       <span class="caret">&gt;</span><span class="org">thevibeworks/</span><span class="name">deepseek-cli</span>
     </a>
-    <nav class="sitenav" aria-label="Sections">
+    <!-- Nav and toggle travel together — they are the controls end of the
+         masthead — but the toggle is beside the nav rather than inside it.
+         Two reasons, and the second is the load-bearing one: a theme
+         preference is not a section of the site, and on a phone the nav
+         becomes a scrolling strip with a mask on it, which would take the
+         toggle with it. A control nobody can see is worse than a control
+         in the wrong list. -->
+    <div class="bar-end">
+      <nav class="sitenav" aria-label="Sections">
 {nav_links(slug, root)}
-      <a href="{REPO}">github&nbsp;&#8599;</a>
+        <a href="{REPO}">github&nbsp;&#8599;</a>
+      </nav>
       <button class="themetoggle" id="theme-toggle" type="button" hidden
               aria-label="Theme: auto. Click to change.">theme:&nbsp;<span class="val">auto</span></button>
-    </nav>
+    </div>
   </div>
 </header>
 {sea_band}<main id="main">

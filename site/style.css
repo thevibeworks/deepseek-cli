@@ -103,6 +103,31 @@
     --sea-glow-fade: rgba(0, 194, 233, 0);
     --sea-glow-fade: light-dark(rgba(10, 110, 133, 0), rgba(0, 194, 233, 0));
 
+    /* The colour of being *in* the water rather than looking at it, washed
+     * over the whole frame as the page descends. --sea-deep is the floor
+     * of a layer's gradient; this is the dark you are inside.
+     *
+     * Dark goes almost to black with a little blue left in it — the point
+     * of an abyss is that there is nearly nothing.
+     *
+     * Light cannot follow it down, and the limit is arithmetic rather than
+     * taste: at full depth this colour *is* the page background under the
+     * prose, so the palest text on the site has to survive it. --muted
+     * (#5a5a60, relative luminance 0.111) needs a background at 0.674 or
+     * above to hold 4.5:1, and this sits at 0.684. Anything moodier fails
+     * the footer. On paper the descent is therefore a change of hue and a
+     * little value, not a fade to black — which is also what actually
+     * happens when you look down into clear water in daylight. */
+    --sea-abyss: #00060c;
+    --sea-abyss: light-dark(#c2dce8, #00060c);
+
+    /* How far down the page you are, 0 at the top and 1 at the bottom.
+     * waves.js writes it on every scroll and the sea reads the same
+     * number, so the margin and the water can never disagree. Declared
+     * here so anything reading it has a value before the first scroll —
+     * and with JS off it simply stays 0. */
+    --depth: 0;
+
     /* The whale is a silhouette, so it only has to be darker than the
      * water on paper and lighter than the page on black. */
     --whale: #123f5c;
@@ -265,6 +290,17 @@ body::before {
 
 .brand:hover .name {
     color: var(--pink);
+}
+
+/* The controls end of the masthead: the nav and the theme toggle, which
+ * wrap together as one group. They are two elements rather than one so
+ * the phone breakpoint can mask the nav into a scrolling strip without
+ * masking the toggle out of existence. */
+.bar-end {
+    display: flex;
+    align-items: center;
+    gap: 1.1rem;
+    flex-wrap: wrap;
 }
 
 .sitenav {
@@ -792,6 +828,140 @@ pre code {
     }
 }
 
+/* ---------- the depth gauge ---------- */
+
+/* How far down the page you are, in the metaphor the page is already in.
+ *
+ * It is scroll position — the same thing the scrollbar shows — so the
+ * question is what it adds. Two things. On a long docs page the native
+ * scrollbar is a hairline that autohides on every platform that matters,
+ * and this does not; and it puts the number in the one place a monospace
+ * site has going spare, which is the margin the 68ch measure leaves
+ * empty. It is the descent made legible rather than only felt.
+ *
+ * It lives in that margin and nowhere else: below 1100px there is no
+ * margin to live in, and a gauge over the text would be exactly the
+ * costume this site's TASTE.md exists to reject. It is aria-hidden
+ * because a screen reader already knows where it is on the page, and
+ * because "-240 m" is not a fact about the document.
+ */
+.gauge {
+    position: fixed;
+    /* The rail hugs the right edge of the window and the reading hangs off
+     * its left, into the margin. Anchoring the other way round put the
+     * number outside the viewport on a 1100px window and gave the whole
+     * document a horizontal scrollbar — a decoration that moves the page
+     * sideways has failed at being a decoration. */
+    right: max(0.75rem, calc((100vw - 62rem) / 2 - 5.5rem));
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 3;
+    display: none;
+    pointer-events: none;
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    /* Invisible at the surface, present in the deep. The hero is the one
+     * screen on the site that should carry nothing but the pitch. */
+    opacity: calc(0.35 + var(--depth) * 0.65);
+    transition: opacity var(--dur-slow) var(--ease);
+}
+
+@media (min-width: 1100px) {
+    .gauge {
+        display: block;
+    }
+}
+
+.gauge-rail {
+    position: relative;
+    display: block;
+    width: 1px;
+    height: 34vh;
+    background: var(--line);
+}
+
+/* The filled part is how far you have come. It runs top-down because the
+ * descent does. */
+.gauge-fill {
+    position: absolute;
+    inset: 0 0 auto 0;
+    display: block;
+    height: calc(var(--depth) * 100%);
+    background: linear-gradient(180deg, var(--sea-2), var(--sea-3));
+}
+
+/* The reading rides the head of the fill rather than sitting still beside
+ * it — a number in a fixed spot is a label, a number that descends is the
+ * instrument. Rotated so it reads along the rail and takes no width from
+ * the measure. */
+.gauge-read {
+    position: absolute;
+    right: 0.55rem;
+    top: calc(var(--depth) * 100%);
+    transform: translateY(-50%);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    color: var(--cyan);
+}
+
+@media print {
+    .gauge {
+        display: none;
+    }
+}
+
+/* ---------- seek ---------- */
+
+/* A click on a control sends the same pulse out that a click on the page
+ * sends into the water. One gesture, two materials: canvas out there,
+ * a pseudo-element in here.
+ *
+ * It is on ::after so it never disturbs layout, `inset: -1px` so it
+ * starts on the control's own edge, and it inherits the border radius so
+ * it is the shape of the thing you pressed rather than a circle
+ * approximating it. `overflow` is deliberately not clipped — the pulse
+ * leaving the control is the whole point.
+ */
+@keyframes seek-out {
+    from {
+        opacity: 0.55;
+        transform: scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: scale(1.5);
+    }
+}
+
+.btn,
+.sitenav a,
+.themetoggle,
+.pager a,
+.pg-primary {
+    position: relative;
+}
+
+.is-seeking::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border: 1px solid var(--cyan);
+    border-radius: inherit;
+    pointer-events: none;
+    animation: seek-out 620ms var(--ease) forwards;
+}
+
+/* Reduced motion gets no pulse at all rather than a fast one. waves.js
+ * already declines to add the class; this is the belt to that braces, and
+ * it is also what a printed page needs. */
+@media (prefers-reduced-motion: reduce) {
+    .is-seeking::after {
+        display: none;
+    }
+}
+
 .grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
@@ -852,6 +1022,22 @@ pre code {
      * swimming behind it. Translucent rather than opaque: the sea should
      * still read through the gaps, just not through the numbers. */
     background: color-mix(in srgb, var(--bg) 72%, transparent);
+}
+
+/* A table narrower than its 34rem minimum scrolls sideways, and on a
+ * phone the scrollbar that says so is at the bottom of thirteen rows —
+ * so the column carrying the actual explanation is invisible until you
+ * have already scrolled past the thing you were trying to read. The same
+ * fade the nav strip uses says it at the edge instead, where the missing
+ * content is. Both are horizontal scrollers; they should say so the same
+ * way.
+ *
+ * Only below the width where the table fits: a fade over a table with
+ * nothing beyond it is a lie about there being more. */
+@media (max-width: 36rem) {
+    .tablewrap {
+        mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 2rem), transparent 100%);
+    }
 }
 
 table {
@@ -1066,19 +1252,86 @@ figure.shot figcaption {
     outline-offset: 2px;
 }
 
+/* The masthead breaks before the type does, and the two are separate
+ * questions. Type size is about reading comfort on a small screen (640px).
+ * This is about arithmetic: brand, nav and toggle need about 760px of row
+ * between them, so anything narrower than 52rem stacks them — and at 768px
+ * the old single breakpoint left a sticky three-row masthead eating a
+ * seventh of a tablet screen on every scroll. */
+@media (max-width: 52rem) {
+    .masthead .wrap {
+        flex-direction: column;
+        align-items: stretch;
+        /* `nowrap` is load-bearing, not tidying. A wrapping column flex
+         * container sizes each line to its own contents, so the nav below
+         * — one row wider than the screen by design — made a 794px line,
+         * stretched nothing, and gave the whole document a horizontal
+         * scrollbar. One line, and the nav is constrained to the wrap and
+         * scrolls inside itself as intended. */
+        flex-wrap: nowrap;
+        align-content: stretch;
+        gap: 0.45rem;
+        padding-top: 0.6rem;
+        padding-bottom: 0.6rem;
+    }
+
+    /* Nine links wrapped onto three rows cost a phone about a fifth of its
+     * screen, and the masthead is sticky, so it costs that fifth on every
+     * screenful — before a word of the page. One scrolling row instead:
+     * the same links, in the same order, at a height that does not
+     * negotiate.
+     *
+     * The gutter trick (negative margin plus matching padding) lets the
+     * strip bleed to both edges while its first and last items still line
+     * up with the text column, so it reads as part of the page rather
+     * than a component sitting on it. */
+    .sitenav {
+        gap: 1rem;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        margin: 0 calc(var(--gutter) * -1);
+        padding: 0 var(--gutter) 0.15rem;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+        /* The fade is the affordance: it says there is more to the right
+         * without spending a row on an arrow. It has to be transparent at
+         * the ends rather than the theme colour, or it becomes a hard
+         * edge over the water. */
+        mask-image: linear-gradient(90deg, transparent 0, #000 var(--gutter), #000 calc(100% - 1.5rem), transparent 100%);
+    }
+
+    .sitenav::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* The group stops being a row and becomes the strip alone; the toggle
+     * leaves the flow entirely, just below. */
+    .bar-end {
+        display: block;
+    }
+
+    .sitenav a {
+        white-space: nowrap;
+        flex: none;
+    }
+
+    /* Onto the brand row, where there is space going spare, rather than
+     * below the nav strip where it would cost a third row. */
+    .themetoggle {
+        position: absolute;
+        top: 0.5rem;
+        right: var(--gutter);
+        white-space: nowrap;
+    }
+}
+
 @media (max-width: 640px) {
     body {
         font-size: 14px;
     }
 
-    .masthead .wrap {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.5rem;
-    }
-
-    .sitenav {
-        gap: 0.85rem;
+    main {
+        padding-top: 1.75rem;
     }
 }
 
@@ -1402,12 +1655,20 @@ figure.shot figcaption {
 }
 
 /* The command panel. This is the page's argument, so it gets the
- * terminal treatment rather than looking like another field. */
+ * terminal treatment rather than looking like another field — and it
+ * takes the .term palette to do it rather than three copies of the same
+ * hex values, so a change to what a terminal looks like lands here too.
+ * Redeclared rather than inherited because this element is not inside a
+ * .term. */
 .pg-command {
+    --term-bg: #0d0d0d;
+    --term-line: #262626;
+    --term-text: #e8e8e8;
+
     color-scheme: only dark;
-    background: #0d0d0d;
-    border: 1px solid #262626;
-    color: #e8e8e8;
+    background: var(--term-bg);
+    border: 1px solid var(--term-line);
+    color: var(--term-text);
     font-size: 0.78rem;
     line-height: 1.5;
     padding: 0.7rem 0.8rem;
