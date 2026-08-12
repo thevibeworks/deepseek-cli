@@ -469,7 +469,8 @@ rather than hides:
   `--think off` does.
 - **Text only.** DeepSeek rejects image, document and search-result
   content blocks in every format.
-- **The Responses endpoint is flash-only** for now.
+- **The Responses endpoint takes both models** since V4-Pro's official
+  release (2026-08-12); it refused pro before that.
 - **FIM caps output at 4K tokens** and ignores thinking entirely.
 - **Slow starts are normal.** The API holds the connection with
   `: keep-alive` comments for up to ten minutes before inference begins.

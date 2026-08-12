@@ -43,7 +43,8 @@ speaks. Two things live here and nowhere else in the DeepSeek API:
 JSON Schema structured output, and web_search, a tool DeepSeek runs
 server-side.
 
-Only deepseek-v4-flash is supported by this endpoint today.
+Both models are accepted since V4-Pro's official release
+(2026-08-12); the endpoint was flash-only before that.
 
   deepseek respond "what shipped in Go 1.26" --web-search
   deepseek respond "extract the versions" --schema @versions.json --json`),
@@ -54,7 +55,7 @@ Only deepseek-v4-flash is supported by this endpoint today.
 	}
 
 	fl := cmd.Flags()
-	fl.StringVarP(&f.model, "model", "m", deepseek.ModelFlash, "model (this endpoint supports deepseek-v4-flash only)")
+	fl.StringVarP(&f.model, "model", "m", deepseek.ModelFlash, "model: deepseek-v4-flash or deepseek-v4-pro")
 	fl.StringVarP(&f.instructions, "instructions", "s", "", "system-level instructions, or @file")
 	fl.StringVarP(&f.effort, "effort", "e", "", "reasoning effort: none, low, high, or max (none disables thinking)")
 	fl.IntVar(&f.maxTokens, "max-tokens", 0, "cap generated tokens, reasoning included")

@@ -279,7 +279,8 @@ Every call prints a usage line to stderr and appends to
   So on flash, `--effort low` removes the whole surcharge and still
   reasons. `--think off` removes the reasoning as well. `none` and
   `minimal` are accepted by the API and documented nowhere.
-- **`respond` is flash-only.** `--model deepseek-v4-pro` will fail there.
+- **`respond` takes both models** since V4-Pro's official release
+  (2026-08-12). Older notes saying it is flash-only are stale.
 - **`fim` caps output at 4K tokens** and never thinks.
 - **Slow starts are normal**, up to ten minutes before inference begins
   under load. Do not set an aggressive `--timeout` and call it a failure.
