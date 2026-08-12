@@ -20,7 +20,7 @@ import (
 // the page and the JSON it reads can never be different versions of each
 // other, which is the usual way a status page starts lying.
 //
-//go:embed web/index.html web/style.css web/app.js web/pages/*.html
+//go:embed web/index.html web/style.css web/app.js web/favicon.svg web/pages/*.html
 var webFS embed.FS
 
 // webCacheSec is how long a browser may hold these files. Short, because
@@ -35,6 +35,7 @@ func (s *Server) routeWeb(mux *http.ServeMux) {
 	mux.HandleFunc("GET /{$}", s.serveAsset("web/index.html", "text/html; charset=utf-8"))
 	mux.HandleFunc("GET /style.css", s.serveAsset("web/style.css", "text/css; charset=utf-8"))
 	mux.HandleFunc("GET /app.js", s.serveAsset("web/app.js", "text/javascript; charset=utf-8"))
+	mux.HandleFunc("GET /favicon.svg", s.serveAsset("web/favicon.svg", "image/svg+xml"))
 
 	for _, page := range []string{"privacy", "terms", "story", "vision", "economics"} {
 		h := s.serveAsset("web/pages/"+page+".html", "text/html; charset=utf-8")
