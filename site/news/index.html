@@ -3,25 +3,25 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DeepSeek API news — the announced price rise, peak-hour pricing, releases</title>
-<meta name="description" content="What is changing in the DeepSeek API: an across-the-board price increase announced with no date yet, the 2x peak-hour pricing policy, V4-Flash&#x27;s official release — and what each one does to the cost of a call.">
-<meta name="keywords" content="deepseek api price increase, deepseek price rise 2026, deepseek peak hour pricing, deepseek off-peak pricing, deepseek api news, deepseek api changelog, deepseek v4 flash release, deepseek pricing change">
+<title>DeepSeek API news — V4-Pro GA, the announced price rise, releases</title>
+<meta name="description" content="What is changing in the DeepSeek API: V4-Pro&#x27;s official release (DeepSeek-V4-Pro-0813), an across-the-board price increase announced with no date yet, the 2x peak-hour pricing policy, V4-Flash&#x27;s official release — and what each one does to the cost of a call.">
+<meta name="keywords" content="deepseek v4 pro release, deepseek v4 pro ga, deepseek-v4-pro-0813, deepseek api price increase, deepseek price rise 2026, deepseek peak hour pricing, deepseek api news, deepseek api changelog, deepseek v4 flash release, deepseek pricing change">
 <meta name="author" content="thevibeworks">
 <meta name="theme-color" content="#fbfaf7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="canonical" href="https://thevibeworks.github.io/deepseek-cli/news/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="deepseek-cli">
-<meta property="og:title" content="DeepSeek API news — the announced price rise, peak-hour pricing, releases">
-<meta property="og:description" content="What is changing in the DeepSeek API: an across-the-board price increase announced with no date yet, the 2x peak-hour pricing policy, V4-Flash&#x27;s official release — and what each one does to the cost of a call.">
+<meta property="og:title" content="DeepSeek API news — V4-Pro GA, the announced price rise, releases">
+<meta property="og:description" content="What is changing in the DeepSeek API: V4-Pro&#x27;s official release (DeepSeek-V4-Pro-0813), an across-the-board price increase announced with no date yet, the 2x peak-hour pricing policy, V4-Flash&#x27;s official release — and what each one does to the cost of a call.">
 <meta property="og:url" content="https://thevibeworks.github.io/deepseek-cli/news/">
 <meta property="og:image" content="https://thevibeworks.github.io/deepseek-cli/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="deepseek-cli — the whole DeepSeek API from the terminal">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="DeepSeek API news — the announced price rise, peak-hour pricing, releases">
-<meta name="twitter:description" content="What is changing in the DeepSeek API: an across-the-board price increase announced with no date yet, the 2x peak-hour pricing policy, V4-Flash&#x27;s official release — and what each one does to the cost of a call.">
+<meta name="twitter:title" content="DeepSeek API news — V4-Pro GA, the announced price rise, releases">
+<meta name="twitter:description" content="What is changing in the DeepSeek API: V4-Pro&#x27;s official release (DeepSeek-V4-Pro-0813), an across-the-board price increase announced with no date yet, the 2x peak-hour pricing policy, V4-Flash&#x27;s official release — and what each one does to the cost of a call.">
 <meta name="twitter:image" content="https://thevibeworks.github.io/deepseek-cli/og.png">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30,7 +30,7 @@
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
 <script>try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t}catch(e){}</script>
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Is DeepSeek raising its API prices?","acceptedAnswer":{"@type":"Answer","text":"Yes, a rise is announced but not yet in effect. On 2026-08-06 (Beijing time) DeepSeek posted a notice in the platform console and emailed API account holders saying all API services will be repriced in the near term and that the increase is expected to be substantial, advising developers to plan call volume and top-ups accordingly. No new rate card and no effective date have been published. Separately, a 2x peak-hour pricing policy has been announced since June 2026, also without an effective date."}},{"@type":"Question","name":"When does DeepSeek's peak-hour pricing start?","acceptedAnswer":{"@type":"Answer","text":"No effective date has been announced. The published policy: during peak hours, 09:00-12:00 and 14:00-18:00 Beijing time (01:00-04:00 and 06:00-10:00 UTC) daily, all billing items cost 2x the regular price. Until DeepSeek announces the date, the policy is not active and estimates should not apply it."}},{"@type":"Question","name":"What are DeepSeek's current API prices?","acceptedAnswer":{"@type":"Answer","text":"Per 1M tokens, from the rate card published 2026-08-02: deepseek-v4-flash is $0.14 input on a cache miss, $0.0028 on a cache hit, and $0.28 output; deepseek-v4-pro is $0.435 input on a miss, $0.003625 on a hit, and $0.87 output."}},{"@type":"Question","name":"Where can I follow DeepSeek API changes?","acceptedAnswer":{"@type":"Answer","text":"DeepSeek's own change log lives at api-docs.deepseek.com/updates. The deepseek CLI carries the same documentation inside the binary: `deepseek docs changelog` prints it offline, and `deepseek docs sync` refreshes the snapshot."}}]}
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Is DeepSeek V4-Pro officially released?","acceptedAnswer":{"@type":"Answer","text":"Yes. On 2026-08-12 the model version on DeepSeek's Models & Pricing page changed to DeepSeek-V4-Pro-0813, ending the preview that had run since 2026-04-24. The model ID is unchanged (deepseek-v4-pro), the rate card is unchanged, and the release focuses on agentic post-training rather than new pretraining."}},{"@type":"Question","name":"Is DeepSeek raising its API prices?","acceptedAnswer":{"@type":"Answer","text":"Yes, a rise is announced but not yet in effect. On 2026-08-06 (Beijing time) DeepSeek posted a notice in the platform console and emailed API account holders saying all API services will be repriced in the near term and that the increase is expected to be substantial, advising developers to plan call volume and top-ups accordingly. No new rate card and no effective date have been published. Separately, a 2x peak-hour pricing policy has been announced since June 2026, also without an effective date."}},{"@type":"Question","name":"When does DeepSeek's peak-hour pricing start?","acceptedAnswer":{"@type":"Answer","text":"No effective date has been announced. The published policy: during peak hours, 09:00-12:00 and 14:00-18:00 Beijing time (01:00-04:00 and 06:00-10:00 UTC) daily, all billing items cost 2x the regular price. Until DeepSeek announces the date, the policy is not active and estimates should not apply it."}},{"@type":"Question","name":"What are DeepSeek's current API prices?","acceptedAnswer":{"@type":"Answer","text":"Per 1M tokens, from the rate card published 2026-08-02: deepseek-v4-flash is $0.14 input on a cache miss, $0.0028 on a cache hit, and $0.28 output; deepseek-v4-pro is $0.435 input on a miss, $0.003625 on a hit, and $0.87 output."}},{"@type":"Question","name":"Where can I follow DeepSeek API changes?","acceptedAnswer":{"@type":"Answer","text":"DeepSeek's own change log lives at api-docs.deepseek.com/updates. The deepseek CLI carries the same documentation inside the binary: `deepseek docs changelog` prints it offline, and `deepseek docs sync` refreshes the snapshot."}}]}
 </script>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"deepseek-cli","item":"https://thevibeworks.github.io/deepseek-cli/"},{"@type":"ListItem","position":2,"name":"news","item":"https://thevibeworks.github.io/deepseek-cli/news/"}]}
@@ -79,6 +79,27 @@
 cost of a call. Curated from official announcements and checked against the
 live API where that is possible; the in-terminal feed is
 <code>ds docs changelog</code>.</p>
+
+<h2 id="v4-pro">2026-08-12 &middot; V4-Pro official release (0813)</h2>
+<p>The preview is over. The
+<a href="https://api-docs.deepseek.com/quick_start/pricing">Models &amp; Pricing page</a> now lists
+the model version as <strong>DeepSeek-V4-Pro-0813</strong> &mdash; a quiet
+table-cell change, no news post upstream. The model ID stays
+<code>deepseek-v4-pro</code>, the specs stay 1M context and 384K max output,
+and the rate card stays where it has been since 2026-08-02.</p>
+<p>What changed is the checkpoint. Like Flash's 0731 release, the GA build is
+re-post-trained for agent work; DeepSeek's launch-day numbers circulating in
+the community put Terminal-Bench 2.1 at ~87.9 (preview: 72.1), DeepSWE at
+~62.7 (preview: 12.8) and Toolathlon-Verified at ~74.1 (preview: 55.9).
+Jumps that size are post-training and harness work, not a new base model
+&mdash; and none of them are independently verified yet, so treat the
+preview numbers as the floor and these as the claim.</p>
+<p><strong>What it changes here: nothing to do.</strong> Anything already
+sending <code>deepseek-v4-pro</code> &mdash; <code>ds chat -m
+deepseek-v4-pro</code>, the <code>claude-opus-*</code> remap on the
+<a href="../formats/">Anthropic format</a> &mdash; has been on the new
+checkpoint since the cell changed. Same price, stronger model; the
+<a href="../cost/">estimates</a> already price it correctly.</p>
 
 <h2 id="price-rise">2026-08-06 &middot; a broad price rise is coming<span class="chip warn">date tba</span></h2>
 <p>DeepSeek posted a notice in the
