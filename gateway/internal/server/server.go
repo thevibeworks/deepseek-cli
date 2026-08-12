@@ -17,6 +17,7 @@ import (
 
 	"github.com/thevibeworks/deepseek-cli/gateway/internal/keyring"
 	"github.com/thevibeworks/deepseek-cli/gateway/internal/mint"
+	"github.com/thevibeworks/deepseek-cli/gateway/internal/policy"
 	"github.com/thevibeworks/deepseek-cli/gateway/internal/quota"
 	"github.com/thevibeworks/deepseek-cli/gateway/internal/stats"
 	"github.com/thevibeworks/deepseek-cli/gateway/internal/token"
@@ -37,6 +38,23 @@ type Config struct {
 	KeyStatePath string
 	// Model is the only model the free tier serves.
 	Model string
+
+	// FreeBaseURL, FreeKeys and FreeModel describe an upstream that costs
+	// this service nothing — OpenCode Zen's free DeepSeek lane. When keys
+	// are present it is tried first for every route it can serve, and a
+	// refusal falls straight through to the paid upstream above, so the
+	// worst case is one extra round trip and the best case is a request
+	// the credit pool never pays for. Empty keys disable the lane and the
+	// gateway behaves exactly as it did before it existed.
+	FreeBaseURL string
+	FreeKeys    []string
+	// FreeModel is what that upstream calls the model. Bodies are
+	// retargeted to it on the way out; nothing else in the service learns
+	// the alias.
+	FreeModel string
+	// FreeKeyStatePath persists keys donated to the free lane.
+	FreeKeyStatePath string
+
 	// Version is the build, shown on the status page.
 	Version string
 
@@ -102,6 +120,18 @@ type Server struct {
 	keys   *keyring.Ring
 	stats  *stats.Collector
 
+	// paid and free are the upstreams, in the order they are tried. free
+	// is nil unless a key was configured for it.
+	paid *lane
+	free *lane
+
+	// freeServed and freeFellBack count how the free lane is doing. They
+	// are the only way to tell "the free lane is carrying the service"
+	// from "the free lane is refusing everything and the credit pool is
+	// paying for it anyway", which look identical from the outside.
+	freeServed   atomic.Int64
+	freeFellBack atomic.Int64
+
 	// statusDoc caches the public status document; see publicStatusTTL.
 	statusMu  sync.Mutex
 	statusDoc *PublicStatus
@@ -140,7 +170,8 @@ func New(cfg Config, signer *token.Signer, m *mint.Mint, ledger *quota.Ledger) *
 	for _, o := range cfg.Origins {
 		origins[strings.TrimSuffix(strings.TrimSpace(o), "/")] = true
 	}
-	return &Server{
+	keys := keyring.New(cfg.UpstreamKeys, cfg.KeyStatePath)
+	s := &Server{
 		cfg:    cfg,
 		mint:   m,
 		signer: signer,
@@ -166,7 +197,7 @@ func New(cfg Config, signer *token.Signer, m *mint.Mint, ledger *quota.Ledger) *
 				return http.ErrUseLastResponse
 			},
 		},
-		keys:         keyring.New(cfg.UpstreamKeys, cfg.KeyStatePath),
+		keys:         keys,
 		stats:        stats.New(),
 		inflight:     make(chan struct{}, cfg.MaxInflight),
 		limiter:      newLimiter(cfg.RequestsPerMinute, time.Minute),
@@ -175,6 +206,80 @@ func New(cfg Config, signer *token.Signer, m *mint.Mint, ledger *quota.Ledger) *
 		origins:      origins,
 		started:      time.Now(),
 	}
+
+	s.paid = &lane{
+		name:    LanePaid,
+		baseURL: cfg.UpstreamBaseURL,
+		keys:    keys,
+	}
+	if len(cfg.FreeKeys) > 0 {
+		s.free = &lane{
+			name:    LaneFree,
+			baseURL: cfg.FreeBaseURL,
+			keys:    keyring.New(cfg.FreeKeys, cfg.FreeKeyStatePath),
+			model:   cfg.FreeModel,
+			free:    true,
+		}
+	}
+	return s
+}
+
+// Lane names, as they appear on the status page and in the logs.
+const (
+	LaneFree = "free"
+	LanePaid = "deepseek"
+)
+
+// lane is one upstream this gateway can send a request to.
+//
+// The gateway was built around a single upstream, and for most of its
+// life that was right: one API, one key pool, one rate card. A second
+// lane earns the indirection because it is not a second copy of the
+// first — it speaks a subset of the routes, calls the model by another
+// name, and costs nothing, and each of those differences has to travel
+// with the choice of where a request goes.
+type lane struct {
+	name    string
+	baseURL string
+	keys    *keyring.Ring
+	// model overrides the body's model field for this lane. Empty leaves
+	// the approved body untouched.
+	model string
+	// free means a request served here costs the credit pool nothing, so
+	// its reservation is released and it is charged at zero.
+	free bool
+}
+
+// label is how this lane is named in an operator-facing message.
+func (l *lane) label() string {
+	if l.free {
+		return "the free upstream"
+	}
+	return "DeepSeek"
+}
+
+// serves reports whether this lane can carry a request at all.
+//
+// The free lane is deliberately narrow. Measured against OpenCode Zen on
+// 2026-08-12: /chat/completions works and reports usage in both streamed
+// and buffered form; /anthropic/v1/messages, /beta/completions and
+// /user/balance are 404; /responses answers, but rejects a server-side
+// web_search tool outright. So chat is the one route it is trusted with,
+// which is also where nearly all of the volume is. Everything else goes
+// to DeepSeek, exactly as before.
+func (l *lane) serves(route policy.Route, d *policy.Decision) bool {
+	if !l.free {
+		return true
+	}
+	return route.Name == "chat" && !d.Search
+}
+
+// lanesFor is the order to try upstreams in for one request.
+func (s *Server) lanesFor(route policy.Route, d *policy.Decision) []*lane {
+	if s.free != nil && s.free.serves(route, d) && s.free.keys.Usable() {
+		return []*lane{s.free, s.paid}
+	}
+	return []*lane{s.paid}
 }
 
 // Keys exposes the pool so an operator command can seed it at boot.
@@ -496,7 +601,25 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 			"/chat/completions", "/beta/completions",
 			"/anthropic/v1/messages", "/responses", "/models",
 		},
-		Privacy:   "prompts and completions are relayed to DeepSeek and are not stored or logged by this gateway; only token counts and cost are recorded",
+		Privacy:   s.privacyNotice(),
 		Exhausted: h.TotalSpendUSD >= h.TotalBudgetUSD || s.upstreamDry.Load(),
 	})
+}
+
+// privacyNotice is what a client shows a user before they opt in. It is
+// built rather than fixed because it stopped being true the day a second
+// upstream appeared: a free lane is a third party the user did not
+// choose, and at least one of them — OpenCode Zen — says outright that
+// prompts on its free models may be used to improve them.
+//
+// The gateway saying this, rather than the CLI hardcoding it, is the
+// point. The CLI cannot know which upstreams a given gateway uses, and a
+// consent notice that is a guess about someone else's deployment is not
+// consent.
+func (s *Server) privacyNotice() string {
+	const base = "prompts and completions are relayed to DeepSeek and are not stored or logged by this gateway; only token counts and cost are recorded"
+	if s.free == nil {
+		return base
+	}
+	return base + ". Chat requests are first offered to a third-party free upstream, whose provider may use them to improve its models; send nothing confidential, or bring your own key"
 }

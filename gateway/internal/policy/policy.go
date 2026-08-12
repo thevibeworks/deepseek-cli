@@ -150,6 +150,26 @@ func Apply(route Route, body []byte, subject string, lim Limits) (*Decision, err
 	return d, nil
 }
 
+// Retarget rewrites the model field of an already-approved body.
+//
+// It exists because the free tier serves one model under one name to its
+// callers, while an upstream lane may know that model by another — the
+// free lane at OpenCode Zen calls it deepseek-v4-flash-free. Renaming at
+// the last moment keeps the client contract, the model allowlist and the
+// /models list all speaking the one name, and confines the alias to the
+// request that actually goes to that lane.
+//
+// It decodes and re-encodes with the same number handling as Apply, so a
+// retargeted body differs from the approved one in exactly one field.
+func Retarget(body []byte, model string) ([]byte, error) {
+	obj, err := decodeObject(body)
+	if err != nil {
+		return nil, err
+	}
+	obj["model"] = model
+	return json.Marshal(obj)
+}
+
 func decodeObject(body []byte) (map[string]any, error) {
 	dec := json.NewDecoder(bytes.NewReader(body))
 	// Numbers stay as their original literals. Round-tripping through

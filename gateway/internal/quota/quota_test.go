@@ -482,3 +482,50 @@ func TestSearchRationIsPublishedWithTheOtherLimits(t *testing.T) {
 		t.Errorf("published search limit = %d, want 3 — a limit a caller cannot read is one they can only discover by hitting it", got)
 	}
 }
+
+// A free request passes the money ceilings and nothing else. This is the
+// whole security argument for Admission.Free: it is sound only because
+// such a request cannot reach an upstream that charges.
+func TestAdmitFreeSkipsMoneyButNotTheUser(t *testing.T) {
+	l, done := open(t, t.TempDir(), Limits{
+		DailyRequests:     2,
+		DailyInputTokens:  1000,
+		DailyOutputTokens: 1000,
+		DailyBudgetUSD:    0,
+		TotalBudgetUSD:    0,
+	})
+	defer done()
+
+	if err := l.Admit("s", Admission{ReserveUSD: 0.01}); err == nil {
+		t.Fatal("a paying request was admitted with no budget at all")
+	}
+	if err := l.Admit("s", Admission{Free: true}); err != nil {
+		t.Fatalf("a free request was refused for lack of money: %v", err)
+	}
+	if err := l.Admit("s", Admission{Free: true}); err != nil {
+		t.Fatalf("second free request: %v", err)
+	}
+	// Two requests is this subject's day, free or not.
+	err := l.Admit("s", Admission{Free: true})
+	var lim *LimitError
+	if !errors.As(err, &lim) || lim.Reason != ReasonRequests {
+		t.Fatalf("the third free request got %v, want the per-user refusal", err)
+	}
+
+	// And it reserved nothing, whatever it claimed.
+	if h := l.Health(); h.ReservedUSD != 0 {
+		t.Errorf("a free request reserved $%f", h.ReservedUSD)
+	}
+}
+
+// Revocation outranks free: a banned subject is banned on every lane.
+func TestAdmitFreeStillRefusesRevoked(t *testing.T) {
+	l, done := open(t, t.TempDir(), Limits{DailyRequests: 5, DailyBudgetUSD: 1, TotalBudgetUSD: 1})
+	defer done()
+	l.revoked["banned"] = true
+	err := l.Admit("banned", Admission{Free: true})
+	var lim *LimitError
+	if !errors.As(err, &lim) || lim.Reason != ReasonRevoked {
+		t.Fatalf("a revoked subject was admitted to the free lane: %v", err)
+	}
+}

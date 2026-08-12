@@ -63,6 +63,16 @@ Configuration is entirely environment variables:
   DSGATE_UPSTREAM_KEY        DeepSeek API key to spend        (required)
   DSGATE_UPSTREAM_KEYS       more keys, comma separated; the pool rotates
   DSGATE_UPSTREAM_BASE_URL   upstream root                    (https://api.deepseek.com)
+
+The free lane — an upstream that costs this service nothing. Tried first
+for every chat request; anything it refuses falls through to the keys
+above, so the worst case is one extra round trip. Unset, the gateway
+behaves exactly as it did before this existed.
+
+  OPENCODE_API_KEY           OpenCode Zen key, or DSGATE_FREE_KEY(S)
+  DSGATE_FREE_BASE_URL       (https://opencode.ai/zen/v1)
+  DSGATE_FREE_MODEL          what that upstream calls the model
+                             (deepseek-v4-flash-free)
   DSGATE_ADDR                listen address                   (:8787)
   DSGATE_STATE_DIR           journal, secret, revocations     (./state)
   DSGATE_SECRET              token signing secret, hex        (generated and persisted)
@@ -115,6 +125,15 @@ func run() error {
 		return errors.New("DSGATE_UPSTREAM_KEY is not set; there is nothing to spend")
 	}
 
+	// The free lane. OPENCODE_API_KEY is read directly because that is the
+	// name the key already has everywhere else — in opencode's own config,
+	// in a shell profile, in a .env — and asking an operator to copy it to
+	// a second name buys nothing.
+	freeKeys := envList("DSGATE_FREE_KEYS")
+	if k := env("DSGATE_FREE_KEY", os.Getenv("OPENCODE_API_KEY")); k != "" {
+		freeKeys = append([]string{k}, freeKeys...)
+	}
+
 	stateDir := env("DSGATE_STATE_DIR", "./state")
 	if err := os.MkdirAll(stateDir, 0o700); err != nil {
 		return err
@@ -162,6 +181,10 @@ func run() error {
 		UpstreamKeys:             keys,
 		KeyStatePath:             filepath.Join(stateDir, "donated-keys.json"),
 		Model:                    env("DSGATE_MODEL", "deepseek-v4-flash"),
+		FreeBaseURL:              env("DSGATE_FREE_BASE_URL", "https://opencode.ai/zen/v1"),
+		FreeKeys:                 freeKeys,
+		FreeModel:                env("DSGATE_FREE_MODEL", "deepseek-v4-flash-free"),
+		FreeKeyStatePath:         filepath.Join(stateDir, "donated-free-keys.json"),
 		Version:                  version,
 		MaxBodyBytes:             int64(envInt("DSGATE_MAX_BODY_BYTES", 131072)),
 		MaxTokens:                envInt("DSGATE_ANON_MAX_TOKENS", 4096),
@@ -228,6 +251,10 @@ func run() error {
 	h := ledger.Health()
 	log.Printf("version %s listening on %s", version, srv.Addr)
 	log.Printf("upstream %s, model %s", cfg.UpstreamBaseURL, cfg.Model)
+	if len(cfg.FreeKeys) > 0 {
+		log.Printf("free lane %s as %s, tried first for chat; anything it refuses falls back to the paid upstream",
+			cfg.FreeBaseURL, cfg.FreeModel)
+	}
 	log.Printf("budget: $%.2f/day, $%.2f total, $%.4f spent so far",
 		limits.DailyBudgetUSD, limits.TotalBudgetUSD, h.TotalSpendUSD)
 	if !cfg.TrustProxy {

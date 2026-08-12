@@ -394,6 +394,65 @@ persisted, so a gift survives a restart and lands without a deploy.
 people's API keys over the open internet is a phishing lesson with a nice
 stylesheet; the donation path is a private message to a human.
 
+## The free lane
+
+The key pool answers "what if our key runs out". It does not answer the
+prior question — why is a chat request costing us anything at all, when
+OpenCode Zen serves `deepseek-v4-flash-free` for nothing.
+
+So there are two upstreams now, tried in order. The indirection is not
+"a list of interchangeable backends"; a second lane earns its keep only
+because it is *different* in four ways that each have to travel with the
+choice of where a request goes: the routes it serves, the name it knows
+the model by, what it costs, and how often it says no.
+
+Measured against Zen on 2026-08-12:
+
+- `/chat/completions` works, reporting usage in both streamed and
+  buffered form. `/responses` answers but rejects a server-side
+  `web_search` tool. `/anthropic/v1/messages`, `/beta/completions` and
+  `/user/balance` are 404.
+- About one sequential request in five comes back
+  `429 FreeUsageLimitError`. A refusal takes ~0.65s against ~1.8s for an
+  answer, so a fallback costs latency in the noise.
+- The model is `deepseek-v4-flash-free` there. Our callers never learn
+  that: `policy.Retarget` renames the field on the way out, and the
+  allowlist, the `/models` list and the client contract all keep saying
+  `deepseek-v4-flash`.
+- Zen's own docs say free-lane data **may be used to improve the model**.
+  That is a different promise from the paid path's and belongs in the
+  user-facing copy, not just here.
+
+A 20% refusal rate is why the lane is first-choice rather than the whole
+service, and why the fallback must happen before a single byte reaches
+the client — after `WriteHeader` the status line is spent. Any non-2xx
+gets exactly one paid retry.
+
+### Free requests and the breaker
+
+The budget breaker is the security boundary, so an exception to it needs
+a real argument. Here it is: a request the free lane can serve *cannot
+spend money*, so the ceilings that exist to bound money do not apply to
+it. `quota.Admission.Free` says exactly that, and the ledger forces its
+reservation to zero rather than trusting the caller.
+
+The invariant that makes it sound lives in one place — a request admitted
+as free is offered exactly one upstream and is never retried against the
+paid key. Everything else still binds: per-user requests and tokens,
+revocation, and the journal, because an unrecorded request is how a
+breaker fails open.
+
+What this buys is the difference between the day's budget *ending* the
+free tier and merely *downgrading* it. At `$1.00` spent the state becomes
+`free_upstream_only`: chat keeps being answered, on a slower upstream
+that refuses more often, and everything else waits for 00:00 UTC.
+
+The upstream health series stays DeepSeek-only. It exists to answer "is
+this you or them", and folding a shared free pool's ordinary 429s into it
+would report a Zen busy minute as a DeepSeek outage. The free lane's
+health is its own two counters — served, and fell back — which say the
+only thing that matters about it: how much of the work it is taking.
+
 ## What we deliberately did not build
 
 - **A user table.** Stateless tokens plus daily counters. Nothing to

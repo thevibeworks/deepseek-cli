@@ -26,6 +26,12 @@ services:
 
     environment:
       DSGATE_UPSTREAM_KEY: ${DSGATE_UPSTREAM_KEY:?set it in .env}
+
+      # The free lane. Optional: with it, chat requests try OpenCode Zen's
+      # free DeepSeek model before the key above, and anything it refuses
+      # falls back. Unset, this is the same service it was.
+      OPENCODE_API_KEY: ${OPENCODE_API_KEY:-}
+
       DSGATE_ANNOUNCE: ${DSGATE_ANNOUNCE:-}
       DSGATE_ORIGINS: ${DSGATE_ORIGINS:-}
       DSGATE_ADMIN_TOKEN: ${DSGATE_ADMIN_TOKEN:-}

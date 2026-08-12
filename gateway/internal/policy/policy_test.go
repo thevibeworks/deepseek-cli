@@ -1,6 +1,7 @@
 package policy
 
 import (
+	"bytes"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -314,5 +315,39 @@ func TestServerSideToolsAreRefused(t *testing.T) {
 	chat, _ := Lookup("POST", "/chat/completions")
 	if _, err := Apply(chat, []byte(`{"messages":[],"tools":[{"type":"function"}]}`), "sub", lim); err != nil {
 		t.Errorf("chat function tools were refused: %v", err)
+	}
+}
+
+// Retarget changes the model and nothing else — including the number
+// literals, which are the reason Apply decodes the way it does.
+func TestRetargetChangesOnlyTheModel(t *testing.T) {
+	in := []byte(`{"model":"deepseek-v4-flash","temperature":0.1,"max_tokens":1000000,"messages":[{"role":"user","content":"hi"}]}`)
+	out, err := Retarget(in, "deepseek-v4-flash-free")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	dec := json.NewDecoder(bytes.NewReader(out))
+	dec.UseNumber()
+	if err := dec.Decode(&got); err != nil {
+		t.Fatal(err)
+	}
+	if got["model"] != "deepseek-v4-flash-free" {
+		t.Errorf("model = %v", got["model"])
+	}
+	if n, _ := got["temperature"].(json.Number); n.String() != "0.1" {
+		t.Errorf("temperature = %v, want the literal 0.1", got["temperature"])
+	}
+	if n, _ := got["max_tokens"].(json.Number); n.String() != "1000000" {
+		t.Errorf("max_tokens = %v, want the literal 1000000", got["max_tokens"])
+	}
+	if _, ok := got["messages"].([]any); !ok {
+		t.Error("the messages did not survive")
+	}
+}
+
+func TestRetargetRejectsGarbage(t *testing.T) {
+	if _, err := Retarget([]byte("not json"), "x"); err == nil {
+		t.Fatal("garbage was retargeted without complaint")
 	}
 }
