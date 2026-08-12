@@ -139,11 +139,18 @@ deepseek chat "why is the sky blue"</code></pre>
           <span class="health-who">DeepSeek upstream</span>
           <span class="health-state" id="up-ds">—</span>
         </li>
+        <li id="up-free-row" style="display:none">
+          <span class="health-dot" id="up-free-dot" aria-hidden="true"></span>
+          <span class="health-who">free upstream</span>
+          <span class="health-state" id="up-free">—</span>
+        </li>
       </ul>
       <p class="fineprint" id="up-note">—</p>
       <p class="fineprint">Measured from our own calls to
       <code>api.deepseek.com</code>, not from a status page — a page cannot see
-      a route that is broken only from here. DeepSeek's own
+      a route that is broken only from here. The free upstream is a separate
+      service we try first for chat; what it refuses goes to DeepSeek, so a bad
+      day there costs you latency, not answers. DeepSeek's own
       <a href="https://status.deepseek.com/">incident page</a> is the place to
       check for anything wider.</p>
     </div>

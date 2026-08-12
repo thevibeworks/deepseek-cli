@@ -52,6 +52,14 @@ type PublicStatus struct {
 	// tell our outage from theirs without leaving the page.
 	Upstream stats.Upstream `json:"upstream"`
 
+	// FreeLane is how much of the traffic a free upstream is carrying.
+	// Omitted entirely when none is configured. It is published because
+	// it is the honest version of "how long can this last": a service
+	// answering mostly for free lasts until the free lane goes away, and
+	// one answering mostly from the credit pool lasts until the money
+	// does.
+	FreeLane *FreeLaneStatus `json:"free_lane,omitempty"`
+
 	Keys   PoolStatus     `json:"key_pool"`
 	Limits quota.UserCaps `json:"daily_limits_per_user"`
 	System stats.System   `json:"system"`
@@ -69,6 +77,11 @@ const (
 	StateDayspent    = "day_exhausted" // today's budget is gone; back at 00:00 UTC
 	StateDry         = "credit_exhausted"
 	StateDegraded    = "degraded" // the ledger cannot record spend
+	// StateFreeOnly is the money being gone while the service is still
+	// answering, because a free upstream is carrying the chat route. It
+	// is a distinct word rather than "operational" because what a user
+	// gets here is measurably worse: more refusals, one route.
+	StateFreeOnly = "free_upstream_only"
 )
 
 // CreditStatus is the pool, in proportions rather than dollars.
@@ -96,6 +109,36 @@ type TopSubject struct {
 	Requests     int    `json:"requests"`
 	InputTokens  int    `json:"input_tokens"`
 	OutputTokens int    `json:"output_tokens"`
+}
+
+// FreeLaneStatus is the free upstream's share of the work.
+type FreeLaneStatus struct {
+	// Model is what the free upstream calls the model it serves. It is
+	// named because it is not literally the same endpoint as the paid one
+	// and saying otherwise would be a lie by omission.
+	Model string `json:"model"`
+	// Available is false once every key for the lane is dry or retired.
+	Available bool `json:"available"`
+	// Served and FellBack count requests since this process started.
+	Served   int64 `json:"served"`
+	FellBack int64 `json:"fell_back"`
+	// ServedPct is the share of attempts the free lane carried, which is
+	// the share of the day's traffic the credit pool did not pay for.
+	ServedPct float64 `json:"served_pct"`
+}
+
+func (s *Server) freeLaneStatus() *FreeLaneStatus {
+	if s.free == nil {
+		return nil
+	}
+	served, fell := s.freeServed.Load(), s.freeFellBack.Load()
+	return &FreeLaneStatus{
+		Model:     s.free.model,
+		Available: s.free.keys.Usable(),
+		Served:    served,
+		FellBack:  fell,
+		ServedPct: pct(float64(served), float64(served+fell)),
+	}
 }
 
 // PoolStatus is the key pool without the keys.
@@ -191,6 +234,7 @@ func (s *Server) buildStatus() *PublicStatus {
 		Endpoints: snap.Endpoints,
 		Countries: snap.Countries,
 		Top:       rows,
+		FreeLane:  s.freeLaneStatus(),
 		Keys:      PoolStatus{Active: pool.Active, Dry: pool.Dry, Retired: pool.Retired, Total: pool.Total},
 		Limits:    s.ledger.Status("", "anon").Limits,
 		System:    snap.System,
@@ -203,22 +247,36 @@ func (s *Server) buildStatus() *PublicStatus {
 // order a user cares about: can I use it at all, then is it degraded,
 // then is it merely busy.
 func (s *Server) state(h quota.Health, pool keyring.Status, snap stats.Snapshot) (string, string) {
+	// The money verdicts, worst first. Each of them used to be the end of
+	// the service for the day.
+	money, detail := "", ""
 	switch {
 	case pool.Active == 0:
-		return StateDry, "no upstream key in the pool has credit left — bring your own key, or donate one"
+		money, detail = StateDry, "no upstream key in the pool has credit left — bring your own key, or donate one"
 	case s.upstreamDry.Load():
-		return StateDry, "DeepSeek reports the funding account is out of credit"
+		money, detail = StateDry, "DeepSeek reports the funding account is out of credit"
 	case h.TotalSpendUSD >= h.TotalBudgetUSD:
-		return StateDry, "the shared credit pool is spent — bring your own key, or donate one"
-	case !h.JournalOK:
-		return StateDegraded, "the spend journal is not writable, so requests are refused until it is"
+		money, detail = StateDry, "the shared credit pool is spent — bring your own key, or donate one"
 	case h.DaySpendUSD >= h.DailyBudgetUSD:
-		return StateDayspent, "today's shared budget is spent; it resets at 00:00 UTC"
-	case snap.Live.InFlight >= int64(s.cfg.MaxInflight):
-		return StateBusy, "every slot is in use right now; requests may queue briefly"
-	default:
-		return StateOperational, "free DeepSeek access is working — no key, no account"
+		money, detail = StateDayspent, "today's shared budget is spent; it resets at 00:00 UTC"
 	}
+
+	if money != "" && (s.free == nil || !s.free.keys.Usable()) {
+		return money, detail
+	}
+	// The journal outranks the free lane, and has to: a request that
+	// cannot be recorded is refused whether or not it would have cost
+	// anything, because unrecorded requests are how a breaker fails open.
+	if !h.JournalOK {
+		return StateDegraded, "the spend journal is not writable, so requests are refused until it is"
+	}
+	if money != "" {
+		return StateFreeOnly, "the shared credit is spent — chat still works, carried by a free upstream that is slower to admit you; the other endpoints need your own key until 00:00 UTC"
+	}
+	if snap.Live.InFlight >= int64(s.cfg.MaxInflight) {
+		return StateBusy, "every slot is in use right now; requests may queue briefly"
+	}
+	return StateOperational, "free DeepSeek access is working — no key, no account"
 }
 
 // shortSubject cuts an id down to something that identifies a row on a

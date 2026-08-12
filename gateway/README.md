@@ -20,9 +20,10 @@ token, and stops when the day's budget is gone.
 ## The shape of it
 
 ```
-  deepseek CLI  ─┐
-                 ├─→  dsgate  ──(our key + user_id)──→  api.deepseek.com
-  playground    ─┘     │
+                                       chat ─→ opencode.ai/zen  (free, flaky)
+  deepseek CLI  ─┐                       ↑         │ refused
+                 ├─→  dsgate  ───────────┴─────────┴──→  api.deepseek.com
+  playground    ─┘     │                                   (our key + user_id)
    (browser)           └── journal.jsonl   counts only, never prompts
 ```
 
@@ -47,6 +48,38 @@ safety attribution, **KV cache isolation between strangers**, and
 per-user scheduling. It is overwritten rather than honoured because a
 client that could choose its own could aim at someone else's cache
 namespace.
+
+## The free lane
+
+Set `OPENCODE_API_KEY` and chat requests go to [OpenCode
+Zen](https://opencode.ai/docs/zen)'s `deepseek-v4-flash-free` first, which
+costs this service nothing. Anything it refuses falls through to the
+DeepSeek key before the caller sees a byte, so the worst case is one extra
+round trip — measured at ~0.65s for a refusal against ~1.8s for an answer.
+
+Measured against Zen on 2026-08-12, which is why the lane is this narrow:
+
+| | |
+|---|---|
+| refusal rate | ~20% of sequential requests, `429 FreeUsageLimitError` |
+| `/chat/completions` | works; usage reported streamed and buffered |
+| `/responses` | answers, but rejects a server-side `web_search` tool |
+| `/anthropic/v1/messages`, `/beta/completions`, `/user/balance` | 404 |
+| the model's name there | `deepseek-v4-flash-free`, aliased at the last moment |
+| privacy | Zen says free-lane data **may be used to improve the model** |
+
+So it carries `chat` and nothing else. FIM, the Anthropic and Responses
+formats, web search and the model list all go straight to DeepSeek, and
+the caller's contract does not change: they ask for `deepseek-v4-flash`,
+by that name, on every route.
+
+The interesting consequence is what happens when the money runs out.
+A request that the free lane can serve is admitted **past** the daily
+budget and the credit pool, because it cannot spend either — so the day's
+budget being gone downgrades the service to chat-on-the-free-lane
+(`state: free_upstream_only`) instead of ending it until 00:00 UTC. Such
+a request is bound to that one upstream and is never retried against the
+paid key; that invariant is what makes skipping the ceiling sound.
 
 ## What bounds the spend
 

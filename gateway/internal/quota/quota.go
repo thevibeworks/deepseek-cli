@@ -89,6 +89,14 @@ type UserCaps struct {
 type Admission struct {
 	ReserveUSD float64
 	Search     bool
+	// Free means this request is bound to an upstream that costs the
+	// credit pool nothing, and may not fall back to one that does. It is
+	// the only thing that passes the service-wide money ceilings — which
+	// is sound precisely because the request cannot spend money, and
+	// unsound the moment a caller can set it without that guarantee
+	// holding. The per-user limits below still apply: they are abuse
+	// control, and abuse is not free just because the tokens are.
+	Free bool
 }
 
 // Reason classifies a refusal so the HTTP layer can pick a status code
@@ -527,6 +535,12 @@ func (l *Ledger) reopenLocked() {
 // always much smaller) cost is what sticks.
 func (l *Ledger) Admit(subject string, req Admission) error {
 	reserveUSD := req.ReserveUSD
+	if req.Free {
+		// A free request reserves nothing, whatever the caller passed.
+		// The ceilings are skipped below on the strength of this, so it
+		// is enforced here rather than trusted.
+		reserveUSD = 0
+	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.rollLocked()
@@ -546,14 +560,21 @@ func (l *Ledger) Admit(subject string, req Admission) error {
 	// Refused when already spent out, and also when this request's
 	// worst case would break the ceiling — both conditions, because a
 	// pool that is exactly empty must refuse even a zero-cost admit.
-	projected := l.reserved + reserveUSD
-	if spent := l.priorSpend + l.daySpend; spent >= l.limits.TotalBudgetUSD ||
-		spent+projected > l.limits.TotalBudgetUSD {
-		return &LimitError{Reason: ReasonCredits}
-	}
-	if l.daySpend >= l.limits.DailyBudgetUSD ||
-		l.daySpend+projected > l.limits.DailyBudgetUSD {
-		return &LimitError{Reason: ReasonDailyBudget, ResetsAt: reset}
+	//
+	// A free request skips them entirely. This is what turns the day's
+	// budget from the end of the free tier into a downgrade: once the
+	// money is gone the service keeps answering on the free upstream,
+	// slower and less reliably, rather than going dark until 00:00 UTC.
+	if !req.Free {
+		projected := l.reserved + reserveUSD
+		if spent := l.priorSpend + l.daySpend; spent >= l.limits.TotalBudgetUSD ||
+			spent+projected > l.limits.TotalBudgetUSD {
+			return &LimitError{Reason: ReasonCredits}
+		}
+		if l.daySpend >= l.limits.DailyBudgetUSD ||
+			l.daySpend+projected > l.limits.DailyBudgetUSD {
+			return &LimitError{Reason: ReasonDailyBudget, ResetsAt: reset}
+		}
 	}
 
 	a := l.accountLocked(subject)

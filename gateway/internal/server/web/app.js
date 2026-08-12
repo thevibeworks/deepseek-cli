@@ -98,7 +98,8 @@
     busy: ["busy", "st-busy"],
     degraded: ["degraded", "st-busy"],
     day_exhausted: ["daily budget exhausted", "st-warn"],
-    credit_exhausted: ["credit pool exhausted", "st-warn"]
+    credit_exhausted: ["credit pool exhausted", "st-warn"],
+    free_upstream_only: ["free upstream only", "st-warn"]
   };
 
   function setPill(label, cls) {
@@ -411,6 +412,7 @@
     else if (st === "day_exhausted") { usText = "today's budget spent"; usCls = "warn"; }
     else if (st === "credit_exhausted") { usText = "credit pool empty"; usCls = "warn"; }
     else if (st === "busy") { usText = "busy — requests queue"; usCls = "warn"; }
+    else if (st === "free_upstream_only") { usText = "chat only, on the free upstream"; usCls = "warn"; }
     else if (st !== "operational") { usText = String(d.state || "unknown"); usCls = "idle"; }
     setText("up-us", usText);
     setDot("up-us-dot", usCls);
@@ -428,6 +430,18 @@
         (u.last_fault ? " (" + u.last_fault + ")" : ""));
     } else if (u.faults > 0) {
       bits.push(fmtInt(u.faults) + " of " + fmtInt(u.calls) + " calls failed since boot");
+    }
+    // The free lane, when there is one. Its share is the honest answer to
+    // "how long can this last": traffic it carries costs the pool nothing.
+    var f = d.free_lane;
+    var row = $("up-free-row");
+    if (row) row.style.display = f ? "" : "none";
+    if (f) {
+      setText("up-free", f.available ? "carrying " + fmtInt(f.served_pct) + "% of chat" : "not available");
+      setDot("up-free-dot", f.available ? (f.served_pct >= 50 ? "ok" : "warn") : "idle");
+      if (f.fell_back > 0) {
+        bits.push(fmtInt(f.fell_back) + " request" + (f.fell_back === 1 ? "" : "s") + " fell back to the paid key");
+      }
     }
     setText("up-note", bits.length ? bits.join(" · ") : "nothing forwarded since this process started");
   }

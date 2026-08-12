@@ -24,6 +24,24 @@ DEEPSEEK_FREE_URL=http://localhost:8787 deepseek chat "hello"
 
 `dsgate --help` prints every setting and its default.
 
+## Spending less of it
+
+```bash
+DSGATE_UPSTREAM_KEY=sk-... OPENCODE_API_KEY=... dsgate
+```
+
+With a [Zen](https://opencode.ai/docs/zen) key, chat requests go to its
+free DeepSeek model first and cost nothing; what it refuses — roughly one
+request in five — falls back to the DeepSeek key before the caller sees
+anything. `GET /v1/status` reports the share it is carrying under
+`free_lane`, and the log line at boot says whether it is on at all.
+
+Two things to know before turning it on. Zen's free lane says the prompts
+it sees **may be used to improve the model**, which is a different promise
+from the one the paid path makes, so say so wherever you tell users where
+their prompts go. And it only carries `chat`: FIM, the Anthropic and
+Responses formats, and web search still spend real credit.
+
 ## Docker
 
 ```bash
