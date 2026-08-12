@@ -43,7 +43,8 @@ speaks. Two things live here and nowhere else in the DeepSeek API:
 JSON Schema structured output, and web_search, a tool DeepSeek runs
 server-side.
 
-Only deepseek-v4-flash is supported by this endpoint today.
+Both models are accepted since V4-Pro's official release
+(2026-08-12); the endpoint was flash-only before that.
 
   deepseek respond "what shipped in Go 1.26" --web-search
   deepseek respond "extract the versions" --schema @versions.json --json`),
