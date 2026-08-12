@@ -761,7 +761,8 @@ whole API that this CLI can &ldquo;run&rdquo; for you, because DeepSeek runs
 it. The API ignores the OpenAI knobs (<code>search_context_size</code>,
 <code>user_location</code>), and in multi-turn use the server restores
 search results replayed from earlier turns by itself.</p>
-<p>Flash only, for now.</p>
+<p>Both models, since V4-Pro's official release &mdash; it was flash-only
+before 2026-08-12.</p>
 
 <h2 id="fim">fim</h2>
 <p><code>POST /beta/completions</code> &mdash; give it a prefix and an optional
@@ -928,7 +929,7 @@ without code changes. They are not interchangeable.</p>
 <tr><th>JSON Schema output</th><td>&mdash;</td><td>&mdash;</td><td><strong>yes</strong></td><td>&mdash;</td></tr>
 <tr><th>Server-side web search</th><td>&mdash;</td><td>&mdash;</td><td><strong>yes</strong></td><td>&mdash;</td></tr>
 <tr><th>Prefix completion</th><td><strong>yes</strong> (beta path)</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td></tr>
-<tr><th>Models</th><td>both</td><td>both</td><td>flash only</td><td>both</td></tr>
+<tr><th>Models</th><td>both</td><td>both</td><td>both</td><td>both</td></tr>
 <tr><th>Stream terminator</th><td><code>data: [DONE]</code></td><td><code>message_stop</code></td><td><code>response.completed</code></td><td><code>data: [DONE]</code></td></tr>
 </tbody>
 </table>
