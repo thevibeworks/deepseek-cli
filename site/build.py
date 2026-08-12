@@ -1161,10 +1161,12 @@ a completion, not for bookkeeping.</p>
 PAGES.append(dict(
     slug="news/",
     crumb="news",
-    title="DeepSeek API news — the announced price rise, peak-hour pricing, releases",
-    description="What is changing in the DeepSeek API: an across-the-board price increase announced with no date yet, the 2x peak-hour pricing policy, V4-Flash's official release — and what each one does to the cost of a call.",
-    keywords="deepseek api price increase, deepseek price rise 2026, deepseek peak hour pricing, deepseek off-peak pricing, deepseek api news, deepseek api changelog, deepseek v4 flash release, deepseek pricing change",
+    title="DeepSeek API news — V4-Pro GA, the announced price rise, releases",
+    description="What is changing in the DeepSeek API: V4-Pro's official release (DeepSeek-V4-Pro-0813), an across-the-board price increase announced with no date yet, the 2x peak-hour pricing policy, V4-Flash's official release — and what each one does to the cost of a call.",
+    keywords="deepseek v4 pro release, deepseek v4 pro ga, deepseek-v4-pro-0813, deepseek api price increase, deepseek price rise 2026, deepseek peak hour pricing, deepseek api news, deepseek api changelog, deepseek v4 flash release, deepseek pricing change",
     jsonld=faq([
+        ("Is DeepSeek V4-Pro officially released?",
+         "Yes. On 2026-08-12 the model version on DeepSeek's Models & Pricing page changed to DeepSeek-V4-Pro-0813, ending the preview that had run since 2026-04-24. The model ID is unchanged (deepseek-v4-pro), the rate card is unchanged, and the release focuses on agentic post-training rather than new pretraining."),
         ("Is DeepSeek raising its API prices?",
          "Yes, a rise is announced but not yet in effect. On 2026-08-06 (Beijing time) DeepSeek posted a notice in the platform console and emailed API account holders saying all API services will be repriced in the near term and that the increase is expected to be substantial, advising developers to plan call volume and top-ups accordingly. No new rate card and no effective date have been published. Separately, a 2x peak-hour pricing policy has been announced since June 2026, also without an effective date."),
         ("When does DeepSeek's peak-hour pricing start?",
@@ -1180,6 +1182,27 @@ PAGES.append(dict(
 cost of a call. Curated from official announcements and checked against the
 live API where that is possible; the in-terminal feed is
 <code>ds docs changelog</code>.</p>
+
+<h2 id="v4-pro">2026-08-12 &middot; V4-Pro official release (0813)</h2>
+<p>The preview is over. The
+<a href="{{docs}}/quick_start/pricing">Models &amp; Pricing page</a> now lists
+the model version as <strong>DeepSeek-V4-Pro-0813</strong> &mdash; a quiet
+table-cell change, no news post upstream. The model ID stays
+<code>deepseek-v4-pro</code>, the specs stay 1M context and 384K max output,
+and the rate card stays where it has been since 2026-08-02.</p>
+<p>What changed is the checkpoint. Like Flash's 0731 release, the GA build is
+re-post-trained for agent work; DeepSeek's launch-day numbers circulating in
+the community put Terminal-Bench 2.1 at ~87.9 (preview: 72.1), DeepSWE at
+~62.7 (preview: 12.8) and Toolathlon-Verified at ~74.1 (preview: 55.9).
+Jumps that size are post-training and harness work, not a new base model
+&mdash; and none of them are independently verified yet, so treat the
+preview numbers as the floor and these as the claim.</p>
+<p><strong>What it changes here: nothing to do.</strong> Anything already
+sending <code>deepseek-v4-pro</code> &mdash; <code>ds chat -m
+deepseek-v4-pro</code>, the <code>claude-opus-*</code> remap on the
+<a href="{{root}}formats/">Anthropic format</a> &mdash; has been on the new
+checkpoint since the cell changed. Same price, stronger model; the
+<a href="{{root}}cost/">estimates</a> already price it correctly.</p>
 
 <h2 id="price-rise">2026-08-06 &middot; a broad price rise is coming<span class="chip warn">date tba</span></h2>
 <p>DeepSeek posted a notice in the
