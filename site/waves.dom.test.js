@@ -9,7 +9,7 @@
 //
 // The 2D context is a recorder. Every call lands in a list with the
 // save/restore depth it happened at, which is enough to tell the whale
-// (drawn inside a transform) from the water (drawn outside one) — and to
+// (drawn inside a transform) from the water (drawn outside one) – and to
 // catch a missing restore, which would leak the whale's rotation onto
 // every layer in front of it.
 //
@@ -37,7 +37,7 @@ function check(name, ok, detail) {
 // A real CanvasGradient throws on a colour it cannot parse, and a real
 // fillStyle silently ignores one. The first version of this shim accepted
 // anything, so it happily "painted" the string
-// "light-dark(#bfe4ef, #0a4d63)" — which is what getComputedStyle hands
+// "light-dark(#bfe4ef, #0a4d63)" – which is what getComputedStyle hands
 // back for every token on this site, because custom properties are
 // substituted lazily and nothing resolves light-dark() until it is used in
 // a real property. Every frame threw in the browser and the page shipped
@@ -153,7 +153,7 @@ function makeWorld(opts) {
     gauges: [],
     createElement(tag) { return makeEl(tag, doc); },
     // The page holds two kinds of thing waves.js goes looking for, and
-    // they are not the same list — handing the oceans back for every
+    // they are not the same list – handing the oceans back for every
     // selector would have the gauge lookup find canvases.
     querySelectorAll(sel) {
       return String(sel).indexOf('depth-gauge') >= 0 ? doc.gauges : doc.oceans;
@@ -337,7 +337,7 @@ console.log('draw order');
   // A save without its restore leaks the whale's rotation onto every
   // layer after it, and the water would visibly tilt.
   check('every save is restored', sea.canvas.ctx.depth === 0, String(sea.canvas.ctx.depth));
-  // Not ops[0] — the constructor's setTransform lands before any frame.
+  // Not ops[0] – the constructor's setTransform lands before any frame.
   // What matters is that nothing is painted onto the previous frame.
   const paints = ['fill', 'fillPath', 'fillRect', 'stroke'];
   check('nothing is painted before the frame is cleared',
@@ -439,8 +439,8 @@ console.log('\nstars');
 }
 
 {
-  // The light theme resolves them to transparent — the fallback the test
-  // world hands back by default — and the pass is skipped whole.
+  // The light theme resolves them to transparent – the fallback the test
+  // world hands back by default – and the pass is skipped whole.
   const world = makeWorld();
   world.ocean({});
   const W = world.load();
@@ -656,7 +656,7 @@ console.log('\nseek');
 
 {
   // The return. A ping aimed at where the whale is has to light it up
-  // when the ring gets there — and not before, which is the half that
+  // when the ring gets there – and not before, which is the half that
   // makes it read as an echo rather than a highlight.
   const world = makeWorld();
   world.ocean({});

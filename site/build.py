@@ -77,7 +77,7 @@ NAV = [
 #
 # THEME_INIT runs in <head>, before the first paint, so a reader who chose
 # light does not get a black flash on every navigation. It must therefore
-# be inline and tiny — an external file would be a blocking round trip.
+# be inline and tiny – an external file would be a blocking round trip.
 # It touches only documentElement, which exists by then.
 #
 # THEME_TOGGLE runs at the end of <body>, where the button exists. It also
@@ -104,7 +104,7 @@ THEME_TOGGLE = """
     else document.documentElement.dataset.theme = v;
     b.querySelector('.val').textContent = v;
     // The button reads "theme: dark" to a screen reader, and announcing
-    // the change is the whole feedback — the visual change is silent.
+    // the change is the whole feedback – the visual change is silent.
     b.setAttribute('aria-label', 'Theme: ' + v + '. Click to change.');
   };
   b.hidden = false;
@@ -179,7 +179,7 @@ def head(*, slug, title, description, keywords, jsonld, crumb_title,
 <meta property="og:image" content="{OG_IMAGE}">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="deepseek-cli — the whole DeepSeek API from the terminal">
+<meta property="og:image:alt" content="deepseek-cli: the whole DeepSeek API from the terminal">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="{html.escape(title)}">
 <meta name="twitter:description" content="{html.escape(description)}">
@@ -204,8 +204,8 @@ def head(*, slug, title, description, keywords, jsonld, crumb_title,
     <a class="brand" href="{root or './'}">
       <span class="caret">&gt;</span><svg class="mark" viewBox="0 0 63.1196 46.4033" width="23" height="17" aria-hidden="true"><path d="M62.4575 3.89441C61.7888 3.56726 61.501 4.1908 61.1101 4.50769C60.9763 4.60999 60.863 4.7428 60.75 4.86548C59.7727 5.9082 58.6311 6.59302 57.1394 6.51123C54.9587 6.38855 53.0969 7.07349 51.4512 8.73975C51.1013 6.68506 49.939 5.45837 48.1699 4.67126C47.2441 4.26233 46.3081 3.85352 45.6599 2.96411C45.2073 2.33032 45.084 1.625 44.8577 0.929932C44.7136 0.510864 44.5696 0.081543 44.0862 0.0098877C43.5615 -0.0718994 43.3557 0.367676 43.1501 0.735718C42.3271 2.2384 42.0083 3.89441 42.0391 5.5708C42.1111 9.34277 43.7056 12.3481 46.8738 14.4846C47.2336 14.73 47.3264 14.9753 47.2131 15.333C46.9971 16.0691 46.74 16.7847 46.5137 17.5206C46.3696 17.9908 46.1538 18.093 45.6497 17.8887C43.9114 17.1628 42.4094 16.0895 41.0825 14.7913C38.8298 12.6139 36.7932 10.2117 34.2524 8.33081C33.6558 7.89124 33.0593 7.48242 32.4421 7.09399C29.8499 4.57922 32.7815 2.5144 33.4604 2.26904C34.1702 2.01343 33.7073 1.1344 31.4133 1.14465C29.1196 1.15479 27.0212 1.92151 24.3467 2.94373C23.9558 3.09705 23.5444 3.20947 23.1226 3.30151C20.6951 2.84143 18.1748 2.73926 15.5415 3.03577C10.5835 3.58777 6.62329 5.92859 3.7124 9.92554C0.215088 14.73 -0.60791 20.1886 0.400146 25.8824C1.45972 31.8828 4.5249 36.8508 9.23608 40.7354C14.1221 44.7629 19.7488 46.7357 26.1675 46.3575C30.0659 46.1327 34.4067 45.6113 39.303 41.4713C40.5374 42.0847 41.8335 42.33 43.9834 42.514C45.6394 42.6674 47.2336 42.4323 48.468 42.1766C50.4019 41.7678 50.2683 39.9789 49.5688 39.6517C43.9009 37.0144 45.1455 38.0878 44.0142 37.2189C46.8943 33.8148 51.2351 30.278 52.9324 18.8188C53.0662 17.9091 52.9529 17.3367 52.9324 16.6006C52.9221 16.1509 53.0249 15.9771 53.5393 15.9259C54.9587 15.7625 56.3372 15.3739 57.6023 14.6788C61.2747 12.6753 62.7559 9.38367 63.1055 5.43799C63.157 4.83484 63.0952 4.2113 62.4575 3.89441ZM30.4568 39.4065C24.9639 35.0927 22.2998 33.6718 21.199 33.7332C20.1704 33.7944 20.3557 34.97 20.5818 35.7367C20.8186 36.493 21.1272 37.0144 21.5591 37.6788C21.8574 38.1184 22.0632 38.7727 21.2607 39.2633C19.4915 40.3571 16.416 38.8953 16.272 38.8237C12.6924 36.718 9.69897 33.9375 7.59033 30.1349C5.55347 26.4753 4.37061 22.5499 4.17529 18.3589C4.12378 17.3468 4.42212 16.989 5.43018 16.8051C6.75708 16.5597 8.12524 16.5087 9.45215 16.7029C15.0581 17.5206 19.8311 20.025 23.8323 23.9913C26.116 26.2504 27.844 28.9491 29.6235 31.5864C31.5164 34.3873 33.553 37.0553 36.145 39.2429C37.0605 40.0095 37.791 40.5922 38.4905 41.0215C36.3816 41.2567 32.8638 41.3077 30.4568 39.4065ZM33.0901 22.4886C33.0901 22.0388 33.4502 21.681 33.9026 21.681C34.0056 21.681 34.0981 21.7015 34.1804 21.7322C34.2935 21.7731 34.3965 21.8344 34.4788 21.9264C34.6228 22.0695 34.7051 22.2739 34.7051 22.4886C34.7051 22.9384 34.345 23.2961 33.8923 23.2961C33.4397 23.2961 33.0901 22.9384 33.0901 22.4886ZM41.2676 26.6798C40.7432 26.8944 40.2185 27.0784 39.7144 27.0989C38.9326 27.1398 38.0789 26.8229 37.616 26.4344C36.896 25.8313 36.3816 25.494 36.1658 24.441C36.073 23.9913 36.1245 23.2961 36.2068 22.8975C36.3921 22.0388 36.1863 21.4868 35.5793 20.986C35.0857 20.577 34.4583 20.4646 33.769 20.4646C33.5117 20.4646 33.2751 20.3522 33.1003 20.2601C32.8123 20.1171 32.5757 19.7593 32.802 19.3197C32.874 19.1766 33.2239 18.8291 33.3062 18.7677C34.2422 18.2362 35.3223 18.4099 36.3201 18.8086C37.2458 19.1869 37.9453 19.882 38.9534 20.8633C39.9819 22.0491 40.167 22.3762 40.7534 23.2655C41.2163 23.9607 41.6379 24.6761 41.926 25.494C42.1008 26.0051 41.8745 26.4242 41.2676 26.6798Z"/></svg><span class="org">thevibeworks/</span><span class="name">deepseek-cli</span>
     </a>
-    <!-- Nav and toggle travel together — they are the controls end of the
-         masthead — but the toggle is beside the nav rather than inside it.
+    <!-- Nav and toggle travel together – they are the controls end of the
+         masthead – but the toggle is beside the nav rather than inside it.
          Two reasons, and the second is the load-bearing one: a theme
          preference is not a section of the site, and on a phone the nav
          becomes a scrolling strip with a mask on it, which would take the
@@ -275,7 +275,7 @@ FOOT = """  </div>
       <a href="{site}/llms.txt">llms.txt</a> &middot;
       <a href="https://thevibeworks.github.io/">thevibeworks</a>
     </span>
-    <span>unofficial &mdash; not affiliated with DeepSeek</span>
+    <span>unofficial &ndash; not affiliated with DeepSeek</span>
   </div>
 </footer>
 <script>
@@ -365,15 +365,15 @@ PAGES = []
 
 PAGES.append(dict(
     slug="",
-    title="deepseek-cli — the whole DeepSeek API from the terminal",
-    description="A single Go binary for every DeepSeek API: chat completions in OpenAI, Anthropic and Responses formats, FIM, models and balance — with multi-turn that survives the reasoning round-trip and per-call cost accounting.",
+    title="deepseek-cli: the whole DeepSeek API from the terminal",
+    description="A single Go binary for every DeepSeek API: chat completions in OpenAI, Anthropic and Responses formats, FIM, models and balance, with multi-turn that survives the reasoning round-trip and per-call cost accounting.",
     keywords="deepseek cli, deepseek api, deepseek command line, deepseek-v4-flash, deepseek-v4-pro, deepseek anthropic api, deepseek responses api, deepseek context cache, deepseek pricing, llm cli",
     jsonld=SOFTWARE_JSONLD,
     body="""
 <section class="hero">
 <h1><span class="caret">&gt;</span> deepseek-cli</h1>
 <p class="lede">DeepSeek serves the same two models through four different wire
-formats. Every other client picks one. This speaks all four &mdash; from one
+formats. Every other client picks one. This speaks all four &ndash; from one
 binary, with the multi-turn bookkeeping kept straight and a running tally of
 what each call cost.</p>
 
@@ -397,7 +397,7 @@ what each call cost.</p>
 <div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="title">~/work</span></div>
 <pre><code><span class="p">$</span> ds chat <span class="w">"explain this diff"</span> <span class="k">--file</span> changes.patch
 <span class="o">The patch swaps the retry loop for exponential backoff, and stops
-retrying 4xx responses &mdash; those would fail identically on a second try.</span>
+retrying 4xx responses &ndash; those would fail identically on a second try.</span>
 <span class="c">&middot; flash &middot; 3.2k in (87% cached) &middot; 412 out (180 think) &middot; ~$0.000178 &middot; 2.1s</span></code></pre>
 </div>
 
@@ -423,11 +423,11 @@ this project. No account, no API key.</span>
 
 <span class="p">$</span> deepseek chat <span class="w">"why is the sky blue"</span>
 <span class="o">Sunlight is scattered by the atmosphere, and shorter wavelengths scatter
-far more &mdash; Rayleigh scattering.</span>
+far more &ndash; Rayleigh scattering.</span>
 <span class="c">&middot; flash &middot; 93 in &middot; 46 out (7 think) &middot; ~$0.000026 &middot; 1.56s</span></code></pre>
 </div>
 
-<p>About a second of CPU stands in for the signup &mdash; a proof-of-work
+<p>About a second of CPU stands in for the signup &ndash; a proof-of-work
 puzzle, which is the whole enrolment. No email, no card, no dashboard. There is
 a <a href="{{root}}playground/">browser playground</a> on the same free tier
 that shows you the equivalent command for whatever you set up in it.</p>
@@ -436,7 +436,7 @@ that shows you the equivalent command for whatever you set up in it.</p>
 one rather than a way around having one. The gateway is
 <a href="{{repo}}/tree/main/gateway">in the repository</a> and meant to be
 self-hostable; its <a href="{{repo}}/blob/main/gateway/DESIGN.md">design
-notes</a> include the part most services leave out &mdash; why per-user quota
+notes</a> include the part most services leave out &ndash; why per-user quota
 is <em>not</em> what keeps it solvent, and what is.</p>
 
 <h2 id="why">Why this exists</h2>
@@ -448,7 +448,7 @@ and they are the reason this is not a shell function around <code>curl</code>.</
 <h3>Multi-turn that does not 400</h3>
 <p>With tools in play, DeepSeek rejects any request that fails to replay every
 assistant <code>reasoning_content</code>. Without tools it ignores the same
-field &mdash; so sending it just burns input tokens. <strong>Sessions get both
+field &ndash; so sending it just burns input tokens. <strong>Sessions get both
 halves right</strong>, and you never think about it.</p>
 </li>
 <li class="card">
@@ -469,7 +469,7 @@ Claude Code or Codex at DeepSeek and something behaves oddly.</p>
 <p>Every page of DeepSeek's API docs lives <em>inside</em> the binary, plus
 the FAQ that is otherwise locked in a JavaScript bundle.
 <code>ds docs ask</code> answers from them and
-<strong>cites the page</strong> &mdash; so the answer is checkable against a
+<strong>cites the page</strong> &ndash; so the answer is checkable against a
 URL, not whatever a model remembers about an API that changes monthly.</p>
 </li>
 <li class="card">
@@ -509,8 +509,8 @@ or one specific endpoint.</p>
 
 <h2 id="selfhost">The API, explaining itself</h2>
 <p>The tool that talks to an API should be able to answer questions about
-it. This one carries DeepSeek's own documentation &mdash; 67 pages,
-about 85KB compressed &mdash; and asks DeepSeek to answer from it.</p>
+it. This one carries DeepSeek's own documentation &ndash; 67 pages,
+about 85KB compressed &ndash; and asks DeepSeek to answer from it.</p>
 
 <div class="term">
 <div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="title">ds docs ask</span></div>
@@ -524,7 +524,7 @@ turns, or the API returns a 400 error (guides/thinking_mode).</span>
 
 <p>Pages are selected locally and sent whole, with an instruction to answer
 only from them. The same pages lead every request, so the second question
-about an area <strong>hits the context cache</strong> &mdash; which is the
+about an area <strong>hits the context cache</strong> &ndash; which is the
 cost feature on this site demonstrating itself. Search, read and the
 change log cost nothing and need no network:</p>
 
@@ -544,7 +544,7 @@ Full reference on the <a href="{{root}}commands/">commands page</a>.</p>
 <tr><td><code>chat</code></td><td><code>POST /chat/completions</code></td><td>The default. OpenAI format, the one most tools speak.</td></tr>
 <tr><td><code>anthropic</code></td><td><code>POST /anthropic/v1/messages</code></td><td>What Claude Code and the Anthropic SDKs speak.</td></tr>
 <tr><td><code>respond</code></td><td><code>POST /responses</code></td><td>What Codex speaks. JSON Schema output and server-side web search live only here.</td></tr>
-<tr><td><code>fim</code></td><td><code>POST /beta/completions</code></td><td>Fill in the middle &mdash; the shape editors use for inline completion.</td></tr>
+<tr><td><code>fim</code></td><td><code>POST /beta/completions</code></td><td>Fill in the middle &ndash; the shape editors use for inline completion.</td></tr>
 <tr><td><code>models</code></td><td><code>GET /models</code></td><td>Available models, joined with the published rate card.</td></tr>
 <tr><td><code>balance</code></td><td><code>GET /user/balance</code></td><td>What is left, per currency.</td></tr>
 <tr><td><code>tokens</code></td><td><code>POST /beta/completions</code></td><td>Exact token counts, from the model's own tokenizer.</td></tr>
@@ -553,7 +553,7 @@ Full reference on the <a href="{{root}}commands/">commands page</a>.</p>
 <tr><td><code>session</code></td><td><em>local</em></td><td>The conversations <code>chat --continue</code> replays.</td></tr>
 <tr><td><code>status</code></td><td><code>GET /models</code>, <code>/user/balance</code></td><td>Is it up, for this key, from here. Costs nothing.</td></tr>
 <tr><td><code>check</code></td><td><em>all six</em></td><td>Preflight.</td></tr>
-<tr><td><code>raw</code></td><td><em>anything</em></td><td>Escape hatch &mdash; any path, with auth and retries.</td></tr>
+<tr><td><code>raw</code></td><td><em>anything</em></td><td>Escape hatch &ndash; any path, with auth and retries.</td></tr>
 </tbody>
 </table>
 </div>
@@ -571,7 +571,7 @@ awareness, no loop. It sends a request and shows you the response.</li>
 USD rate card, not from your invoice. Token counts are exact, and they are what
 gets stored, so old calls can be repriced when the card changes.</li>
 <li><strong>Text only.</strong> DeepSeek rejects image, document and
-search-result content blocks in every format &mdash; that is the API, not a
+search-result content blocks in every format &ndash; that is the API, not a
 gap here.</li>
 </ul>
 """,
@@ -580,7 +580,7 @@ gap here.</li>
 PAGES.append(dict(
     slug="install/",
     crumb="install",
-    title="Install deepseek-cli — binaries, Go, and the ds alias",
+    title="Install deepseek-cli: binaries, Go, and the ds alias",
     description="Install the deepseek CLI on macOS, Linux or Windows: one-line installer, release binaries, or go install. Covers the ds and dscli aliases, API key configuration, and shell completion.",
     keywords="install deepseek cli, deepseek cli download, deepseek cli macos, deepseek cli linux, go install deepseek, deepseek api key setup, ds alias",
     jsonld=tech_article("Install deepseek-cli", "How to install the deepseek CLI and configure an API key.", "install/"),
@@ -595,8 +595,8 @@ and both aliases:</p>
 <pre><code>curl -sL {{repo}}/raw/main/install.sh | sh</code></pre>
 <p class="small">Installs to <code>/usr/local/bin</code>; set
 <code>PREFIX=$HOME/.local</code> to install without <code>sudo</code>. If you
-would rather read it first &mdash; and you should, for anything piped to a
-shell &mdash; it is <a href="{{repo}}/blob/main/install.sh">forty lines</a>.</p>
+would rather read it first &ndash; and you should, for anything piped to a
+shell &ndash; it is <a href="{{repo}}/blob/main/install.sh">forty lines</a>.</p>
 
 <h2 id="binaries">Release binaries</h2>
 <p>From <a href="{{repo}}/releases">Releases</a>, for macOS, Linux and Windows
@@ -643,7 +643,7 @@ then the file.</p>
 <table>
 <thead><tr><th>Variable</th><th>Purpose</th><th>Default</th></tr></thead>
 <tbody>
-<tr><td><code>DEEPSEEK_API_KEY</code></td><td>API key</td><td>&mdash;</td></tr>
+<tr><td><code>DEEPSEEK_API_KEY</code></td><td>API key</td><td>&ndash;</td></tr>
 <tr><td><code>DEEPSEEK_BASE_URL</code></td><td>Override the base URL for proxies and gateways</td><td><code>https://api.deepseek.com</code></td></tr>
 <tr><td><code>DEEPSEEK_CONFIG_DIR</code></td><td>Where the key file lives</td><td><code>~/.config/deepseek</code></td></tr>
 <tr><td><code>DEEPSEEK_STATE_DIR</code></td><td>Usage ledger and saved conversations</td><td><code>~/.local/state/deepseek</code></td></tr>
@@ -661,7 +661,7 @@ host instead of DeepSeek. Only point it at a gateway you control.</p>
 
 <h2 id="verify">Verify</h2>
 <pre><code>ds check</code></pre>
-<p>Calls all six endpoints once with a one-token cap &mdash; the whole check
+<p>Calls all six endpoints once with a one-token cap &ndash; the whole check
 costs a fraction of a cent. Exit code 2 means the key is missing or rejected,
 3 means the balance is exhausted.</p>
 
@@ -675,7 +675,7 @@ ds completion fish &gt; ~/.config/fish/completions/deepseek.fish</code></pre>
 PAGES.append(dict(
     slug="commands/",
     crumb="commands",
-    title="deepseek-cli command reference — chat, anthropic, respond, fim, usage",
+    title="deepseek-cli command reference: chat, anthropic, respond, fim, usage",
     description="Full reference for every deepseek CLI command and flag: chat completions, Anthropic Messages, OpenAI Responses, FIM, models, balance, usage ledger, sessions, check and raw, plus exit codes.",
     keywords="deepseek cli commands, deepseek chat completions cli, deepseek fim completion, deepseek cli flags, deepseek cli reference, deepseek json output, deepseek cli exit codes",
     jsonld=tech_article("deepseek-cli command reference", "Every command and flag in the deepseek CLI.", "commands/"),
@@ -686,7 +686,7 @@ local state, two are health checks, one is an escape hatch.
 <code>--help</code> on any of them carries the same detail.</p>
 
 <h2 id="chat">chat</h2>
-<p><code>POST /chat/completions</code> &mdash; the default door, and the only
+<p><code>POST /chat/completions</code> &ndash; the default door, and the only
 format that supports chat prefix completion.</p>
 <pre><code>ds chat "why is the sky blue"
 git diff | ds chat "write a commit message"
@@ -745,9 +745,9 @@ turn, instead of retyping <code>--continue</code>:</p>
 <span class="p">&rsaquo;</span> <span class="k">/model pro</span>
 <span class="c">model deepseek-v4-pro</span>
 <span class="p">&rsaquo;</span> <span class="c">^D</span>
-<span class="c">bye &mdash; 4 messages saved as "last"; resume with: deepseek chat -c</span></code></pre>
+<span class="c">bye &ndash; 4 messages saved as "last"; resume with: deepseek chat -c</span></code></pre>
 </div>
-<p>It is the same session machinery, so nothing is lost on exit &mdash;
+<p>It is the same session machinery, so nothing is lost on exit &ndash;
 <code>ds chat -c</code> resumes it and <code>ds session show last</code>
 reads it. <code>/help</code> lists the slash commands: <code>/model</code>,
 <code>/think</code>, <code>/effort</code>, <code>/system</code>,
@@ -755,18 +755,18 @@ reads it. <code>/help</code> lists the slash commands: <code>/model</code>,
 <code>/new</code>, <code>/save</code>.</p>
 <p><code>^C</code> during an answer abandons that answer and keeps the
 conversation; <code>^D</code> leaves. It needs a terminal and refuses to
-combine with <code>--json</code> &mdash; for scripted multi-turn use
+combine with <code>--json</code> &ndash; for scripted multi-turn use
 <code>--session</code>, which is what it is built on.</p>
 
 <h3 id="tools">Tools</h3>
 <pre><code>ds chat "weather in Hangzhou?" --tool @weather.json
 # tool_call call_00_hUj... get_weather({"city": "Hangzhou"})</code></pre>
-<p>One tool file works against every format &mdash; both the OpenAI
+<p>One tool file works against every format &ndash; both the OpenAI
 <code>parameters</code> and the Anthropic <code>input_schema</code> spellings
 are accepted. The calls are printed, never executed.</p>
 
 <h2 id="anthropic">anthropic</h2>
-<p><code>POST /anthropic/v1/messages</code> &mdash; the format Claude Code, the
+<p><code>POST /anthropic/v1/messages</code> &ndash; the format Claude Code, the
 Anthropic SDKs and the Claude desktop app speak.</p>
 <pre><code>ds anthropic "hello"
 ds anthropic "hello" --model claude-opus-4-1 --json</code></pre>
@@ -775,7 +775,7 @@ shows both names so the cost stays traceable to the model that actually ran.
 See <a href="{{root}}formats/">formats</a> for the mapping.</p>
 
 <h2 id="respond">respond</h2>
-<p><code>POST /responses</code> &mdash; the format Codex speaks. Two things
+<p><code>POST /responses</code> &ndash; the format Codex speaks. Two things
 live only here: JSON Schema structured output, and a <code>web_search</code>
 tool DeepSeek runs server-side.</p>
 <pre><code>ds respond "what shipped in Go 1.26" --web-search
@@ -787,11 +787,11 @@ whole API that this CLI can &ldquo;run&rdquo; for you, because DeepSeek runs
 it. The API ignores the OpenAI knobs (<code>search_context_size</code>,
 <code>user_location</code>), and in multi-turn use the server restores
 search results replayed from earlier turns by itself.</p>
-<p>Both models, since V4-Pro's official release &mdash; it was flash-only
+<p>Both models, since V4-Pro's official release &ndash; it was flash-only
 before 2026-08-12.</p>
 
 <h2 id="fim">fim</h2>
-<p><code>POST /beta/completions</code> &mdash; give it a prefix and an optional
+<p><code>POST /beta/completions</code> &ndash; give it a prefix and an optional
 suffix; it writes the middle.</p>
 <pre><code>ds fim "def add(a, b):" --suffix "    return result"
 ds fim --prefix @head.go --suffix @tail.go --max-tokens 200</code></pre>
@@ -803,7 +803,7 @@ ds fim --prefix @head.go --suffix @tail.go --max-tokens 200</code></pre>
 ds tokens --file main.go --file main_test.go
 git diff | ds tokens
 ds tokens --offline --file huge.log     # free local estimate</code></pre>
-<p>DeepSeek ships no count-tokens endpoint and no Go tokenizer &mdash; only a
+<p>DeepSeek ships no count-tokens endpoint and no Go tokenizer &ndash; only a
 Python demo and two rules of thumb. But the FIM endpoint takes a raw prompt
 with no chat template around it and reports <code>prompt_tokens</code> for
 exactly the bytes sent, plus one BOS token. Subtract the one and the count
@@ -811,7 +811,7 @@ is exact.</p>
 <p>That measurement is <strong>a real request</strong>: the text goes to
 DeepSeek and is billed as input, the same as sending it would have been.
 The cost prints on stderr every time. <code>--offline</code> uses
-DeepSeek's published character ratios instead &mdash; free, and an upper
+DeepSeek's published character ratios instead &ndash; free, and an upper
 bound that says so.</p>
 
 <h2 id="docs">docs</h2>
@@ -837,7 +837,7 @@ the snapshot is, and every page keeps the upstream URL it came from.</p>
 calls that generate no tokens, so it is free and safe to run in a loop.
 That is a different question from
 <a href="https://status.deepseek.com/">DeepSeek's incident page</a>, which
-reports outages affecting everyone &mdash; a working API behind a broken
+reports outages affecting everyone &ndash; a working API behind a broken
 proxy looks fine there and broken here.</p>
 
 <h2 id="models">models</h2>
@@ -848,7 +848,7 @@ API's list alone.</p>
 
 <h2 id="balance">balance</h2>
 <pre><code>ds balance</code></pre>
-<p>Lists every currency the account holds &mdash; a real account returns both a
+<p>Lists every currency the account holds &ndash; a real account returns both a
 USD and a CNY row. Exits 3 when exhausted, the same code a 402 produces
 anywhere else, so a script can check once up front.</p>
 
@@ -893,12 +893,12 @@ DeepSeek ships tomorrow is reachable today.</p>
 <table>
 <thead><tr><th class="num">Code</th><th>Meaning</th><th>What to do</th></tr></thead>
 <tbody>
-<tr><td class="num">0</td><td>success</td><td>&mdash;</td></tr>
+<tr><td class="num">0</td><td>success</td><td>&ndash;</td></tr>
 <tr><td class="num">1</td><td>error</td><td>Read stderr</td></tr>
 <tr><td class="num">2</td><td>auth</td><td>Key missing or rejected. Do not retry</td></tr>
 <tr><td class="num">3</td><td>no balance</td><td>Top up. Do not retry</td></tr>
 <tr><td class="num">4</td><td>rate limited</td><td>Back off, then retry</td></tr>
-<tr><td class="num">130</td><td>interrupted</td><td>&mdash;</td></tr>
+<tr><td class="num">130</td><td>interrupted</td><td>&ndash;</td></tr>
 </tbody>
 </table>
 </div>
@@ -910,7 +910,7 @@ so a non-zero exit means your own retry loop probably will not help either.</p>
 PAGES.append(dict(
     slug="formats/",
     crumb="formats",
-    title="The four DeepSeek API formats, compared — deepseek-cli",
+    title="The four DeepSeek API formats, compared: deepseek-cli",
     description="DeepSeek exposes the same two models through four API formats. What differs between /chat/completions, /anthropic/v1/messages, /responses and FIM: auth, thinking controls, tools, and the token-accounting convention that trips up cost tracking.",
     keywords="deepseek anthropic api, deepseek openai compatible, deepseek responses api, deepseek claude code, deepseek codex, deepseek api format comparison, deepseek cache_read_input_tokens, deepseek model mapping",
     jsonld=faq([
@@ -925,8 +925,8 @@ PAGES.append(dict(
     ]),
     body="""
 <h1>Four wire formats</h1>
-<p class="lede">DeepSeek exposes the same two models &mdash;
-<code>deepseek-v4-flash</code> and <code>deepseek-v4-pro</code> &mdash; through
+<p class="lede">DeepSeek exposes the same two models &ndash;
+<code>deepseek-v4-flash</code> and <code>deepseek-v4-pro</code> &ndash; through
 four different request shapes, so that existing ecosystems can point at it
 without code changes. They are not interchangeable.</p>
 
@@ -936,7 +936,7 @@ without code changes. They are not interchangeable.</p>
 <thead><tr><th>Format</th><th>Path</th><th>Reach for it when</th></tr></thead>
 <tbody>
 <tr><td><strong>OpenAI chat</strong><br><code>ds chat</code></td><td><code>/chat/completions</code></td><td>Default. Widest tool support, and the only format with chat prefix completion.</td></tr>
-<tr><td><strong>Anthropic Messages</strong><br><code>ds anthropic</code></td><td><code>/anthropic/v1/messages</code></td><td>The surrounding tooling speaks Anthropic &mdash; Claude Code, the Anthropic SDKs, the Claude desktop app.</td></tr>
+<tr><td><strong>Anthropic Messages</strong><br><code>ds anthropic</code></td><td><code>/anthropic/v1/messages</code></td><td>The surrounding tooling speaks Anthropic &ndash; Claude Code, the Anthropic SDKs, the Claude desktop app.</td></tr>
 <tr><td><strong>OpenAI Responses</strong><br><code>ds respond</code></td><td><code>/responses</code></td><td>You need JSON Schema output or server-side web search. Also what Codex speaks.</td></tr>
 <tr><td><strong>FIM</strong><br><code>ds fim</code></td><td><code>/beta/completions</code></td><td>Fill-in-the-middle code completion. No chat structure at all.</td></tr>
 </tbody>
@@ -951,10 +951,10 @@ without code changes. They are not interchangeable.</p>
 <tr><th>Auth header</th><td>Bearer</td><td><code>x-api-key</code></td><td>Bearer</td><td>Bearer</td></tr>
 <tr><th><code>max_tokens</code></th><td>optional</td><td><strong>required</strong></td><td>optional</td><td>optional</td></tr>
 <tr><th>Thinking toggle</th><td><code>thinking.type</code></td><td><code>thinking.type</code></td><td><code>reasoning.effort: none</code></td><td>never thinks</td></tr>
-<tr><th>Effort control</th><td><code>reasoning_effort</code></td><td><code>output_config.effort</code></td><td><code>reasoning.effort</code></td><td>&mdash;</td></tr>
-<tr><th>JSON Schema output</th><td>&mdash;</td><td>&mdash;</td><td><strong>yes</strong></td><td>&mdash;</td></tr>
-<tr><th>Server-side web search</th><td>&mdash;</td><td>&mdash;</td><td><strong>yes</strong></td><td>&mdash;</td></tr>
-<tr><th>Prefix completion</th><td><strong>yes</strong> (beta path)</td><td>&mdash;</td><td>&mdash;</td><td>&mdash;</td></tr>
+<tr><th>Effort control</th><td><code>reasoning_effort</code></td><td><code>output_config.effort</code></td><td><code>reasoning.effort</code></td><td>&ndash;</td></tr>
+<tr><th>JSON Schema output</th><td>&ndash;</td><td>&ndash;</td><td><strong>yes</strong></td><td>&ndash;</td></tr>
+<tr><th>Server-side web search</th><td>&ndash;</td><td>&ndash;</td><td><strong>yes</strong></td><td>&ndash;</td></tr>
+<tr><th>Prefix completion</th><td><strong>yes</strong> (beta path)</td><td>&ndash;</td><td>&ndash;</td><td>&ndash;</td></tr>
 <tr><th>Models</th><td>both</td><td>both</td><td>both</td><td>both</td></tr>
 <tr><th>Stream terminator</th><td><code>data: [DONE]</code></td><td><code>message_stop</code></td><td><code>response.completed</code></td><td><code>data: [DONE]</code></td></tr>
 </tbody>
@@ -1019,7 +1019,7 @@ you do with it on the next turn is not optional:</p>
 <li>If the request carried <code>tools</code>, every assistant message's
 <code>reasoning_content</code> <strong>must</strong> be sent back on every
 later request. Omit it and the API answers <code>400</code>.</li>
-<li>If it did not, the field is ignored server-side &mdash; so replaying it
+<li>If it did not, the field is ignored server-side &ndash; so replaying it
 spends input tokens on text the model discards.</li>
 </ul>
 <p>Sessions in this CLI keep the reasoning stored either way, and decide per
@@ -1032,7 +1032,7 @@ rejected or replaced with placeholder text in every format.</li>
 <li><strong>Thinking is on by default</strong>, and what its template costs
 depends on <code>--effort</code>: +79 input tokens on flash at the default,
 +92 at <code>max</code>, and <strong>nothing at all</strong> at
-<code>low</code> &mdash; where the model still reasons.
+<code>low</code> &ndash; where the model still reasons.
 <a href="{{root}}cost/#thinking">The measured table</a>.</li>
 <li><strong>Slow starts are normal.</strong> The API holds the connection with
 <code>: keep-alive</code> comments for up to ten minutes before inference
@@ -1046,7 +1046,7 @@ begins under load.</li>
 PAGES.append(dict(
     slug="cost/",
     crumb="cost",
-    title="What DeepSeek actually costs — cache math and a local usage ledger",
+    title="What DeepSeek actually costs: cache math and a local usage ledger",
     description="DeepSeek's context cache makes a cached input token 50x cheaper than an uncached one. How the deepseek CLI prices every call, what the local usage ledger records, and the caveats on every figure it prints.",
     keywords="deepseek pricing, deepseek api cost, deepseek context cache, deepseek cache hit tokens, deepseek token cost calculator, deepseek v4 flash price, deepseek usage tracking",
     jsonld=tech_article("What DeepSeek actually costs", "Pricing, context-cache savings, and the deepseek CLI usage ledger.", "cost/"),
@@ -1054,7 +1054,7 @@ PAGES.append(dict(
 <h1>Cost</h1>
 <p class="lede">DeepSeek's headline feature is a disk-backed context cache that
 makes a repeated prompt prefix roughly fifty times cheaper. That saving is
-invisible unless something is counting &mdash; so this counts.</p>
+invisible unless something is counting &ndash; so this counts.</p>
 
 <h2 id="card">The rate card</h2>
 <p>USD per 1M tokens, as published on 2026-08-02:</p>
@@ -1085,13 +1085,13 @@ is on screen when you pick.</p>
 </div>
 <p>A 40&times; drop, for changing nothing but sending the same prefix again.
 The practical rule: <strong>put the stable part of a prompt first</strong>
-&mdash; same system prompt, same files, in the same order &mdash; and let the
+&ndash; same system prompt, same files, in the same order &ndash; and let the
 variable part come last.</p>
 
 <h2 id="thinking">The thinking surcharge</h2>
 <p>Thinking mode is on by default and adds a fixed template to your input
 before generating a single reasoning token. The size of that template is
-<strong>constant regardless of prompt length</strong> &mdash; but it is not
+<strong>constant regardless of prompt length</strong> &ndash; but it is not
 the same at every effort level, and at the low levels it is not there at
 all while the model still reasons.</p>
 
@@ -1135,7 +1135,7 @@ ds tokens "your prompt here" -e low    # what it costs without the template</cod
  "in":3242,"cache_hit":3200,"cache_miss":42,"out":1,
  "cost_usd":0.0000109,"saved_usd":0.000439,"ms":1041}</code></pre>
 <p>Token counts are exact and are what gets stored; the cost field is a
-convenience. That is deliberate &mdash; when DeepSeek changes the rate card,
+convenience. That is deliberate &ndash; when DeepSeek changes the rate card,
 every historical row can be repriced.</p>
 
 <pre><code>ds usage                  # today
@@ -1156,7 +1156,7 @@ total              196    2.2M   77%     105k   $0.22
 </div>
 
 <p>The savings line is the one worth watching. It is what the cached tokens
-<em>would</em> have cost at the miss rate, minus what they did cost &mdash;
+<em>would</em> have cost at the miss rate, minus what they did cost &ndash;
 which is the number that tells you whether prompt structuring is paying off.</p>
 
 <h2 id="caveats">What these numbers are not</h2>
@@ -1164,7 +1164,7 @@ which is the number that tells you whether prompt structuring is paying off.</p>
 <span class="tag">read this before quoting a figure</span>
 <ul>
 <li><strong>Estimates, not invoices.</strong> Computed from the published USD
-rate card. Your account may bill in another currency &mdash;
+rate card. Your account may bill in another currency &ndash;
 <code>ds balance</code> shows which.</li>
 <li><strong>Peak pricing is not applied.</strong> DeepSeek has announced a 2&times;
 multiplier for 09:00&ndash;12:00 and 14:00&ndash;18:00 Beijing time, with no
@@ -1173,14 +1173,14 @@ is deliberately left out until the date is announced.</li>
 <li><strong>A broader repricing is coming.</strong> On 2026-08-06 DeepSeek
 gave notice in the platform console that all API services will be repriced
 soon, with a substantial rise expected and no numbers yet. Until there is a
-new published card, estimates stay on the card above &mdash; details on the
+new published card, estimates stay on the card above &ndash; details on the
 <a href="{{root}}news/">news page</a>.</li>
 <li><strong>Local only.</strong> The ledger records calls made by this CLI on
 this machine. It knows nothing about your other clients.</li>
 </ul>
 </div>
 <p><code>--no-ledger</code> skips the write, <code>--no-stats</code> hides the
-line, and neither ever fails the command that produced it &mdash; you asked for
+line, and neither ever fails the command that produced it &ndash; you asked for
 a completion, not for bookkeeping.</p>
 """,
 ))
@@ -1362,8 +1362,8 @@ cross-check a live leaderboard before betting on a single cell.</p>
 PAGES.append(dict(
     slug="news/",
     crumb="news",
-    title="DeepSeek API news — V4-Pro GA, the announced price rise, releases",
-    description="What is changing in the DeepSeek API: V4-Pro's official release (DeepSeek-V4-Pro-0813), an across-the-board price increase announced with no date yet, the 2x peak-hour pricing policy, V4-Flash's official release — and what each one does to the cost of a call.",
+    title="DeepSeek API news: V4-Pro GA, the announced price rise, releases",
+    description="What is changing in the DeepSeek API: V4-Pro's official release (DeepSeek-V4-Pro-0813), an across-the-board price increase announced with no date yet, the 2x peak-hour pricing policy, V4-Flash's official release, and what each one does to the cost of a call.",
     keywords="deepseek v4 pro release, deepseek v4 pro ga, deepseek-v4-pro-0813, deepseek api price increase, deepseek price rise 2026, deepseek peak hour pricing, deepseek api news, deepseek api changelog, deepseek v4 flash release, deepseek pricing change",
     jsonld=faq([
         ("Is DeepSeek V4-Pro officially released?",
@@ -1387,7 +1387,7 @@ live API where that is possible; the in-terminal feed is
 <h2 id="v4-pro">2026-08-12 &middot; V4-Pro official release (0813)</h2>
 <p>The preview is over. The
 <a href="{{docs}}/quick_start/pricing">Models &amp; Pricing page</a> now lists
-the model version as <strong>DeepSeek-V4-Pro-0813</strong> &mdash; a quiet
+the model version as <strong>DeepSeek-V4-Pro-0813</strong> &ndash; a quiet
 table-cell change, no news post upstream. The model ID stays
 <code>deepseek-v4-pro</code>, the specs stay 1M context and 384K max output,
 and the rate card stays where it has been since 2026-08-02.</p>
@@ -1396,7 +1396,7 @@ and the rate card stays where it has been since 2026-08-02.</p>
 <img src="deepseek-v4-pro-0813-models-pricing-2026-08-12.jpg"
      alt="DeepSeek's Models &amp; Pricing docs page: in the Model Details table, the MODEL VERSION cell for deepseek-v4-pro reads DeepSeek-V4-Pro-0813, circled in red, next to DeepSeek-V4-Flash-0731; the surrounding rows still show 1M context length and 384K max output."
      width="1600" height="1473" loading="lazy"></a>
-<figcaption>The Models &amp; Pricing page as captured on 2026-08-12 &mdash;
+<figcaption>The Models &amp; Pricing page as captured on 2026-08-12 &ndash;
 the circled version cell is the entire announcement, and the primary source
 for this entry. Click for full size.</figcaption>
 </figure>
@@ -1405,12 +1405,12 @@ re-post-trained for agent work; DeepSeek's launch-day numbers circulating in
 the community put Terminal-Bench 2.1 at ~87.9 (preview: 72.1), DeepSWE at
 ~62.7 (preview: 12.8) and Toolathlon-Verified at ~74.1 (preview: 55.9).
 Jumps that size are post-training and harness work, not a new base model
-&mdash; and none of them are independently verified yet, so treat the
+&ndash; and none of them are independently verified yet, so treat the
 preview numbers as the floor and these as the claim.</p>
 <p><strong>What it changes here: nothing to do.</strong> Anything already
-sending <code>deepseek-v4-pro</code> &mdash; <code>ds chat -m
+sending <code>deepseek-v4-pro</code> &ndash; <code>ds chat -m
 deepseek-v4-pro</code>, the <code>claude-opus-*</code> remap on the
-<a href="{{root}}formats/">Anthropic format</a> &mdash; has been on the new
+<a href="{{root}}formats/">Anthropic format</a> &ndash; has been on the new
 checkpoint since the cell changed. Same price, stronger model; the
 <a href="{{root}}cost/">estimates</a> already price it correctly.</p>
 
@@ -1420,7 +1420,7 @@ checkpoint since the cell changed. Same price, stronger model; the
 services will be repriced &ldquo;in the near term&rdquo;, and the increase is
 expected to be substantial. Developers are advised to plan call volume and
 keep top-ups sized to what they will actually use. The final schedule and the
-new numbers are &ldquo;subject to the official announcement&rdquo; &mdash; and
+new numbers are &ldquo;subject to the official announcement&rdquo; &ndash; and
 as of this page's build there is none.</p>
 <p>The notice appears in the console rather than on the docs site, so it is
 easy to miss from code. It was
@@ -1438,19 +1438,19 @@ primary source:</p>
      alt="DeepSeek's bilingual email, subject 'DeepSeek API Billing Adjustment Announcement': the overall pricing for DeepSeek API services will rise in the near future with a significant increase expected, the specific plan subject to official notice; continued use after the adjustment counts as acceptance, otherwise users may cancel and apply for a refund."
      width="1840" height="2470" loading="lazy"></a>
 <figcaption>DeepSeek's billing-adjustment announcement as emailed to API
-users on 2026-08-06 &mdash; click for full size.</figcaption>
+users on 2026-08-06 &ndash; click for full size.</figcaption>
 </figure>
 <p><strong>What it changes here: nothing, yet.</strong> The
 <a href="{{root}}cost/">cost page</a> and <code>ds models</code> price from
 the published card of 2026-08-02 until DeepSeek publishes a new one. The
 <a href="{{root}}cost/#ledger">ledger</a> stores exact token counts rather
-than prices, deliberately &mdash; when the card changes, every historical
+than prices, deliberately &ndash; when the card changes, every historical
 call can be repriced under it.</p>
 
 <h2 id="peak-pricing">announced 2026-06-29 &middot; 2&times; during peak hours<span class="chip warn">date tba</span></h2>
 <p>The pricing page has carried this since late June: the API will move to
-peak/off-peak pricing, with every billing item &mdash; input, cached input,
-output &mdash; costing <strong>2&times; the regular price during peak
+peak/off-peak pricing, with every billing item &ndash; input, cached input,
+output &ndash; costing <strong>2&times; the regular price during peak
 hours</strong>. Off-peak, the current card stands.</p>
 <div class="tablewrap">
 <table>
@@ -1464,19 +1464,19 @@ hours</strong>. Off-peak, the current card stands.</p>
 </div>
 <p>The effective date is still &ldquo;subject to the official
 announcement&rdquo;. This CLI deliberately does not apply the multiplier to
-its estimates before that date exists &mdash; doubling every figure on a
+its estimates before that date exists &ndash; doubling every figure on a
 guess would be inventing data. The day it is real, the ledger's stored token
 counts make the switch a repricing, not a migration.</p>
 <p>Two practical notes. First, the <a href="{{root}}cost/#cache">context
 cache</a> discount is 50&times;; the peak multiplier is 2&times;. Prompt
 structure will still dominate your bill. Second, if batch work can move,
-move it &mdash; the off-peak window covers the whole European and American
+move it &ndash; the off-peak window covers the whole European and American
 working day.</p>
 
 <h2 id="v4-flash">2026-07-31 &middot; V4-Flash official release</h2>
 <p>The official DeepSeek-V4-Flash API entered public beta: same model name,
 same calling convention, re-post-trained weights with substantially stronger
-agent behaviour &mdash; DeepSeek's published numbers have it ahead of
+agent behaviour &ndash; DeepSeek's published numbers have it ahead of
 V4-Pro-Preview on Terminal Bench, DeepSWE and the rest of the agent suite.
 It natively speaks the <a href="{{root}}formats/">Responses format</a> and is
 explicitly adapted for Codex. The official V4-Pro release &ldquo;will follow
@@ -1487,7 +1487,7 @@ soon&rdquo;.</p>
 API's two models, served through both the OpenAI and Anthropic interfaces.
 The legacy names <code>deepseek-chat</code> and <code>deepseek-reasoner</code>
 were aliased to flash for a grace period and retired on
-<strong>2026-07-24</strong> &mdash; anything still sending them gets an
+<strong>2026-07-24</strong> &ndash; anything still sending them gets an
 error, not a quiet remap.</p>
 
 <h2 id="watch">Watching this without watching this page</h2>
@@ -1505,7 +1505,7 @@ ds models             # the rate card the estimates use, next to the live model 
 PAGES.append(dict(
     slug="agents/",
     crumb="agents",
-    title="deepseek-cli for agents and scripts — the output contract",
+    title="deepseek-cli for agents and scripts: the output contract",
     description="How to drive the deepseek CLI from code: stdout/stderr split, unwrapped --json responses, per-format JSON shapes, meaningful exit codes, retry semantics, and a drop-in agent skill.",
     keywords="deepseek cli scripting, deepseek cli json output, deepseek agent skill, deepseek cli exit codes, llm cli automation, deepseek jq",
     jsonld=tech_article("deepseek-cli for agents and scripts", "The scripting contract for the deepseek CLI.", "agents/"),
@@ -1533,7 +1533,7 @@ working unchanged.</p>
 <pre><code>ds chat "..." --json | jq -r '.choices[0].message.content'
 ds chat "..." --jq '.usage'
 ds models --json | jq -r '.data[].id'</code></pre>
-<p>Cost deliberately does not appear there &mdash; it would have meant wrapping
+<p>Cost deliberately does not appear there &ndash; it would have meant wrapping
 the response. It goes to stderr and to the
 <a href="{{root}}cost/">ledger</a> instead.</p>
 
@@ -1567,7 +1567,7 @@ them. See <a href="{{root}}formats/#tokens">the token-accounting trap</a>.</p>
 <p>Transport failures and 429/5xx are already retried internally with
 exponential backoff, honouring <code>Retry-After</code>. A non-zero exit means
 your own retry loop probably will not help either. Requests that reached the
-model are never retried &mdash; a second call would be billed twice.</p>
+model are never retried &ndash; a second call would be billed twice.</p>
 
 <h2 id="preflight">Preflight</h2>
 <pre><code>ds check --json
@@ -1578,7 +1578,7 @@ false, read <code>probes[].error</code>.</p>
 <h2 id="errors">Errors say what to do</h2>
 <pre><code>$ ds chat hi
 Error: Insufficient Balance (HTTP 402)
-  out of balance: deepseek balance &mdash; top up at https://platform.deepseek.com/top_up</code></pre>
+  out of balance: deepseek balance &ndash; top up at https://platform.deepseek.com/top_up</code></pre>
 
 <h2 id="quiet">Quiet mode</h2>
 <pre><code>ds chat "..." --no-stats --no-ledger --json</code></pre>
@@ -1591,7 +1591,7 @@ release archive. It carries the same contract as an operational procedure, with
 the rules that matter for autonomous use:</p>
 <ul>
 <li>Report costs as estimates, never as billed amounts.</li>
-<li>Do not retry on exit 2 or 3 &mdash; bring them to the human.</li>
+<li>Do not retry on exit 2 or 3 &ndash; bring them to the human.</li>
 <li>The API is text-only: no images, no documents.</li>
 <li>Slow starts of up to ten minutes are normal under load, not a failure.</li>
 </ul>
@@ -1602,7 +1602,7 @@ the rules that matter for autonomous use:</p>
 PLAYGROUND_BODY = """
 <h1>playground</h1>
 <p class="lede">The DeepSeek API in a browser, with no API key. Enrolling costs
-about a second of CPU and nothing else &mdash; no account, no email, no card.</p>
+about a second of CPU and nothing else &ndash; no account, no email, no card.</p>
 
 <div id="pg-enrol" class="pg-enrol">
   <p><strong>What this is.</strong> A gateway run by this project holds a real
@@ -1651,10 +1651,10 @@ about a second of CPU and nothing else &mdash; no account, no email, no card.</p
     <h2>request</h2>
     <label for="pg-format">format</label>
     <select id="pg-format">
-      <option value="chat">chat &mdash; OpenAI</option>
-      <option value="anthropic">anthropic &mdash; Messages</option>
-      <option value="responses">responses &mdash; OpenAI Responses</option>
-      <option value="fim">fim &mdash; fill in the middle</option>
+      <option value="chat">chat &ndash; OpenAI</option>
+      <option value="anthropic">anthropic &ndash; Messages</option>
+      <option value="responses">responses &ndash; OpenAI Responses</option>
+      <option value="fim">fim &ndash; fill in the middle</option>
     </select>
     <p id="pg-formatNote" class="pg-note"></p>
 
@@ -1665,7 +1665,7 @@ about a second of CPU and nothing else &mdash; no account, no email, no card.</p
       </label>
       <p class="pg-note">DeepSeek searches and reads pages server-side. Costs
       one of the free tier's three daily searches, because the pages it reads
-      are billed as input tokens &mdash; about ten ordinary turns' worth.</p>
+      are billed as input tokens &ndash; about ten ordinary turns' worth.</p>
     </div>
 
     <label for="pg-think">thinking</label>
@@ -1709,7 +1709,7 @@ about a second of CPU and nothing else &mdash; no account, no email, no card.</p
 <p>Because the alternative is a signup form. Every request here spends real
 money on a real API key, so something has to stop one script taking the lot.
 An account would do it and would also be the thing that stops most people
-trying at all &mdash; so instead your browser burns about a second of CPU, once,
+trying at all &ndash; so instead your browser burns about a second of CPU, once,
 and that is the account.</p>
 <p>It is not a security boundary and is not pretending to be one. Identities can
 be farmed; a daily budget cap cannot be. That cap is what actually protects the
@@ -1729,7 +1729,7 @@ conversation.</p>
 <span class="c">$</span> deepseek chat "why is the sky blue"</code></pre>
 
 <p>The CLI and this page enrol against the same gateway with the same protocol
-and get the same quota &mdash; but they are separate implementations of it, in
+and get the same quota &ndash; but they are separate implementations of it, in
 different languages, pinned to a shared table of test vectors.</p>
 
 <h2>What it will not do</h2>
@@ -1740,7 +1740,7 @@ answer you attribute to the wrong model is worse than no answer.</li>
 <li><strong>Long prompts.</strong> Bodies are capped at 128KB, output at 4K
 tokens per call.</li>
 <li><strong>Tools.</strong> They are forwarded, but this page does not run them.
-Neither does the CLI &mdash; it prints them.</li>
+Neither does the CLI &ndash; it prints them.</li>
 </ul>
 <p>All of those limits disappear the moment you use your own key, which costs
 about a third of a cent for a thousand ordinary turns. That is the honest pitch:
@@ -1751,7 +1751,7 @@ one first.</p>
 PAGES.append(dict(
     slug="playground/",
     crumb="playground",
-    title="DeepSeek playground — try the API with no key",
+    title="DeepSeek playground: try the API with no key",
     description="Use the DeepSeek API in your browser without an API key or a signup. Chat, Anthropic Messages, Responses and FIM formats, streaming, with the equivalent deepseek CLI command shown for every request.",
     keywords="deepseek playground, deepseek api free, deepseek without api key, try deepseek api, deepseek chat online, deepseek api demo, free deepseek api",
     jsonld=tech_article(
@@ -1822,24 +1822,24 @@ def build(check_only=False):
     # 404: served from any depth, so every path in it is absolute.
     notfound = render(dict(
         slug="", crumb="",
-        title="Not found — deepseek-cli",
+        title="Not found: deepseek-cli",
         description="That page does not exist. The deepseek-cli documentation index.",
         keywords="deepseek cli",
         jsonld=SOFTWARE_JSONLD,
         band_sea=True,
         body="""
 <h1>404</h1>
-<p class="lede">No such page &mdash; deep water. The whole site is eight of them:</p>
+<p class="lede">No such page &ndash; deep water. The whole site is eight of them:</p>
 
 <ul>
-<li><a href="BASE/">overview</a> &mdash; what it is and why</li>
-<li><a href="BASE/install/">install</a> &mdash; binaries, Go, the <code>ds</code> alias, configuration</li>
-<li><a href="BASE/commands/">commands</a> &mdash; every command and flag</li>
-<li><a href="BASE/formats/">formats</a> &mdash; DeepSeek's four wire formats compared</li>
-<li><a href="BASE/cost/">cost</a> &mdash; pricing, the context cache, the usage ledger</li>
-<li><a href="BASE/news/">news</a> &mdash; what is changing upstream, including the announced price rise</li>
-<li><a href="BASE/agents/">agents</a> &mdash; the scripting contract</li>
-<li><a href="BASE/playground/">playground</a> &mdash; the API in a browser, no key needed</li>
+<li><a href="BASE/">overview</a> &ndash; what it is and why</li>
+<li><a href="BASE/install/">install</a> &ndash; binaries, Go, the <code>ds</code> alias, configuration</li>
+<li><a href="BASE/commands/">commands</a> &ndash; every command and flag</li>
+<li><a href="BASE/formats/">formats</a> &ndash; DeepSeek's four wire formats compared</li>
+<li><a href="BASE/cost/">cost</a> &ndash; pricing, the context cache, the usage ledger</li>
+<li><a href="BASE/news/">news</a> &ndash; what is changing upstream, including the announced price rise</li>
+<li><a href="BASE/agents/">agents</a> &ndash; the scripting contract</li>
+<li><a href="BASE/playground/">playground</a> &ndash; the API in a browser, no key needed</li>
 </ul>
 <p><a href="BASE/">&larr; back to the overview</a></p>
 """,

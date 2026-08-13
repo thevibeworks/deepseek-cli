@@ -1,7 +1,7 @@
 // The deepseek playground: the API, in a browser, with no API key.
 //
-// It is the same free tier the CLI uses — same gateway, same enrolment,
-// same quota — so anything you can do here you can do from a shell, and
+// It is the same free tier the CLI uses – same gateway, same enrolment,
+// same quota – so anything you can do here you can do from a shell, and
 // the panel under the composer shows you exactly how. That is the point
 // of this page. It is not a chat toy; it is a way to find the command.
 //
@@ -72,7 +72,7 @@
       label: 'anthropic',
       path: '/anthropic/v1/messages',
       command: 'anthropic',
-      note: 'Anthropic Messages — the format Claude Code speaks.',
+      note: 'Anthropic Messages – the format Claude Code speaks.',
       build: function (s, history) {
         var body = {
           model: s.model,
@@ -97,7 +97,7 @@
       label: 'responses',
       path: '/responses',
       command: 'respond',
-      note: 'OpenAI Responses — the format Codex speaks. Flash only.',
+      note: 'OpenAI Responses – the format Codex speaks. Flash only.',
       build: function (s, history) {
         var body = {
           model: s.model,
@@ -215,8 +215,8 @@
 
   function token() { return store.get(STORE.token); }
 
-  // A format that is not one of the four is a bug somewhere else — a
-  // stale localStorage entry, an option removed from the markup — and it
+  // A format that is not one of the four is a bug somewhere else – a
+  // stale localStorage entry, an option removed from the markup – and it
   // must not be able to take the page down. Falling back to chat keeps a
   // working playground instead of a blank panel.
   function formatOf(name) { return FORMATS[name] || FORMATS.chat; }
@@ -378,11 +378,11 @@
       .then(function (solved) {
         if (turnstileHost() && !tsState.token) {
           setEnrolStatus('solved in ' + solved.seconds.toFixed(1) +
-            's — waiting for the browser check…');
+            's – waiting for the browser check…');
         }
         return turnstileAnswer().then(function (tsToken) {
           setEnrolStatus('solved in ' + solved.seconds.toFixed(1) + 's (' +
-            num(solved.hashes) + ' hashes) — claiming a token…');
+            num(solved.hashes) + ' hashes) – claiming a token…');
           var req = {
             challenge: solved.challenge,
             nonce: String(solved.nonce),
@@ -417,7 +417,7 @@
       worker.onmessage = function (e) {
         var m = e.data;
         if (m.type === 'progress') {
-          setEnrolStatus('solving ' + ch.difficulty + ' bits — ' + num(m.hashes) + ' hashes…');
+          setEnrolStatus('solving ' + ch.difficulty + ' bits – ' + num(m.hashes) + ' hashes…');
           return;
         }
         worker.terminate();
@@ -703,7 +703,7 @@
   });
 
   el.prompt.addEventListener('keydown', function (e) {
-    // Enter sends, Shift+Enter is a newline — the convention every chat
+    // Enter sends, Shift+Enter is a newline – the convention every chat
     // box has trained people into.
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();

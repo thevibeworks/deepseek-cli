@@ -48,7 +48,7 @@ for (const v of VECTORS) {
 
 // The hand-rolled SHA-256 has to agree with a real one. A solver that is
 // internally consistent but wrong would pass the vectors only by
-// coincidence — and would fail against the gateway every time.
+// coincidence – and would fail against the gateway every time.
 console.log('sha256 agrees with node crypto');
 const samples = [
   '',

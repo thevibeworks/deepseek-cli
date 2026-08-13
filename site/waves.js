@@ -1,4 +1,4 @@
-// Live water, a whale in it, at night a sky of stars over it — and a page
+// Live water, a whale in it, at night a sky of stars over it – and a page
 // that sinks through the lot of it as you read.
 //
 // The name of the tool is two verbs, and the page performs both. Scrolling
@@ -6,22 +6,22 @@
 // snow starts streaming up past you, and the water darkens toward the
 // abyss. Clicking is *seek*: a sonar ring goes out from the pointer, and
 // when it reaches the whale the whale answers. Down in the dark that
-// return is the only way to see it, which is the whole idea — the deeper
+// return is the only way to see it, which is the whole idea – the deeper
 // you are, the more you have to ping for what is down there with you.
 //
-// Both are driven by one scalar each — `scroll.depth` for the descent,
-// the ping's own age for the seek — so nothing here is on a timer that
+// Both are driven by one scalar each – `scroll.depth` for the descent,
+// the ping's own age for the seek – so nothing here is on a timer that
 // runs whether you are looking or not.
 //
 // Four wave layers, each a sum of three sines, drawn back to front onto a
 // 2D canvas. The whale is filled between layer 1 and layer 2, so the two
-// nearest layers wash over it — that draw order, and nothing else, is what
+// nearest layers wash over it – that draw order, and nothing else, is what
 // makes it read as *in* the water rather than pasted on top of it.
 //
 // The stars exist only on the dark theme, and that is decided in CSS, not
 // here: their colour tokens resolve to fully transparent by day, and a
-// star with no colour is not drawn. The field itself is deterministic —
-// seeded from each star's index — so the same sky comes back on every
+// star with no colour is not drawn. The field itself is deterministic –
+// seeded from each star's index – so the same sky comes back on every
 // visit, and the DOM test can look at a reproducible frame. Sizes follow
 // a power law (a few bright, many faint), the faint ones twinkle more
 // than the bright ones and each on its own slow period, and everything
@@ -32,7 +32,7 @@
 // The interaction is all in the surface, never in the whale: the water
 // rises toward the pointer, a click sends a travelling packet out from
 // where you clicked, and scrolling fast makes it choppy. The whale just
-// rides whatever the surface is doing — its height and its tilt are read
+// rides whatever the surface is doing – its height and its tilt are read
 // back out of the same height field, which is why it looks like it is
 // floating instead of being animated on a timer.
 //
@@ -40,7 +40,7 @@
 // *speed* roughs the surface up (`scroll.energy`); scroll *position* is
 // how deep you are (`scroll.depth`). Position is the one that carries the
 // descent, and it is published to CSS as `--depth` so the page furniture
-// — the gauge in the margin — descends on the same number rather than on
+// – the gauge in the margin – descends on the same number rather than on
 // a second scroll listener that could disagree with this one.
 //
 // No dependencies, no build step, no WebGL. It runs at a few hundred
@@ -58,13 +58,13 @@
   // ---------------------------------------------------------------- whale
 
   // A blue whale, facing left, in a 1000x430 box. Hand-authored and, this
-  // time, actually looked at — drawn against a browser rather than blind:
+  // time, actually looked at – drawn against a browser rather than blind:
   // the blunt rostrum with the splash-guard bump in front of the blowhole,
   // a long back peaking just forward of middle, the small falcate dorsal
   // fin three-quarters back, a tail stock that thins and rises, and the
   // fluke lifted the way a whale lifts it before sounding. The fluke is
   // drawn three-quarter the way every whale mark since Moby-Dick has
-  // cheated it — a true side view would show it edge-on as a line, and
+  // cheated it – a true side view would show it edge-on as a line, and
   // nobody reads that as a whale. Two lobes and the notch between them
   // are what make it a fluke instead of a shark fin, which is what the
   // previous single-lobe tail kept reading as.
@@ -79,7 +79,7 @@
   // cancels and punches a hole in the belly; filled separately it can
   // also take a darker shade, which reads as the far flipper and gives
   // the silhouette its only hint of depth. The mouth is a stroked line,
-  // not part of the fill — a silhouette with a jaw drawn into its outline
+  // not part of the fill – a silhouette with a jaw drawn into its outline
   // stops being a silhouette; a faint line across it stays one, and the
   // mouth line is most of what makes the head read as a whale's.
   var WHALE = {
@@ -180,7 +180,7 @@
   // canvas height, so every layer is one horizon further down the frame.
   // Nearer layers are faster, choppier and more opaque; `reach` is how
   // much of the pointer and click energy they pick up, which is the same
-  // gradient — a swell on the horizon does not care where your mouse is.
+  // gradient – a swell on the horizon does not care where your mouse is.
   //
   // Speeds alternate sign so the layers slide across each other instead
   // of marching in step, which is most of what sells the parallax. They
@@ -200,7 +200,7 @@
 
   // The 404's sea is not the fixed full-viewport one: it is a band under
   // the masthead, with the waterline hard up against the header rule so
-  // the whale rides the rule like a horizon — back, dorsal and fluke
+  // the whale rides the rule like a horizon – back, dorsal and fluke
   // breaking it, everything else below. Same rules as LAYERS, different
   // geometry; the fractions are of the band's height, not the viewport's.
   var BAND_LAYERS = [
@@ -213,7 +213,7 @@
   // What differs between the two seas, in one place. `span` is the whale
   // as a fraction of the width: scenery you cannot see the ends of on a
   // page, an emblem you can see all of in the band. `sky` is the fraction
-  // of the box above the far waterline, where the stars live — a strip
+  // of the box above the far waterline, where the stars live – a strip
   // of nothing in the band, whose waterline kisses the header rule.
   var PROFILES = {
     viewport: { layers: LAYERS, sky: 0.52, span: 1.0, minSpan: 420, narrowBoost: 0.35 },
@@ -233,7 +233,7 @@
   // it does this job too rather than a second table of numbers.
   var DIVE_PARALLAX = 0.5;
 
-  // The whale sinks with you, but not as fast — it lags the surface, so it
+  // The whale sinks with you, but not as fast – it lags the surface, so it
   // is still in frame (dim, and well above you) once you are in the dark
   // rather than having left with the light. Losing the animal entirely at
   // the point the page gets interesting is not a descent, it is an empty
@@ -270,12 +270,12 @@
 
   // A ping is a sonar pulse: one expanding ring, thinning and fading as it
   // spends itself. It is drawn over the water rather than in it because it
-  // is not water — it is the instrument, and instruments read on top.
+  // is not water – it is the instrument, and instruments read on top.
   var PING_LIFE = 2.6;     // seconds until it is spent
   var PING_SPEED = 0.58;   // canvas widths per second
 
   // The return. When a ring's radius passes the whale, the whale answers
-  // for about as long as it takes to notice — bright, then gone.
+  // for about as long as it takes to notice – bright, then gone.
   var ECHO_BAND = 0.06;    // how near the ring has to be, as a fraction of width
   var ECHO_DECAY = 1.7;    // per second
 
@@ -320,7 +320,7 @@
         r: 0.5 + m * m * 1.7,
         a: 0.22 + m * 0.6,
         warm: starRand(i, 3) < 0.24,
-        // Faint stars twinkle hard, bright ones barely — small apertures
+        // Faint stars twinkle hard, bright ones barely – small apertures
         // scintillate. Uniform twinkle is the fairy-light look.
         tw: 0.1 + (1 - m) * 0.42,
         spd: 0.6 + starRand(i, 5) * 1.7,
@@ -331,7 +331,7 @@
   }
 
   // Sun glitter: the day sea's answer to the night sky. Points scattered
-  // over the water that catch the light for a moment each — the sparkle a
+  // over the water that catch the light for a moment each – the sparkle a
   // real sea throws when the sun is on it. Deterministic for the same
   // reason the stars are, and owned by the same CSS contract in reverse:
   // the sparkle token resolves to fully transparent on the dark theme,
@@ -358,7 +358,7 @@
 
   // Marine snow: the drift of dead matter falling through the water
   // column, and the one cue that says *descending* rather than merely
-  // *dark*. It streams up past you because you are going down — the
+  // *dark*. It streams up past you because you are going down – the
   // movement is yours, not its, which is why the parallax below is keyed
   // to depth and not to the clock. The slow constant sink on top of that
   // is the snow's own, and it is what keeps the field alive when you stop
@@ -438,7 +438,7 @@
     return r.amp * fade * fade * env * Math.cos((travel * 2 * Math.PI) / (sigma * 1.9));
   }
 
-  // The water is pulled up toward the pointer — negative, because y grows
+  // The water is pulled up toward the pointer – negative, because y grows
   // downward. `strength` is eased by the caller so it swells and settles
   // instead of snapping on the first mousemove.
   function bulgeAt(b, x, w, h) {
@@ -486,11 +486,11 @@
   // Where the whale sits this frame, and how far over it is leaning. Both
   // come out of the height field rather than a clock: the tilt is the
   // slope of the surface it is floating on, sampled either side of it,
-  // and its height is the surface height — a whale animated on its own
+  // and its height is the surface height – a whale animated on its own
   // timer is a whale bobbing like a toy. Mass is the other half of the
   // illusion: the gain stays well under the slope and the ceiling is a
   // few degrees, so the animal follows the water the way something that
-  // heavy would — late, and not very far.
+  // heavy would – late, and not very far.
   function whaleTransform(t, w, h, st) {
     var narrow = w < NARROW;
     // It reads the water through a shallower copy of the descent, which is
@@ -540,7 +540,7 @@
   // custom property directly does not: getPropertyValue('--sea-0') returns
   // the *specified* value, and every token on this site is declared as
   // light-dark(). Custom properties are substituted lazily, so nothing
-  // resolves that until it is used in a real property — canvas gets the
+  // resolves that until it is used in a real property – canvas gets the
   // literal string "light-dark(#bfe4ef, #0a4d63)", addColorStop throws
   // SyntaxError, and every frame dies silently. That shipped once. See
   // cssResolver, which is the only correct way to do this.
@@ -558,7 +558,7 @@
       whaleLit: read('--whale-lit', '#00c2e9'),
       glow: read('--sea-glow', 'rgba(0,194,233,0.12)'),
       // The far end of the glow has to be the same hue at zero alpha, not
-      // the keyword `transparent` — that is transparent *black*, and a
+      // the keyword `transparent` – that is transparent *black*, and a
       // gradient running to it puts a grey halo round the whale on the
       // light theme.
       glowFade: read('--sea-glow-fade', 'rgba(0,194,233,0)'),
@@ -576,12 +576,12 @@
   // engine computed. `color` is the one to use: it accepts every colour
   // syntax and computes to rgb()/rgba().
   //
-  // The var() fallback does double duty — an undefined token resolves to
+  // The var() fallback does double duty – an undefined token resolves to
   // the default here rather than making the declaration invalid and
   // leaving `color` at whatever it inherited.
   // The same colour at a chosen alpha. Everything cssResolver hands back
   // has been through `getComputedStyle().color`, so it is `rgb(r, g, b)`
-  // or `rgba(r, g, b, a)` and nothing else — which is what makes this
+  // or `rgba(r, g, b, a)` and nothing else – which is what makes this
   // three lines instead of a colour parser. A string in any other shape is
   // handed back untouched rather than turned into a canvas exception.
   function withAlpha(colour, a) {
@@ -611,19 +611,19 @@
 
   // One scroll listener for the whole page, reporting two different
   // things. Every ocean reads the same `energy`, so scrolling roughs up
-  // all of them together — which is what one body of water would do — and
+  // all of them together – which is what one body of water would do – and
   // the same `depth`, so they are all at the same depth, which is what one
   // body of water would also do.
   var scroll = { last: 0, energy: 0, depth: 0, wired: false };
 
   // The deepest the gauge will admit to. A round number rather than a
   // per-page one: a fixed scale means "-400 m" means the same thing on
-  // every page, and the alternative — metres derived from document height
-  // — would have a short page reaching the abyss in two flicks.
+  // every page, and the alternative – metres derived from document height
+  // – would have a short page reaching the abyss in two flicks.
   var FLOOR_M = 1000;
 
   // Scroll position as a fraction of the scrollable range. A page shorter
-  // than the window has no range and is therefore never deep — clamping
+  // than the window has no range and is therefore never deep – clamping
   // rather than dividing by zero is the whole of that case.
   function depthOf(win, doc) {
     var el = doc.documentElement || {};
@@ -635,7 +635,7 @@
   }
 
   // Publish the descent to the page: as `--depth` on the root, so CSS can
-  // read it, and as text in any depth gauge. One number, one owner — a
+  // read it, and as text in any depth gauge. One number, one owner – a
   // second scroll listener somewhere in a stylesheet's worth of JS is how
   // the margin ends up disagreeing with the water.
   function publishDepth(doc, d) {
@@ -745,7 +745,7 @@
     // tabs, off-screen bands and reduced-motion all stop the *loop*;
     // none of them is a reason to show nothing at all. Mounting marks the
     // host live, which takes the CSS fallback away, so a mount that
-    // painted nothing would leave a blank hole where the sea should be —
+    // painted nothing would leave a blank hole where the sea should be –
     // which is exactly what a page opened in a background tab used to get.
     this.draw(0);
     this.start();
@@ -755,7 +755,7 @@
     if (!this.win.getComputedStyle) return;
     if (!this.resolve) this.resolve = cssResolver(this.doc);
     this.palette = readPalette(this.resolve);
-    // A sea that is not animating — reduced motion, hidden tab — is a
+    // A sea that is not animating – reduced motion, hidden tab – is a
     // still picture, and a picture painted in the old theme's colours is
     // wrong the moment the theme changes. Repaint the one frame.
     if (!this.running()) this.draw(this.t);
@@ -805,7 +805,7 @@
     // The canvas is pointer-events: none so it never shadows a link, so
     // the pointer has to be tracked on the window and mapped in. The
     // water answers the pointer while it is over the water or just below
-    // it — before this reached four hundred pixels past the sea, moving
+    // it – before this reached four hundred pixels past the sea, moving
     // the mouse anywhere on the page heaved the swell, and water that
     // answers everything reads as noise, not life.
     this.onMove = function (e) {
@@ -893,13 +893,13 @@
 
   // The seek half of the name: a sonar pulse from where you clicked.
   // Separate from `splash` because they are two different claims about the
-  // same click — the splash is what the water does, the ping is what you
+  // same click – the splash is what the water does, the ping is what you
   // did. They also live for different lengths of time and are drawn on
   // opposite sides of the whale.
   Ocean.prototype.ping = function (x, y) {
     if (!this.visible) return;
     // A pulse that cannot travel is not a quieter pulse, it is a ring
-    // painted on the page and left there — the still frame reduced motion
+    // painted on the page and left there – the still frame reduced motion
     // gets would freeze it at whatever radius it had reached. The water's
     // own answer to a click is a bump in a height field and survives being
     // frozen; a circle does not.
@@ -956,7 +956,7 @@
     st.ripples = live;
 
     // Pings, and what comes back off them. The whale's position is the one
-    // the last frame drew, which is a frame stale and invisibly so — the
+    // the last frame drew, which is a frame stale and invisibly so – the
     // alternative is computing the transform twice per frame for a flash
     // that lasts a fifth of a second.
     var pings = [];
@@ -1053,14 +1053,14 @@
 
     // The gradient has to start where the surface actually is, not where
     // it rests. Anchored to the resting base instead, a descent fills the
-    // whole frame with the *top* of the ramp — canvas clamps to the first
-    // stop above it — and the deep comes out brighter than the surface,
+    // whole frame with the *top* of the ramp – canvas clamps to the first
+    // stop above it – and the deep comes out brighter than the surface,
     // which is the exact opposite of the thing being drawn.
     var g = ctx.createLinearGradient(0, layerBase(layer, this.st) * h - h * 0.1, 0, h);
     g.addColorStop(0, pal.sea[layer.tint]);
     g.addColorStop(1, pal.deep);
     // A layer that has climbed out of the frame is behind you. It still
-    // has to paint — it is what the water between you and it looks like —
+    // has to paint – it is what the water between you and it looks like –
     // but four full-strength layers stacked over the whole frame is a
     // wall, not a depth.
     ctx.globalAlpha = layer.alpha * (1 - this.st.depth * 0.45);
@@ -1068,7 +1068,7 @@
     ctx.fill();
 
     // A bright line right on the surface. This is doing more work than
-    // anything else here — without it the layers are flat shapes, with it
+    // anything else here – without it the layers are flat shapes, with it
     // they are water.
     if (layer.foam > 0) {
       this.surfacePath();
@@ -1082,12 +1082,12 @@
 
   // The night sky, drawn first because it is farther away than anything.
   // On the light theme the star colour resolves to transparent and the
-  // whole pass is skipped — by day there are no stars, not dim ones.
+  // whole pass is skipped – by day there are no stars, not dim ones.
   Ocean.prototype.drawStars = function (t) {
     var pal = this.palette;
     if (!visibleColour(pal.star)) return;
     // Under water there is no sky. They go out over the first eighth of
-    // the descent, which is about one screen on a docs page — long enough
+    // the descent, which is about one screen on a docs page – long enough
     // to watch happen, short enough that you are not reading a paragraph
     // next to stars you have supposedly left above you.
     var above = 1 - Math.min(1, this.st.depth / 0.12);
@@ -1117,7 +1117,7 @@
       ctx.arc(x, y, s.r, 0, Math.PI * 2);
       ctx.fill();
       // Only the brightest few get a diffraction glint, and it is two
-      // hairlines at a third of the star's own alpha — a hint, not a
+      // hairlines at a third of the star's own alpha – a hint, not a
       // sparkle sprite.
       if (s.r > 1.7) {
         var g = s.r * 3.2;
@@ -1137,7 +1137,7 @@
 
   // Sun glitter, drawn last because it sits on top of the water. Each
   // glint is a short dash lying along the surface that flashes on its own
-  // period — cubing the sine keeps it dark most of the time and bright
+  // period – cubing the sine keeps it dark most of the time and bright
   // briefly, which is what glitter does; a linear pulse just throbs.
   Ocean.prototype.drawGlitter = function (t) {
     var pal = this.palette;
@@ -1168,7 +1168,7 @@
 
     // Distance dims it: down in the dark it is a suggestion of a shape,
     // not an illustration. `echo` is the answer to a ping, and it is
-    // deliberately strongest exactly where the dimming is — the deeper you
+    // deliberately strongest exactly where the dimming is – the deeper you
     // are, the more of what you see is something you asked for.
     var echo = Math.min(1, this.st.echo);
     var lost = Math.min(1, this.st.depth * 1.15);
@@ -1197,7 +1197,7 @@
     // The far flipper, a shade darker than the body. Canvas alpha is
     // absolute rather than multiplied into what is already set, so every
     // part that wants to be dimmer than the body has to say `seen` again
-    // — otherwise a fading whale keeps a bright flipper and a bright eye,
+    // – otherwise a fading whale keeps a bright flipper and a bright eye,
     // which is a whale wearing jewellery in the dark.
     ctx.globalAlpha = 0.55 * seen;
     ctx.fill(this.flipper);
@@ -1205,7 +1205,7 @@
     // The sonar return: the outline lights up where the ring passed. It is
     // a stroke rather than a brighter fill because that is what coming
     // back off an edge looks like, and because the shape is the
-    // information — you are being told *what* is down there, not how
+    // information – you are being told *what* is down there, not how
     // brightly it glows. The line width is divided back through the
     // whale's own scale so it stays a hairline on screen at any size.
     if (echo > 0.02) {
@@ -1216,7 +1216,7 @@
     }
 
     // The mouth line and the eye have to be lighter than the body or a
-    // silhouette swallows them — and they are most of what makes the
+    // silhouette swallows them – and they are most of what makes the
     // head read as a whale's rather than a submarine's.
     if (this.mouth) {
       ctx.strokeStyle = pal.whaleLit;
@@ -1253,7 +1253,7 @@
   // The water you are inside, as opposed to the water you are looking at.
   // Once the surface has climbed out of the frame the layers stop covering
   // the bottom of it, and without this the deep is just the page
-  // background — which is to say, nothing happened.
+  // background – which is to say, nothing happened.
   //
   // It is a gradient rather than a flat wash because the light in real
   // water comes from above: even at the bottom, up is brighter than down.
@@ -1263,7 +1263,7 @@
     var ctx = this.ctx;
     var g = ctx.createLinearGradient(0, 0, 0, this.h);
     // Not transparent at the top: at full depth the dark is *everywhere*,
-    // and a veil that fades out upward reads as a surface just overhead —
+    // and a veil that fades out upward reads as a surface just overhead –
     // which is the one thing you are supposed to have left behind. The
     // gradient that remains is the light still coming from above.
     g.addColorStop(0, withAlpha(this.palette.abyss, 0.5));
@@ -1302,7 +1302,7 @@
   };
 
   // The pulse itself. Two arcs: the ring, and a fainter one just behind it
-  // for the trail. Both thin — a sonar sweep is a line, and a thick soft
+  // for the trail. Both thin – a sonar sweep is a line, and a thick soft
   // ring reads as a button's ripple, which is the wrong idea entirely.
   Ocean.prototype.drawPings = function (t) {
     var st = this.st;
@@ -1315,7 +1315,7 @@
       if (age < 0) continue;
       var r = pingRadius(p, t, this.w);
       if (r <= 0) continue;
-      // Squared, so it dies out of sight rather than switching off — the
+      // Squared, so it dies out of sight rather than switching off – the
       // same fade the water ripple uses, for the same reason.
       var fade = 1 - age / PING_LIFE;
       fade = fade * fade;
@@ -1351,7 +1351,7 @@
     // light lying on the water, so it belongs with the water and ahead of
     // the dark that has to be able to swallow it; the dark is between you
     // and the water; the snow is between you and the dark; and the ping is
-    // not in the water at all — it is the instrument reading, so it sits
+    // not in the water at all – it is the instrument reading, so it sits
     // on top of everything.
     this.drawGlitter(t);
     this.drawAbyss();
@@ -1382,8 +1382,8 @@
 
   // The same gesture, on the things that are genuinely clickable. A click
   // on the page pings the water; a click on a control pings from the
-  // control. Without this second half the page has two click languages —
-  // one for the scenery and one for the buttons — and the scenery's is the
+  // control. Without this second half the page has two click languages –
+  // one for the scenery and one for the buttons – and the scenery's is the
   // better one.
   //
   // The ring itself is CSS, on a pseudo-element of the control, so it
@@ -1425,9 +1425,9 @@
   // Every ocean on the page is a `<div data-ocean>`; the data attributes
   // carry the two things that differ between them. The div also carries a
   // CSS gradient and a static whale, so a reader with JS off still gets a
-  // sea — this only ever upgrades what is already there.
+  // sea – this only ever upgrades what is already there.
   // Every ocean that has been mounted, in page order. The script starts
-  // itself, so this is the only handle on the instances — for the tests,
+  // itself, so this is the only handle on the instances – for the tests,
   // and for anyone poking at DSWaves.mounted[0] in a console.
   var mounted = [];
 

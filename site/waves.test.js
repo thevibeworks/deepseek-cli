@@ -3,7 +3,7 @@
 // None of this needs a browser: the height field is arithmetic and the
 // whale's position is read out of it, so both can be checked directly.
 // What cannot be checked by looking at the page is the part that fails
-// silently — a renamed CSS token falls back to a hard-coded default and
+// silently – a renamed CSS token falls back to a hard-coded default and
 // the sea just stops following the theme, and a whale edited in waves.js
 // but not in whale.svg is only visible to readers with JavaScript off.
 // Both are pinned here.
@@ -184,7 +184,7 @@ for (let ww = 320; ww <= 1600; ww += 20) {
   if (ww === 1600) check('the whale is always at least as wide as the viewport', true);
 }
 
-// The tilt is the slope of the water under it — this is the whole reason
+// The tilt is the slope of the water under it – this is the whole reason
 // it looks like it is floating rather than being animated on a timer.
 let tiltedBothWays = 0;
 let worst = 0;
@@ -210,7 +210,7 @@ check('and leans both ways as the swell passes', tiltedBothWays === 3,
 
 // It bridges several wavelengths, so it should roll gently rather than
 // pitch. Measuring the slope locally instead of across its own length
-// had it swinging through 25 degrees on a phone — a shipwreck. The
+// had it swinging through 25 degrees on a phone – a shipwreck. The
 // ceiling pins the other side of the contract: a ~3° slow roll, not the
 // 7° see-saw against the clamp that it used to be.
 check('the tilt ceiling is a roll, not a capsize',
@@ -221,7 +221,7 @@ for (const width of [360, 480, 760, 1200, 1600]) {
   for (let t = 0; t < 40; t += 0.11) {
     const rot = W.whaleTransform(t, width, h, quiet()).rot;
     peak = Math.max(peak, Math.abs(rot));
-    // 0.006 rad ≈ a third of a degree — the floor of what the eye can
+    // 0.006 rad ≈ a third of a degree – the floor of what the eye can
     // catch on an animal this size. The roll should stay above it.
     if (Math.abs(rot) > 0.006) moved++;
   }
@@ -262,7 +262,7 @@ check('whale.svg puts the eye in the same place',
 check('whale.svg declares the box the paths were drawn in',
   svg.includes(`viewBox="0 0 ${W.WHALE.view.w} ${W.WHALE.view.h}"`));
 
-// The favicon and the masthead both carry the mark — the sounding fluke.
+// The favicon and the masthead both carry the mark – the sounding fluke.
 // Redrawn freehand in either place it would drift the moment the mark is
 // edited, and nobody reviews a favicon.
 const icon = fs.readFileSync(path.join(__dirname, 'favicon.svg'), 'utf8');
@@ -358,7 +358,7 @@ console.log('\nstars');
     String(Math.max(...a.map((s) => s.y))));
   check('and on the canvas', a.every((s) => s.x >= 0 && s.x < 1));
 
-  // The power law: many faint stars, a few bright ones — not the other
+  // The power law: many faint stars, a few bright ones – not the other
   // way round, and never uniform.
   const bright = a.filter((s) => s.r > 1.7).length;
   check('a few stars are bright enough to glint',
@@ -372,7 +372,7 @@ console.log('\nstars');
     const hi = sorted.slice(-20).reduce((t, s) => t + s.tw, 0) / 20;
     return lo > hi;
   })());
-  check('no star ever blinks out — the twinkle floor stays above zero',
+  check('no star ever blinks out – the twinkle floor stays above zero',
     a.every((s) => s.tw < 1 && s.a * (1 - s.tw) > 0));
   check('the sky has both cool and warm stars',
     a.some((s) => s.warm) && a.some((s) => !s.warm));
