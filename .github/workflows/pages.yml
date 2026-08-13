@@ -23,7 +23,13 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
+      # Full history, because the masthead's release link comes from
+      # `git describe --tags` at build time. A shallow, tagless checkout
+      # would make the --check step compare against the fallback constant
+      # instead of the real tag.
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       # The HTML is committed so the site is readable in the repo, which
       # only works if it matches the generator. This is what keeps them
