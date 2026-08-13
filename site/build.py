@@ -1362,12 +1362,16 @@ cross-check a live leaderboard before betting on a single cell.</p>
 PAGES.append(dict(
     slug="news/",
     crumb="news",
-    title="DeepSeek API news: V4-Pro GA, the announced price rise, releases",
-    description="What is changing in the DeepSeek API: V4-Pro's official release (DeepSeek-V4-Pro-0813), an across-the-board price increase announced with no date yet, the 2x peak-hour pricing policy, V4-Flash's official release, and what each one does to the cost of a call.",
-    keywords="deepseek v4 pro release, deepseek v4 pro ga, deepseek-v4-pro-0813, deepseek api price increase, deepseek price rise 2026, deepseek peak hour pricing, deepseek api news, deepseek api changelog, deepseek v4 flash release, deepseek pricing change",
+    title="DeepSeek API news: dsh ships, V4-Pro GA, the announced price rise",
+    description="What is changing around the DeepSeek API: DeepSeek ships dsh (DeepSeek Harness), its official open-source agent harness, V4-Pro's official release (DeepSeek-V4-Pro-0813), an across-the-board price increase announced with no date yet, the 2x peak-hour pricing policy, V4-Flash's official release, and what each one means for a call.",
+    keywords="deepseek harness, dsh, @deepseek-ai/dsh, install dsh, dsh plugins, dsh skills, dsh-plugin, dsh vs claude code, deepseek cli vs dsh, deepseek v4 pro release, deepseek v4 pro ga, deepseek-v4-pro-0813, deepseek api price increase, deepseek price rise 2026, deepseek peak hour pricing, deepseek api news, deepseek api changelog, deepseek v4 flash release, deepseek pricing change",
     jsonld=faq([
         ("Is DeepSeek V4-Pro officially released?",
          "Yes. On 2026-08-12 the model version on DeepSeek's Models & Pricing page changed to DeepSeek-V4-Pro-0813, ending the preview that had run since 2026-04-24. The model ID is unchanged (deepseek-v4-pro), the rate card is unchanged, and the release focuses on agentic post-training rather than new pretraining."),
+        ("What is dsh (DeepSeek Harness)?",
+         "dsh is DeepSeek's official open-source agent harness, released 2026-08-13 as deepseek-ai/deepseek-harness on GitHub and @deepseek-ai/dsh on npm (MIT). It is in developer preview with compatibility-breaking changes promised. Everything in it is a plugin, built on the Cordis runtime; `npx @deepseek-ai/dsh web` starts its Web UI. The official repository does not accept external pull requests, and there is no plugin marketplace or registry: discovery is the dsh-plugin GitHub topic, with the ecosystem explicitly delegated to the community."),
+        ("Is dsh the same as deepseek-cli?",
+         "No. dsh (DeepSeek Harness) is DeepSeek's official agent harness: it runs an agent loop, executes tools, and manages plugins, skills and sessions. deepseek-cli is an unofficial single-binary API client: it sends one request in any of DeepSeek's four wire formats, prints the response and its estimated cost, and carries DeepSeek's API documentation offline. They are complementary, not competing: run agents with dsh, and use deepseek-cli to check a key, price a call, debug the wire formats, or query the docs."),
         ("Is DeepSeek raising its API prices?",
          "Yes, a rise is announced but not yet in effect. On 2026-08-06 (Beijing time) DeepSeek posted a notice in the platform console and emailed API account holders saying all API services will be repriced in the near term and that the increase is expected to be substantial, advising developers to plan call volume and top-ups accordingly. No new rate card and no effective date have been published. Separately, a 2x peak-hour pricing policy has been announced since June 2026, also without an effective date."),
         ("When does DeepSeek's peak-hour pricing start?",
@@ -1383,6 +1387,62 @@ PAGES.append(dict(
 cost of a call. Curated from official announcements and checked against the
 live API where that is possible; the in-terminal feed is
 <code>ds docs changelog</code>.</p>
+
+<h2 id="dsh">2026-08-13 &middot; DeepSeek ships dsh, its own agent harness</h2>
+<p>DeepSeek released <strong>DeepSeek Harness</strong>:
+<a href="https://github.com/deepseek-ai/deepseek-harness">deepseek-ai/deepseek-harness</a>
+on GitHub, <code>@deepseek-ai/dsh</code> on npm, <code>dsh</code> in the
+shell, MIT. It is a developer preview and says so in capitals &ndash;
+&ldquo;THERE WILL BE COMPATIBILITY-BREAKING CHANGES&rdquo; &ndash; and the
+architecture is the pitch: everything is a plugin, on the
+<a href="https://github.com/cordiverse/cordis">Cordis</a> runtime. One
+command starts it:</p>
+<pre><code>npx @deepseek-ai/dsh web     # Web UI at http://127.0.0.1:3080</code></pre>
+
+<h3>The ecosystem is delegated, deliberately</h3>
+<p>The document worth reading twice is
+<a href="https://github.com/deepseek-ai/deepseek-harness/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a>.
+The official repository takes no external pull requests (&ldquo;we are
+sorry that we cannot accept external pull requests at the moment&rdquo;),
+and there is no plugin marketplace and no registry. Discovery is a GitHub
+topic: tag your repository
+<a href="https://github.com/topics/dsh-plugin"><code>dsh-plugin</code></a>
+and that is the catalogue. DeepSeek's framing of its own repo: &ldquo;an
+idea, an official showcase, and a source of inspiration, but not a
+mandate&rdquo;. The ecosystem's official badge is shields.io in the brand
+blue, <code>#4D6BFE</code>:</p>
+<p><img src="https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&amp;logo=deepseek&amp;logoColor=white" alt="powered by dsh: the official shields.io badge in DeepSeek brand blue #4D6BFE" width="106" height="20" loading="lazy"></p>
+
+<h3>dsh skills are Claude Code skills</h3>
+<p>dsh skills are <code>SKILL.md</code> directory bundles, the format
+Anthropic's agent skills established, and the local provider reads them
+from <code>&lt;project&gt;/.agents/skills</code> and
+<code>~/.agents/skills</code> as well as its own <code>.dsh/skills</code>
+roots. A skill already written for Claude Code drops in front of dsh
+unchanged &ndash; including <a href="{{repo}}/blob/main/skill/SKILL.md">this
+CLI's own skill</a>, which teaches any harness to drive
+<code>deepseek</code> for key checks, cost accounting and offline docs.
+That is also the honest one-line comparison with Claude Code:
+dsh is the model vendor's own harness, open source and plugin-first, with
+the batteries left to the community rather than included.</p>
+
+<h3 id="dsh-vs-cli">Is dsh the same as deepseek-cli? No</h3>
+<p>Different layer, same API. <strong>dsh is the agent harness</strong>: it
+runs the loop, executes the tool calls, manages plugins and sessions, and
+serves a UI. <strong>deepseek-cli is the API client</strong>: it sends one
+request in any of DeepSeek's <a href="{{root}}formats/">four wire
+formats</a>, prints the response and what it cost, and carries DeepSeek's
+API documentation in the binary. This tool deliberately does not execute
+tool calls and is not becoming a harness &ndash; that line is a
+<a href="{{repo}}/blob/main/TASTE.md">recorded decision</a>, and it just
+got easier to hold, because the official answer to &ldquo;run an agent on
+DeepSeek&rdquo; now exists.</p>
+<p><strong>What it changes here: nothing in the tool.</strong> The pairing
+writes itself: dsh runs the agent, and this CLI is what you reach for
+underneath it &ndash; <code>ds check</code> when a key misbehaves,
+<code>ds tokens</code> and the <a href="{{root}}cost/">ledger</a> to price
+a workload, <code>ds docs ask</code> when you need the API's own text
+rather than a model's memory of it.</p>
 
 <h2 id="field-reports">2026-08-13 &middot; V4-Pro in the field: what practitioners report</h2>
 <p>The <a href="{{root}}bench/">launch table</a> is DeepSeek's own. This is what
