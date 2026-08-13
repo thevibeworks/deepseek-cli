@@ -4,7 +4,7 @@
 // verifies it (gateway/internal/token), the CLI solves it
 // (internal/deepseek/free.go), and this solves it again for the
 // playground. None of the three shares code with the others, so all
-// three are pinned to one table of test vectors — see pow.test.js, which
+// three are pinned to one table of test vectors – see pow.test.js, which
 // runs under node in `make check`, and the identical tables in the two
 // Go suites.
 //

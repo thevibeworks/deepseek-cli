@@ -7,7 +7,7 @@
 //
 // What it is really protecting is the streaming path. A wire format
 // whose delta field moved would show up here as an empty transcript,
-// which is exactly how it would show up to a reader — except here it
+// which is exactly how it would show up to a reader – except here it
 // fails the build instead of looking like the model said nothing.
 //
 //   node site/playground.dom.test.js

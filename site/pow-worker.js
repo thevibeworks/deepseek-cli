@@ -3,7 +3,7 @@
 // It runs for about a second at the shipped difficulty and for
 // considerably longer at an escalated one. On the main thread that would
 // freeze the page, and a frozen page is indistinguishable from a broken
-// one — so the search lives here and reports progress as it goes.
+// one – so the search lives here and reports progress as it goes.
 importScripts('pow.js');
 
 self.onmessage = function (e) {

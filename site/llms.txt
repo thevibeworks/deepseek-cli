@@ -6,7 +6,7 @@
 > correct across DeepSeek's reasoning_content replay rule, and prices every
 > call from the published rate card into a local ledger. Carries DeepSeek's
 > own API documentation inside the binary, so it can answer questions about
-> the API it talks to — offline, with a citation per claim.
+> the API it talks to, offline, with a citation per claim.
 
 Install: `curl -sL https://github.com/thevibeworks/deepseek-cli/raw/main/install.sh | sh`
 Binary: `deepseek`, also answers to `ds` and `dscli`.
@@ -21,13 +21,13 @@ response body unmodified. Exit codes: 0 ok, 1 error, 2 auth, 3 no balance,
 
 - [Overview](https://thevibeworks.github.io/deepseek-cli/): what it is, why it exists, the command table, and what it deliberately does not do
 - [Install](https://thevibeworks.github.io/deepseek-cli/install/): one-line installer, release binaries, go install, the ds/dscli aliases, API key and environment configuration, shell completion
-- [Commands](https://thevibeworks.github.io/deepseek-cli/commands/): every command and flag — chat (with --interactive), anthropic, respond, fim, tokens, docs, models, balance, usage, session, status, check, raw — plus global flags and exit codes
-- [Formats](https://thevibeworks.github.io/deepseek-cli/formats/): DeepSeek's four wire formats compared — auth, thinking controls, tool support, Claude model remapping, and the token-accounting convention that differs between them
+- [Commands](https://thevibeworks.github.io/deepseek-cli/commands/): every command and flag: chat (with --interactive), anthropic, respond, fim, tokens, docs, models, balance, usage, session, status, check, raw, plus global flags and exit codes
+- [Formats](https://thevibeworks.github.io/deepseek-cli/formats/): DeepSeek's four wire formats compared: auth, thinking controls, tool support, Claude model remapping, and the token-accounting convention that differs between them
 - [Cost](https://thevibeworks.github.io/deepseek-cli/cost/): the rate card, what the context cache is worth, the thinking surcharge and how it varies by effort level, the local usage ledger, and the caveats on every figure
 - [Benchmarks](https://thevibeworks.github.io/deepseek-cli/bench/): how deepseek-v4-pro (GA 0813) and v4-flash score against Kimi K3, GLM-5.2, Claude Opus 4.8 and Fable 5 on the agent suites (DeepSeek's own launch chart, with caveats), what the GA checkpoint changed over the preview, and the DeepSeek kill line (斩杀线) economics idea with the price gap to GPT-5.6
-- [News](https://thevibeworks.github.io/deepseek-cli/news/): what is changing in the DeepSeek API — the price rise announced 2026-08-06 with no effective date yet, the 2x peak-hour pricing policy (also undated), V4-Flash's official release — and what each does to the cost of a call
-- [Agents](https://thevibeworks.github.io/deepseek-cli/agents/): the scripting contract — output streams, JSON response shapes per format, exit-code semantics, retry behaviour
-- [Playground](https://thevibeworks.github.io/deepseek-cli/playground/): the DeepSeek API in a browser with no API key — all four wire formats, streaming, and the equivalent deepseek command for every request
+- [News](https://thevibeworks.github.io/deepseek-cli/news/): what is changing in the DeepSeek API: the price rise announced 2026-08-06 with no effective date yet, the 2x peak-hour pricing policy (also undated), V4-Flash's official release, and what each does to the cost of a call
+- [Agents](https://thevibeworks.github.io/deepseek-cli/agents/): the scripting contract: output streams, JSON response shapes per format, exit-code semantics, retry behaviour
+- [Playground](https://thevibeworks.github.io/deepseek-cli/playground/): the DeepSeek API in a browser with no API key: all four wire formats, streaming, and the equivalent deepseek command for every request
 
 ## Key facts
 
