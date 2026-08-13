@@ -1775,6 +1775,7 @@ PAGES.append(dict(
             if TURNSTILE_SITEKEY
             else ""
         )
+        + '<script src="{{root}}md.js"></script>\n'
         + '<script src="{{root}}playground.js"></script>\n'
     ),
 ))

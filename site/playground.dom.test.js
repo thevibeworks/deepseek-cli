@@ -42,11 +42,16 @@ function makeEl(id) {
     scrollTop: 0,
     scrollHeight: 0,
     style: {},
+    _html: '',
+    // The real page renders markdown by assigning HTML to innerHTML, so the
+    // shim has to store it (not just handle the clear-to-''). text() strips
+    // the tags back off, which is what a reader sees.
     set innerHTML(v) {
-      if (v === '') this.children = [];
+      if (v === '') { this.children = []; this._html = ''; }
+      else this._html = v;
     },
     get innerHTML() {
-      return this.children.map((c) => c.textContent).join('');
+      return this._html || this.children.map((c) => c.textContent).join('');
     },
     addEventListener(kind, fn) {
       (this.listeners[kind] = this.listeners[kind] || []).push(fn);
@@ -63,9 +68,11 @@ function makeEl(id) {
     fire(kind, ev) {
       (this.listeners[kind] || []).forEach((fn) => fn(ev || {}));
     },
-    // Depth-first text, which is how a reader sees the transcript.
+    // Depth-first text, which is how a reader sees the transcript. Rendered
+    // markdown lives in _html, so strip its tags and count it too.
     text() {
-      return this.textContent + this.children.map((c) => c.text()).join('');
+      const own = this.textContent + (this._html ? this._html.replace(/<[^>]*>/g, '') : '');
+      return own + this.children.map((c) => c.text()).join('');
     },
   };
   return el;
@@ -228,6 +235,9 @@ function run(streamLines) {
   sandbox.self = sandbox;
   sandbox.window = sandbox;
   vm.createContext(sandbox);
+  // md.js loads before playground.js on the real page and publishes the
+  // renderer as a global; do the same here so the page can find it.
+  vm.runInContext(fs.readFileSync(path.join(here, 'md.js'), 'utf8'), sandbox, { filename: 'md.js' });
   const src = fs.readFileSync(path.join(here, 'playground.js'), 'utf8');
   vm.runInContext(src, sandbox, { filename: 'playground.js' });
   return { byId, storage, sandbox };
@@ -337,6 +347,50 @@ async function main() {
   const respText = resp.byId['pg-log'].children.map((c) => c.text()).join('\n');
   check('renders output_text.delta', respText.includes('done'), respText);
   check('renders reasoning_text.delta', respText.includes('weighing'), respText);
+
+  // --- markdown rendering, and its safety net ---------------------------
+  //
+  // The answer is markdown and the model is not trusted, so the two things
+  // that matter most are that it renders and that it can not inject: a
+  // <script> in the answer must be inert and a javascript: link must not
+  // become an href. Both are unit-tested in md.test.js; here we prove the
+  // page actually routes the answer through the renderer on the way in.
+  console.log('the answer renders as markdown, safely');
+  const mdrun = run([
+    '{"choices":[{"delta":{"content":"# Title\\n\\n"}}]}',
+    '{"choices":[{"delta":{"content":"Some **bold** and `inline`.\\n\\n"}}]}',
+    '{"choices":[{"delta":{"content":"```js\\nalert(1)\\n```\\n\\n"}}]}',
+    '{"choices":[{"delta":{"content":"<script>alert(2)</script> and "}}]}',
+    '{"choices":[{"delta":{"content":"[x](javascript:alert(3))"}}]}',
+    '{"model":"deepseek-v4-flash","choices":[{"delta":{},"finish_reason":"stop"}],' +
+      '"usage":{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15}}',
+    '[DONE]',
+  ]);
+  mdrun.byId['pg-enrolBtn'].fire('click');
+  for (let i = 0; i < 60 && !mdrun.storage['dsplay.token']; i++) await tick();
+  mdrun.byId['pg-prompt'].value = 'render markdown';
+  mdrun.byId['pg-send'].fire('click');
+  for (let i = 0; i < 200 && mdrun.byId['pg-send'].disabled; i++) await tick();
+
+  const mlog = mdrun.byId['pg-log'];
+  const answer = mlog.children[mlog.children.length - 1];
+  const bodyEl = answer.children.find((c) => c.className === 'pg-body');
+  const rendered = bodyEl ? bodyEl.innerHTML : '';
+  check('renders a heading', rendered.includes('<h1>Title</h1>'), rendered);
+  check('renders bold', rendered.includes('<strong>bold</strong>'), rendered);
+  check('renders inline code', rendered.includes('<code>inline</code>'), rendered);
+  check('renders a fenced code block with a copy button',
+    rendered.includes('class="pg-codecopy"') && rendered.includes('<pre><code'), rendered);
+  check('a <script> in the answer is inert',
+    rendered.includes('&lt;script&gt;') && rendered.indexOf('<script>') < 0, rendered);
+  check('a javascript: link produces no javascript: href',
+    rendered.indexOf('javascript:') < 0, rendered);
+  const rawEl = answer.children.find((c) => c.className === 'pg-raw');
+  check('keeps the raw markdown for copying',
+    !!rawEl && rawEl.textContent.includes('# Title'), rawEl && rawEl.textContent);
+  const toolsEl = answer.children.find((c) => c.className === 'pg-turn-tools');
+  check('offers copy and raw tools', !!toolsEl && !toolsEl.hidden && toolsEl.children.length === 2,
+    toolsEl && toolsEl.children.length);
 
   // --- refusals ----------------------------------------------------------
   console.log('a gateway refusal reaches the reader');

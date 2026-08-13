@@ -1688,3 +1688,143 @@ figure.shot figcaption {
   margin-bottom: 4px;
 }
 .pg-check input { margin: 0; }
+
+/* Rendered markdown inside an answer. The .pg-body sits inside .pg-log,
+ * which carries the .term palette, so these read off the term tokens and
+ * stay dark in both themes like the rest of the transcript. Everything
+ * that could be wider than the column scrolls inside itself; the document
+ * never moves sideways. */
+.pg-body > :first-child { margin-top: 0; }
+.pg-body > :last-child { margin-bottom: 0; }
+.pg-body h1,
+.pg-body h2,
+.pg-body h3,
+.pg-body h4,
+.pg-body h5,
+.pg-body h6 {
+    color: var(--term-text);
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin: 0.9rem 0 0.35rem;
+}
+.pg-body h1 { font-size: 1.05rem; }
+/* The page dresses its own h2/h3 with a '## ' / '### ' prefix as a design
+ * flourish. In a rendered answer that reads as markdown that failed to
+ * render, so drop it here. */
+.pg-body h2::before,
+.pg-body h3::before { content: none; }
+.pg-body p { margin: 0 0 0.6rem; }
+.pg-body ul,
+.pg-body ol {
+    margin: 0 0 0.6rem;
+    padding-left: 1.4rem;
+}
+.pg-body li { margin: 0.1rem 0; }
+.pg-body a { color: var(--term-cyan); }
+.pg-body strong { color: var(--term-text); font-weight: 700; }
+.pg-body em { font-style: italic; }
+.pg-body code {
+    background: var(--term-bg-2);
+    border: 1px solid var(--term-line);
+    border-radius: 3px;
+    padding: 0.05em 0.3em;
+    font-size: 0.92em;
+    color: var(--term-yellow);
+}
+.pg-body blockquote {
+    margin: 0 0 0.6rem;
+    padding-left: 0.8rem;
+    border-left: 2px solid var(--term-line);
+    color: var(--term-muted);
+}
+.pg-body hr {
+    border: 0;
+    border-top: 1px solid var(--term-line);
+    margin: 0.9rem 0;
+}
+.pg-body table {
+    display: block;
+    width: max-content;
+    max-width: 100%;
+    overflow-x: auto;
+    border-collapse: collapse;
+    margin: 0 0 0.6rem;
+    font-size: 0.92em;
+}
+.pg-body th,
+.pg-body td {
+    border: 1px solid var(--term-line);
+    padding: 0.25rem 0.5rem;
+    text-align: left;
+}
+.pg-body th { color: var(--term-text); }
+
+/* A fenced code block and its copy button. */
+.pg-code {
+    position: relative;
+    margin: 0 0 0.6rem;
+}
+.pg-code pre {
+    background: var(--term-bg-2);
+    border: 1px solid var(--term-line);
+    border-left: 2px solid var(--term-cyan);
+    margin: 0;
+    padding: 0.7rem 0.8rem;
+    overflow-x: auto;
+    font-size: 0.82rem;
+    line-height: 1.5;
+}
+.pg-code pre code {
+    background: none;
+    border: 0;
+    padding: 0;
+    color: var(--term-text);
+    font-size: inherit;
+}
+.pg-code .pg-codecopy {
+    position: absolute;
+    top: 0.3rem;
+    right: 0.3rem;
+    font: inherit;
+    font-size: 0.7rem;
+    color: var(--term-muted);
+    background: var(--term-bg);
+    border: 1px solid var(--term-line);
+    border-radius: 3px;
+    padding: 0.1rem 0.45rem;
+    cursor: pointer;
+    transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.pg-code .pg-codecopy:hover {
+    color: var(--term-cyan);
+    border-color: var(--term-cyan);
+}
+
+/* Per-answer tools: copy the raw markdown, or flip the whole answer to it. */
+.pg-raw {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    margin: 0;
+    color: var(--term-text);
+    font-size: 0.85rem;
+}
+.pg-turn-tools {
+    display: flex;
+    gap: 0.4rem;
+    margin-top: 0.4rem;
+}
+.pg-turn-tools button {
+    font: inherit;
+    font-size: 0.7rem;
+    color: var(--term-muted);
+    background: transparent;
+    border: 1px solid var(--term-line);
+    border-radius: 3px;
+    padding: 0.1rem 0.5rem;
+    cursor: pointer;
+    transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.pg-turn-tools button:hover {
+    color: var(--term-cyan);
+    border-color: var(--term-cyan);
+}
