@@ -25,7 +25,7 @@ response body unmodified. Exit codes: 0 ok, 1 error, 2 auth, 3 no balance,
 - [Formats](https://thevibeworks.github.io/deepseek-cli/formats/): DeepSeek's four wire formats compared: auth, thinking controls, tool support, Claude model remapping, and the token-accounting convention that differs between them
 - [Cost](https://thevibeworks.github.io/deepseek-cli/cost/): the rate card, what the context cache is worth, the thinking surcharge and how it varies by effort level, the local usage ledger, and the caveats on every figure
 - [Benchmarks](https://thevibeworks.github.io/deepseek-cli/bench/): how deepseek-v4-pro (GA 0813) and v4-flash score against Kimi K3, GLM-5.2, Claude Opus 4.8 and Fable 5 on the agent suites (DeepSeek's own launch chart, with caveats), what the GA checkpoint changed over the preview, and the DeepSeek kill line (斩杀线) economics idea with the price gap to GPT-5.6
-- [News](https://thevibeworks.github.io/deepseek-cli/news/): what is changing in the DeepSeek API: the price rise announced 2026-08-06 with no effective date yet, the 2x peak-hour pricing policy (also undated), V4-Flash's official release, and what each does to the cost of a call
+- [News](https://thevibeworks.github.io/deepseek-cli/news/): what is changing around the DeepSeek API: DeepSeek shipping dsh (DeepSeek Harness, its official agent harness) and how it relates to this CLI, the price rise announced 2026-08-06 with no effective date yet, the 2x peak-hour pricing policy (also undated), V4-Flash's official release, and what each does to the cost of a call
 - [Agents](https://thevibeworks.github.io/deepseek-cli/agents/): the scripting contract: output streams, JSON response shapes per format, exit-code semantics, retry behaviour
 - [Playground](https://thevibeworks.github.io/deepseek-cli/playground/): the DeepSeek API in a browser with no API key: all four wire formats, streaming, and the equivalent deepseek command for every request
 
@@ -39,6 +39,8 @@ response body unmodified. Exit codes: 0 ok, 1 error, 2 auth, 3 no balance,
 - Text only: image, document and search-result content blocks are rejected in every format
 - Tool calls are printed, never executed
 - A free tier exists: `deepseek free` enrols with a proof-of-work puzzle instead of a signup, then relays through a gateway run by the project. Flash only, 30 requests and 20K output tokens per UTC day, 4K output per call. A pro request is refused rather than downgraded. Prompts transit the gateway; token counts and cost are recorded, prompts and completions are not
+- Not the same tool as dsh: dsh (DeepSeek Harness, github.com/deepseek-ai/deepseek-harness, npm @deepseek-ai/dsh) is DeepSeek's official open-source agent harness that runs agent loops and executes tools; deepseek-cli is an unofficial API client for one-shot requests, cost accounting and offline docs. Complementary, not competing: run agents with dsh, debug keys, wire formats, costs and docs with deepseek-cli
+- Skills interop with dsh: dsh skills are Anthropic SKILL.md-compatible directory bundles read from ~/.agents/skills and <project>/.agents/skills, so a skill written for Claude Code or for this CLI drops in front of dsh unchanged
 
 ## Source
 
@@ -52,3 +54,4 @@ response body unmodified. Exit codes: 0 ok, 1 error, 2 auth, 3 no balance,
 
 - [DeepSeek API docs](https://api-docs.deepseek.com/): the upstream API this wraps
 - [Models & pricing](https://api-docs.deepseek.com/quick_start/pricing): the rate card encoded in the tool
+- [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness): DeepSeek's official agent harness, a different tool for a different layer

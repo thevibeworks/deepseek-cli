@@ -36,7 +36,11 @@
 
 ---
 
-> Unofficial tool. Not affiliated with DeepSeek.
+> Unofficial tool. Not affiliated with DeepSeek. Also not the same thing
+> as [dsh](https://github.com/deepseek-ai/deepseek-harness), DeepSeek's
+> official agent harness — dsh runs agents and executes tools; this is
+> the API client underneath: one request, its cost, and the docs, from a
+> shell.
 
 DeepSeek serves the same two models through four different wire formats —
 OpenAI chat, OpenAI Responses, Anthropic Messages, and FIM. Every other
@@ -387,7 +391,11 @@ Honest limits:
 ## For agents
 
 Built to be scripted. See [AGENTS.md](AGENTS.md) for the full contract
-and [skill/SKILL.md](skill/SKILL.md) for a drop-in agent skill.
+and [skill/SKILL.md](skill/SKILL.md) for a drop-in agent skill. The skill
+is an Anthropic-format `SKILL.md` bundle — the same format
+[dsh](https://github.com/deepseek-ai/deepseek-harness) reads from
+`~/.agents/skills` and `<project>/.agents/skills` — so one skills
+directory serves Claude Code, dsh and this CLI alike.
 
 ```bash
 deepseek chat "..." --json | jq -r '.choices[0].message.content'
@@ -509,6 +517,8 @@ Design rulings and the reasons behind them: [TASTE.md](TASTE.md).
 - [AGENTS.md](AGENTS.md) · [skill/SKILL.md](skill/SKILL.md) — the scripting contract
 - [TASTE.md](TASTE.md) — design rejections and their reasons
 - [DeepSeek API docs](https://api-docs.deepseek.com/) — the upstream API
+- [dsh (DeepSeek Harness)](https://github.com/deepseek-ai/deepseek-harness) —
+  DeepSeek's official agent harness; a different tool for a different layer
 
 ## License
 
