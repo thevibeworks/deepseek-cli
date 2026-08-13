@@ -194,6 +194,7 @@ One command per endpoint, named for what it does.
 | `tokens` | `POST /beta/completions` | Exact token counts, from the model's own tokenizer. |
 | `docs` | *(local)* | DeepSeek's own API docs, in the binary. Search, read, and ask. |
 | `usage` | *(local)* | What this CLI has spent, from its own ledger. |
+| `pricing` | *(local)* | The rate card, the time-of-day schedule, and the billing period right now. |
 | `session` | *(local)* | The conversations `chat --continue` replays. |
 | `status` | `GET /models`, `/user/balance` | Is it up, for this key, from here. Costs nothing. |
 | `check` | *(all six)* | Preflight. |
@@ -382,10 +383,13 @@ Honest limits:
 - Costs are **estimates** from the published USD rate card, not billed
   amounts. Token counts are exact, and they are what the ledger stores,
   so old rows can be repriced when the card changes.
-- DeepSeek has announced peak/off-peak pricing (2× during 09:00–12:00
-  and 14:00–18:00 Beijing time) with **no effective date**. It is
-  deliberately not applied — guessing that a call was billed double
-  would be inventing data.
+- DeepSeek's repricing **is dated and encoded**: at 16:00 UTC on
+  2026-08-16 billing moves to peak/off-peak on a new, higher card (peak
+  01:00–04:00 and 06:00–10:00 UTC, 2× the off-peak rate). Estimates use
+  the flat card until that instant and switch on it automatically —
+  never before, because applying a price before its effective date
+  would be inventing data. `deepseek pricing` prints the schedule and
+  the period in effect right now.
 - `--no-ledger` skips the write; `--no-stats` hides the line.
 
 ## For agents

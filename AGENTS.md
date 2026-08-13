@@ -102,7 +102,13 @@ deepseek models --json
 deepseek balance --json          # exits 3 if exhausted
 deepseek usage --since 7d --json # local ledger, not billing
 deepseek usage --entries --json  # individual calls
+deepseek pricing --json          # the schedule and the billing period right now
 ```
+
+Pricing is time-of-day from 2026-08-16 16:00 UTC: peak hours 01:00–04:00
+and 06:00–10:00 UTC bill at twice the off-peak rate. `pricing` computes
+the current period locally — no network, nothing spent — from the same
+schedule the cost estimates use.
 
 ### Documentation, offline
 
@@ -198,6 +204,7 @@ These are computed locally, not from the API:
 
 ```
 usage --json      {"since","total":{...},"by_model":{...},"by_api":{...}}
+pricing --json    {"now_utc","now_local","now_beijing","period","multiplier","next_change","reprice_at","peak_windows_utc":[...],"peak_multiplier","current":{...},"off_peak":{...},"peak":{...},"source"}
 check --json      {"base_url","key_set","ok","probes":[{"name","path","ok","detail","error","ms"}]}
 session ls --json [{"name","model","turns","updated","bytes"}]
 status --json     {"base_url","ok","models":[...],"latency_ms","balance","status_page"}

@@ -110,6 +110,7 @@ site-check:
 	node site/md.test.js
 	node site/playground.test.js
 	node site/playground.dom.test.js
+	node site/pricing.test.js
 	node site/waves.test.js
 	node site/waves.dom.test.js
 	./site/bans.sh

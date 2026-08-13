@@ -12,6 +12,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"strings"
+	"time"
 )
 
 // Usage is token accounting normalised across the four wire formats.
@@ -39,32 +40,98 @@ type Price struct {
 	Output         float64
 }
 
-// Rates as published on 2026-08-02.
-var rates = map[string]Price{
+// RepriceAt is when DeepSeek's dated repricing takes effect: 16:00 UTC
+// on 2026-08-16, announced 2026-08-13. From that instant billing is
+// peak/off-peak on a new, higher card. Under-charging our own budget
+// after the flip would drain the credit pool at yesterday's prices, so
+// the switch is encoded here and gated on the date, exactly as the CLI's
+// copy does.
+var RepriceAt = time.Date(2026, time.August, 16, 16, 0, 0, 0, time.UTC)
+
+// ratesFlat is the card published 2026-08-02, in force before RepriceAt.
+var ratesFlat = map[string]Price{
 	"deepseek-v4-flash": {CacheHitInput: 0.0028, CacheMissInput: 0.14, Output: 0.28},
 	"deepseek-v4-pro":   {CacheHitInput: 0.003625, CacheMissInput: 0.435, Output: 0.87},
 }
 
-// PriceFor returns the rate card for a model, defaulting to the more
-// expensive one. Charging an unknown model at pro rates is deliberate:
-// if DeepSeek ships a third model and we have not updated this table, we
-// want to over-charge our own budget, not under-charge it.
-func PriceFor(model string) Price {
-	if p, ok := rates[model]; ok {
-		return p
-	}
-	if strings.Contains(model, "pro") || model == "" {
-		return rates["deepseek-v4-pro"]
-	}
-	if strings.Contains(model, "flash") {
-		return rates["deepseek-v4-flash"]
-	}
-	return rates["deepseek-v4-pro"]
+// ratesOffPeak is the base card from RepriceAt on; during peakWindows
+// every billing item costs peakMultiplier times these numbers.
+var ratesOffPeak = map[string]Price{
+	"deepseek-v4-flash": {CacheHitInput: 0.007, CacheMissInput: 0.22, Output: 0.66},
+	"deepseek-v4-pro":   {CacheHitInput: 0.022, CacheMissInput: 0.66, Output: 1.98},
 }
 
-// Cost prices a usage record.
+const peakMultiplier = 2.0
+
+// peakWindows are the daily peak hours from RepriceAt on, in minutes of
+// the UTC day, end exclusive: 01:00-04:00 and 06:00-10:00 UTC.
+var peakWindows = [][2]int{{1 * 60, 4 * 60}, {6 * 60, 10 * 60}}
+
+func inPeak(t time.Time) bool {
+	u := t.UTC()
+	m := u.Hour()*60 + u.Minute()
+	for _, w := range peakWindows {
+		if m >= w[0] && m < w[1] {
+			return true
+		}
+	}
+	return false
+}
+
+// PriceFor returns the rate card in effect right now, defaulting to the
+// more expensive model. Charging an unknown model at pro rates is
+// deliberate: if DeepSeek ships a third model and we have not updated
+// this table, we want to over-charge our own budget, not under-charge it.
+func PriceFor(model string) Price {
+	return PriceAt(model, time.Now())
+}
+
+// PriceAt is PriceFor at a chosen instant: that era's base card, doubled
+// inside a peak window.
+func PriceAt(model string, t time.Time) Price {
+	if t.Before(RepriceAt) {
+		return cardFor(ratesFlat, model)
+	}
+	p := cardFor(ratesOffPeak, model)
+	if inPeak(t) {
+		p = scale(p, peakMultiplier)
+	}
+	return p
+}
+
+func cardFor(cards map[string]Price, model string) Price {
+	if p, ok := cards[model]; ok {
+		return p
+	}
+	switch {
+	case strings.Contains(model, "pro") || model == "":
+		return cards["deepseek-v4-pro"]
+	case strings.Contains(model, "flash"):
+		return cards["deepseek-v4-flash"]
+	default:
+		return cards["deepseek-v4-pro"]
+	}
+}
+
+func scale(p Price, mult float64) Price {
+	p.CacheHitInput *= mult
+	p.CacheMissInput *= mult
+	p.Output *= mult
+	return p
+}
+
+// Cost prices a usage record at the card in force right now — the
+// response being settled just arrived.
 func Cost(model string, u Usage) float64 {
-	p := PriceFor(model)
+	return CostAt(model, u, time.Now())
+}
+
+// CostAt prices a usage record under the card in force at one instant.
+func CostAt(model string, u Usage, t time.Time) float64 {
+	return costWith(PriceAt(model, t), u)
+}
+
+func costWith(p Price, u Usage) float64 {
 	const perMillion = 1_000_000.0
 	miss := u.InputTokens - u.CacheHitTokens
 	if miss < 0 {
@@ -93,16 +160,65 @@ func Cost(model string, u Usage) float64 {
 // A search request breaks the first rule: the pages DeepSeek reads on the
 // caller's behalf arrive as input tokens the body never contained, so
 // searchInputAllowance is added to the input bound instead.
+// A third rule joined them with the dated repricing: the reservation is
+// priced at the dearest card the request could settle under, not the
+// card of the admission instant. A request admitted just before a peak
+// window (or just before the repricing flip) can settle inside it, and
+// an estimate the clock can outrun is not a ceiling.
 func Estimate(model string, requestBytes, maxTokens int, search bool) float64 {
+	return EstimateAt(model, requestBytes, maxTokens, search, time.Now())
+}
+
+// EstimateAt is Estimate at a chosen instant.
+func EstimateAt(model string, requestBytes, maxTokens int, search bool, t time.Time) float64 {
 	input := requestBytes + 1
 	if search {
 		input += searchInputAllowance
 	}
-	return Cost(model, Usage{
+	return costWith(ceilingAt(model, t), Usage{
 		InputTokens:  input,
 		OutputTokens: maxTokens + reasoningAllowance,
 		Found:        false,
 	})
+}
+
+// ceilingAt is the dearest card a request admitted at t could settle
+// under. Upstream holds a connection up to ten minutes before inference
+// begins, so a request is given an hour of in-flight allowance: if that
+// hour crosses the repricing flip or touches a peak window, the
+// reservation is priced at the dearer side. Off-peak admissions far from
+// any boundary still reserve at the off-peak card — a ceiling should be
+// unbeatable, not double.
+func ceilingAt(model string, t time.Time) Price {
+	const inFlight = time.Hour
+	if t.Add(inFlight).Before(RepriceAt) {
+		return cardFor(ratesFlat, model)
+	}
+	if !t.Before(RepriceAt) && !peakTouches(t, inFlight) {
+		return cardFor(ratesOffPeak, model)
+	}
+	return scale(cardFor(ratesOffPeak, model), peakMultiplier)
+}
+
+// peakTouches reports whether any instant of [t, t+d] falls in a peak
+// window. The endpoint checks cover every span shorter than the gaps
+// between windows; the start-of-window check keeps this correct even if
+// a future card ships a window shorter than the span.
+func peakTouches(t time.Time, d time.Duration) bool {
+	if inPeak(t) || inPeak(t.Add(d)) {
+		return true
+	}
+	u := t.UTC()
+	m := u.Hour()*60 + u.Minute()
+	span := int(d / time.Minute)
+	for _, w := range peakWindows {
+		for _, start := range []int{w[0], w[0] + 24*60} {
+			if start > m && start < m+span {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // reasoningAllowance is the output headroom reserved for chain-of-thought

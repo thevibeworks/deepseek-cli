@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>deepseek-cli command reference: chat, anthropic, respond, fim, usage</title>
-<meta name="description" content="Full reference for every deepseek CLI command and flag: chat completions, Anthropic Messages, OpenAI Responses, FIM, models, balance, usage ledger, sessions, check and raw, plus exit codes.">
+<meta name="description" content="Full reference for every deepseek CLI command and flag: chat completions, Anthropic Messages, OpenAI Responses, FIM, models, balance, pricing, usage ledger, sessions, check and raw, plus exit codes.">
 <meta name="keywords" content="deepseek cli commands, deepseek chat completions cli, deepseek fim completion, deepseek cli flags, deepseek cli reference, deepseek json output, deepseek cli exit codes">
 <meta name="author" content="thevibeworks">
 <meta name="theme-color" content="#fbfaf7" media="(prefers-color-scheme: light)">
@@ -13,7 +13,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="deepseek-cli">
 <meta property="og:title" content="deepseek-cli command reference: chat, anthropic, respond, fim, usage">
-<meta property="og:description" content="Full reference for every deepseek CLI command and flag: chat completions, Anthropic Messages, OpenAI Responses, FIM, models, balance, usage ledger, sessions, check and raw, plus exit codes.">
+<meta property="og:description" content="Full reference for every deepseek CLI command and flag: chat completions, Anthropic Messages, OpenAI Responses, FIM, models, balance, pricing, usage ledger, sessions, check and raw, plus exit codes.">
 <meta property="og:url" content="https://thevibeworks.github.io/deepseek-cli/commands/">
 <meta property="og:image" content="https://thevibeworks.github.io/deepseek-cli/og.png">
 <meta property="og:image:width" content="1200">
@@ -21,7 +21,7 @@
 <meta property="og:image:alt" content="deepseek-cli: the whole DeepSeek API from the terminal">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="deepseek-cli command reference: chat, anthropic, respond, fim, usage">
-<meta name="twitter:description" content="Full reference for every deepseek CLI command and flag: chat completions, Anthropic Messages, OpenAI Responses, FIM, models, balance, usage ledger, sessions, check and raw, plus exit codes.">
+<meta name="twitter:description" content="Full reference for every deepseek CLI command and flag: chat completions, Anthropic Messages, OpenAI Responses, FIM, models, balance, pricing, usage ledger, sessions, check and raw, plus exit codes.">
 <meta name="twitter:image" content="https://thevibeworks.github.io/deepseek-cli/og.png">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -68,6 +68,7 @@
       <a href="../commands/" aria-current="page">commands</a>
       <a href="../formats/">formats</a>
       <a href="../cost/">cost</a>
+      <a href="../pricing/">pricing</a>
       <a href="../bench/">bench</a>
       <a href="../news/">news</a>
       <a href="../agents/">agents</a>
@@ -255,6 +256,14 @@ API's list alone.</p>
 <p>Lists every currency the account holds &ndash; a real account returns both a
 USD and a CNY row. Exits 3 when exhausted, the same code a 402 produces
 anywhere else, so a script can check once up front.</p>
+
+<h2 id="pricing">pricing</h2>
+<pre><code>ds pricing</code></pre>
+<p>The rate card, the time-of-day schedule, and the billing period in effect
+right now &ndash; local, UTC and Beijing time, plus when the period next
+changes. Computed locally from the same schedule the cost estimates use, so
+nothing is spent asking. See the <a href="../pricing/">pricing
+page</a> for the same table in the browser.</p>
 
 <h2 id="usage">usage</h2>
 <pre><code>ds usage                  # today

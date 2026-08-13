@@ -152,6 +152,14 @@ the multiplier goes when it lands.
 **Expires.** When DeepSeek announces the effective date — then the
 multiplier goes in, gated on that date.
 
+**Expired 2026-08-13.** DeepSeek dated it: peak/off-peak billing on a new
+card from 2026-08-16 16:00 UTC, windows defined in UTC (01:00–04:00 and
+06:00–10:00). The multiplier went in exactly as this entry prescribed —
+gated on the effective instant, never applied before it. The schedule
+lives in `internal/deepseek/pricing.go`, mirrored by the gateway meter and
+the site's pricing page; `deepseek pricing` prints it. The principle
+stands for the next undated announcement.
+
 ---
 
 ## 2026-08-05 rejected: executing the tool calls the model asks for

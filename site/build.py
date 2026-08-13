@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Build the deepseek-cli site.
 
-Six pages that share a head, a header and a footer. Writing those by hand
-six times is how a canonical URL ends up pointing at the wrong page and
+Ten pages that share a head, a header and a footer. Writing those by hand
+ten times is how a canonical URL ends up pointing at the wrong page and
 nobody notices for a year, so the shared parts live here once and the
 pages carry only their own content.
 
@@ -66,11 +66,111 @@ NAV = [
     ("commands/", "commands"),
     ("formats/", "formats"),
     ("cost/", "cost"),
+    ("pricing/", "pricing"),
     ("bench/", "bench"),
     ("news/", "news"),
     ("agents/", "agents"),
     ("playground/", "playground"),
 ]
+
+# The time-of-day price schedule the /pricing/ page is driven by: one row
+# per period, boundaries in minutes of the UTC day (upstream defines the
+# windows in UTC, not Beijing), a multiplier on that era's base card, and
+# the instant the row takes effect. Keep the list chronological: among
+# windowless rows the latest effective one is the base era, and a
+# windowed row shadows its era's base inside its window.
+#
+# Verified against https://api-docs.deepseek.com/quick_start/pricing on
+# 2026-08-13 (mirrored in the CLI's embedded docs corpus): the flat card
+# of 2026-08-02 applies until 16:00 UTC on 2026-08-16, when DeepSeek
+# moves to peak/off-peak billing on a new base card with off-peak at
+# half the peak rate and peak hours 01:00-04:00 and 06:00-10:00 UTC.
+# The visible schedule table, the "right now" strip and the JSON that
+# pricing.js reads are all rendered from this one list, and
+# pricing.test.js pins the period arithmetic against it. The same
+# schedule lives in internal/deepseek/pricing.go for the CLI's
+# estimates and `deepseek pricing`.
+REPRICE_AT = "2026-08-16T16:00:00Z"
+
+PRICE_SCHEDULE = [
+    dict(label="flat", start=None, end=None, multiplier=1.0,
+         effective="2026-08-02T00:00:00Z"),
+    dict(label="off-peak", start=None, end=None, multiplier=1.0,
+         effective=REPRICE_AT),
+    dict(label="peak", start=60, end=240, multiplier=2.0,
+         effective=REPRICE_AT),
+    dict(label="peak", start=360, end=600, multiplier=2.0,
+         effective=REPRICE_AT),
+]
+
+
+def _fmt_minutes(m):
+    return f"{m // 60:02d}:{m % 60:02d}"
+
+
+def price_schedule_json():
+    """The schedule as compact JSON, embedded in the page for pricing.js."""
+    rows = []
+    for r in PRICE_SCHEDULE:
+        start = "null" if r["start"] is None else str(r["start"])
+        end = "null" if r["end"] is None else str(r["end"])
+        rows.append(
+            '{"label":%s,"start":%s,"end":%s,"multiplier":%s,"effective":%s}'
+            % (jstr(r["label"]), start, end, repr(r["multiplier"]), jstr(r["effective"]))
+        )
+    return "[" + ",".join(rows) + "]"
+
+
+def price_schedule_rows():
+    """The schedule as visible table rows, same data as the JSON."""
+    out = []
+    for r in PRICE_SCHEDULE:
+        if r["start"] is None:
+            # A windowless row is the era's base; it reads "all other
+            # hours" when windowed rows share its effective instant.
+            windowed_peers = any(
+                p["start"] is not None and p["effective"] == r["effective"]
+                for p in PRICE_SCHEDULE
+            )
+            window = "all other hours" if windowed_peers else "all hours"
+        else:
+            window = f"{_fmt_minutes(r['start'])}&ndash;{_fmt_minutes(r['end'])} UTC"
+        eff = r["effective"].replace("T", " ").replace(":00Z", " UTC")
+        out.append(
+            f"<tr><td>{r['label']}</td><td>{window}</td>"
+            f"<td class=\"num\">{r['multiplier']:g}&times;</td>"
+            f"<td>{eff}</td></tr>"
+        )
+    return "\n".join(out)
+
+
+def price_now_verdict():
+    """The strip's no-JavaScript answer, derived from the same schedule.
+
+    Phrased to stay true on both sides of the effective instant, so the
+    committed HTML does not start lying the morning after the flip. The
+    date and the windows come from the data; the copy cannot drift from
+    the table.
+    """
+    eras = sorted({r["effective"] for r in PRICE_SCHEDULE})
+    if len(eras) == 1:
+        return (
+            "<strong>Flat pricing, at every hour.</strong> No time-of-day "
+            "tiers are in effect, and the card below is the price."
+        )
+    flip = eras[-1].replace("T", " ").replace(":00Z", " UTC")
+    windows = " and ".join(
+        f"{_fmt_minutes(r['start'])}&ndash;{_fmt_minutes(r['end'])}"
+        for r in PRICE_SCHEDULE if r["start"] is not None
+    )
+    return (
+        f"<strong>Before {flip}, every hour bills at the flat card "
+        f"below.</strong> From that instant DeepSeek bills peak/off-peak "
+        f"on a new, higher card: peak hours are {windows} UTC daily, at "
+        "twice the off-peak rate, and every other hour is off-peak. With "
+        "JavaScript on, this strip reads your clock and names the period "
+        "you are in right now."
+    )
 
 # Theme. The default is whatever the OS says; the toggle overrides it and
 # persists the override. Two scripts, and the split matters:
@@ -550,6 +650,7 @@ Full reference on the <a href="{{root}}commands/">commands page</a>.</p>
 <tr><td><code>tokens</code></td><td><code>POST /beta/completions</code></td><td>Exact token counts, from the model's own tokenizer.</td></tr>
 <tr><td><code>docs</code></td><td><em>local</em></td><td>DeepSeek's own documentation, in the binary. Search, read, ask.</td></tr>
 <tr><td><code>usage</code></td><td><em>local</em></td><td>What this CLI has spent, from its own ledger.</td></tr>
+<tr><td><code>pricing</code></td><td><em>local</em></td><td>The rate card, the schedule, and the billing period right now.</td></tr>
 <tr><td><code>session</code></td><td><em>local</em></td><td>The conversations <code>chat --continue</code> replays.</td></tr>
 <tr><td><code>status</code></td><td><code>GET /models</code>, <code>/user/balance</code></td><td>Is it up, for this key, from here. Costs nothing.</td></tr>
 <tr><td><code>check</code></td><td><em>all six</em></td><td>Preflight.</td></tr>
@@ -676,7 +777,7 @@ PAGES.append(dict(
     slug="commands/",
     crumb="commands",
     title="deepseek-cli command reference: chat, anthropic, respond, fim, usage",
-    description="Full reference for every deepseek CLI command and flag: chat completions, Anthropic Messages, OpenAI Responses, FIM, models, balance, usage ledger, sessions, check and raw, plus exit codes.",
+    description="Full reference for every deepseek CLI command and flag: chat completions, Anthropic Messages, OpenAI Responses, FIM, models, balance, pricing, usage ledger, sessions, check and raw, plus exit codes.",
     keywords="deepseek cli commands, deepseek chat completions cli, deepseek fim completion, deepseek cli flags, deepseek cli reference, deepseek json output, deepseek cli exit codes",
     jsonld=tech_article("deepseek-cli command reference", "Every command and flag in the deepseek CLI.", "commands/"),
     body="""
@@ -851,6 +952,14 @@ API's list alone.</p>
 <p>Lists every currency the account holds &ndash; a real account returns both a
 USD and a CNY row. Exits 3 when exhausted, the same code a 402 produces
 anywhere else, so a script can check once up front.</p>
+
+<h2 id="pricing">pricing</h2>
+<pre><code>ds pricing</code></pre>
+<p>The rate card, the time-of-day schedule, and the billing period in effect
+right now &ndash; local, UTC and Beijing time, plus when the period next
+changes. Computed locally from the same schedule the cost estimates use, so
+nothing is spent asking. See the <a href="{{root}}pricing/">pricing
+page</a> for the same table in the browser.</p>
 
 <h2 id="usage">usage</h2>
 <pre><code>ds usage                  # today
@@ -1057,7 +1166,10 @@ makes a repeated prompt prefix roughly fifty times cheaper. That saving is
 invisible unless something is counting &ndash; so this counts.</p>
 
 <h2 id="card">The rate card</h2>
-<p>USD per 1M tokens, as published on 2026-08-02:</p>
+<p>USD per 1M tokens, as published on 2026-08-02 and in force before
+2026-08-16 16:00 UTC &ndash; from that instant DeepSeek bills peak/off-peak
+on a new card, and the <a href="{{root}}pricing/">pricing page</a> carries
+the dated schedule:</p>
 <div class="tablewrap">
 <table>
 <thead><tr><th>Model</th><th class="num">Input (cached)</th><th class="num">Input (miss)</th><th class="num">Output</th></tr></thead>
@@ -1067,8 +1179,9 @@ invisible unless something is counting &ndash; so this counts.</p>
 </tbody>
 </table>
 </div>
-<p><code>ds models</code> prints this next to the live model list, so the price
-is on screen when you pick.</p>
+<p><code>ds models</code> prints the card in force next to the live model
+list, so the price is on screen when you pick, and <code>ds pricing</code>
+prints the full schedule with the period you are in right now.</p>
 
 <h2 id="cache">What the cache is worth</h2>
 <p>On flash, a cache hit costs <strong>1/50th</strong> of a miss. The same
@@ -1166,15 +1279,18 @@ which is the number that tells you whether prompt structuring is paying off.</p>
 <li><strong>Estimates, not invoices.</strong> Computed from the published USD
 rate card. Your account may bill in another currency &ndash;
 <code>ds balance</code> shows which.</li>
-<li><strong>Peak pricing is not applied.</strong> DeepSeek has announced a 2&times;
-multiplier for 09:00&ndash;12:00 and 14:00&ndash;18:00 Beijing time, with no
-effective date. Applying it now would double every estimate on a guess, so it
-is deliberately left out until the date is announced.</li>
-<li><strong>A broader repricing is coming.</strong> On 2026-08-06 DeepSeek
-gave notice in the platform console that all API services will be repriced
-soon, with a substantial rise expected and no numbers yet. Until there is a
-new published card, estimates stay on the card above &ndash; details on the
-<a href="{{root}}news/">news page</a>.</li>
+<li><strong>The repricing is dated, and the switch is encoded.</strong>
+From 2026-08-16 16:00 UTC DeepSeek bills peak/off-peak on a new, higher
+card (peak hours 01:00&ndash;04:00 and 06:00&ndash;10:00 UTC at twice the
+off-peak rate). Estimates use the flat card above until that instant and
+switch automatically on it &ndash; never before, because applying a price
+before its effective date would be inventing data. The
+<a href="{{root}}pricing/">pricing page</a> and <code>ds pricing</code>
+carry the schedule and the new numbers.</li>
+<li><strong>The cache discount narrows at the flip.</strong> On the card
+above a cached input token costs 1/50th of a miss on flash and 1/120th
+on pro; on the card of 2026-08-16 both settle at about 1/30th. Still
+the biggest lever on a bill, just a smaller one.</li>
 <li><strong>Local only.</strong> The ledger records calls made by this CLI on
 this machine. It knows nothing about your other clients.</li>
 </ul>
@@ -1183,6 +1299,116 @@ this machine. It knows nothing about your other clients.</li>
 line, and neither ever fails the command that produced it &ndash; you asked for
 a completion, not for bookkeeping.</p>
 """,
+))
+
+PAGES.append(dict(
+    slug="pricing/",
+    crumb="pricing",
+    title="DeepSeek API pricing: the schedule, the peak hours, and the period right now",
+    description="DeepSeek moves to peak/off-peak API billing at 16:00 UTC on 2026-08-16: peak hours 01:00-04:00 and 06:00-10:00 UTC at twice the off-peak rate. The full dated schedule, the current flat card, the new numbers per model, and a strip that reads your clock and names the billing period you are in right now.",
+    keywords="deepseek pricing, deepseek api pricing, deepseek price increase 2026, deepseek repricing, deepseek peak hours, deepseek off-peak pricing, deepseek peak off-peak billing, deepseek api cost, deepseek v4 flash price, deepseek v4 pro price, deepseek pricing 2026-08-16, deepseek new rate card, deepseek token price",
+    jsonld=faq([
+        ("When does DeepSeek's peak/off-peak pricing start?",
+         "At 16:00 UTC on August 16, 2026. Until that instant, every hour bills at the flat card published 2026-08-02. From it, DeepSeek bills peak/off-peak on a new card: peak hours are 01:00-04:00 and 06:00-10:00 UTC daily at twice the off-peak rate, and all other hours are off-peak."),
+        ("What are DeepSeek's peak hours?",
+         "01:00-04:00 and 06:00-10:00 UTC, daily. The boundaries are defined in UTC; in Beijing time (UTC+8) they read 09:00-12:00 and 14:00-18:00. Every other hour is off-peak, at half the peak rate."),
+        ("What will the DeepSeek API cost after August 16, 2026?",
+         "Per 1M tokens (cache hit / cache miss / output): deepseek-v4-flash off-peak $0.007 / $0.22 / $0.66 and peak $0.014 / $0.44 / $1.32; deepseek-v4-pro off-peak $0.022 / $0.66 / $1.98 and peak $0.044 / $1.32 / $3.96."),
+        ("What does the DeepSeek API cost right now?",
+         "Before 16:00 UTC on 2026-08-16, the flat card of 2026-08-02 applies at every hour. Per 1M tokens (cache hit / cache miss / output): deepseek-v4-flash $0.0028 / $0.14 / $0.28; deepseek-v4-pro $0.003625 / $0.435 / $0.87."),
+        ("Is DeepSeek's off-peak price the same as the current price?",
+         "No. Off-peak is half of peak, but on a new, higher base card: a flash cache-miss input token goes from $0.14 to $0.22 per 1M off-peak and $0.44 peak. Even the cheapest hour after the switch costs more than any hour before it."),
+        ("How do I check the current DeepSeek billing period from the terminal?",
+         "Run `deepseek pricing`. It prints the period in effect (flat, off-peak or peak) with your local, UTC and Beijing time, when the period next changes, and both rate cards, all computed locally from the same schedule the CLI's cost estimates use. `deepseek pricing --json` emits the same as JSON."),
+    ]),
+    body="""
+<h1>Pricing</h1>
+<p class="lede">From 16:00 UTC on 2026-08-16, what a DeepSeek token costs
+depends on the hour. This page carries the dated schedule, both rate cards,
+and a strip that reads your clock &ndash; the same data the CLI's estimates
+switch on, so the page and <code>ds pricing</code> can never disagree.</p>
+
+<h2 id="now">Right now</h2>
+<div class="note" id="price-now">
+<span class="tag">your clock decides</span>
+<p id="price-now-line">""" + price_now_verdict() + """</p>
+</div>
+
+<h2 id="schedule">The schedule</h2>
+<p>One table drives everything on this page: each row is a billing period,
+its daily window in UTC minutes, the multiplier on that era's base card,
+and the instant the row takes effect. The strip above, the CLI's
+estimates and <code>ds pricing</code> all read the same rows.</p>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Period</th><th>Daily window</th><th class="num">Multiplier</th><th>Effective from</th></tr></thead>
+<tbody>
+""" + price_schedule_rows() + """
+</tbody>
+</table>
+</div>
+<p>The windows are defined in UTC, not Beijing &ndash; in Beijing time
+(UTC+8) the peak hours read 09:00&ndash;12:00 and 14:00&ndash;18:00, which
+is the Chinese working day. The off-peak window covers the whole European
+and American working day, so batch work that can move west should.</p>
+
+<h2 id="until">Until the switch: the flat card</h2>
+<p>USD per 1M tokens, published 2026-08-02, billed at every hour of the day
+until 2026-08-16 16:00 UTC:</p>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Model</th><th class="num">Input (cached)</th><th class="num">Input (miss)</th><th class="num">Output</th></tr></thead>
+<tbody>
+<tr><td><code>deepseek-v4-flash</code></td><td class="num">$0.0028</td><td class="num">$0.14</td><td class="num">$0.28</td></tr>
+<tr><td><code>deepseek-v4-pro</code></td><td class="num">$0.003625</td><td class="num">$0.435</td><td class="num">$0.87</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2 id="after">From 2026-08-16 16:00 UTC: the peak/off-peak card</h2>
+<p>USD per 1M tokens. Off-peak is half of peak by construction, but on a
+new, higher base &ndash; even the cheapest hour after the switch costs more
+than any hour before it. A flash cache-miss input token goes from $0.14 to
+$0.22 per 1M off-peak, and to $0.44 in peak hours:</p>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Model</th><th>Period</th><th class="num">Input (cached)</th><th class="num">Input (miss)</th><th class="num">Output</th></tr></thead>
+<tbody>
+<tr><td rowspan="2"><code>deepseek-v4-flash</code></td><td>off-peak</td><td class="num">$0.007</td><td class="num">$0.22</td><td class="num">$0.66</td></tr>
+<tr><td>peak</td><td class="num">$0.014</td><td class="num">$0.44</td><td class="num">$1.32</td></tr>
+<tr><td rowspan="2"><code>deepseek-v4-pro</code></td><td>off-peak</td><td class="num">$0.022</td><td class="num">$0.66</td><td class="num">$1.98</td></tr>
+<tr><td>peak</td><td class="num">$0.044</td><td class="num">$1.32</td><td class="num">$3.96</td></tr>
+</tbody>
+</table>
+</div>
+<p>The <a href="{{root}}cost/#cache">context cache</a> stays the biggest
+lever: a cached input token costs about 1/30th of a miss on the new card,
+against 1/50th (flash) and 1/120th (pro) today. Prompt structure will
+still dominate a bill; the hour of the day comes second.</p>
+
+<h2 id="cli">The same answer in the terminal</h2>
+<pre><code>ds pricing            # period right now, local + UTC + Beijing, both cards
+ds pricing --json     # the same, as JSON for scripts</code></pre>
+<p>Computed locally from the same schedule &ndash; no network call, nothing
+spent. The <a href="{{root}}cost/">cost estimates</a> price each call with
+the card in force at the moment it is made: the flat card until the
+effective instant, peak/off-peak after, never early &ndash; applying a
+price before its date would be inventing data. The
+<a href="{{root}}cost/#ledger">ledger</a> stores exact token counts rather
+than dollar amounts, so historical calls can always be repriced under
+whatever card was, or becomes, real.</p>
+
+<h2 id="source">Source</h2>
+<p>The numbers are DeepSeek's own, from the official
+<a href="{{docs}}/quick_start/pricing">Models &amp; Pricing</a> page as
+updated on 2026-08-13 alongside the V4-Pro GA release. The CLI carries the
+same page offline &ndash; <code>ds docs show quick_start/pricing</code>
+&ndash; and <code>ds docs sync</code> refreshes it, so the terminal copy,
+this page and the estimates trace to one upstream.</p>
+
+<script id="price-schedule" type="application/json">""" + price_schedule_json() + """</script>
+""",
+    scripts='<script src="{{root}}pricing.js" defer></script>\n',
 ))
 
 PAGES.append(dict(
@@ -1313,8 +1539,11 @@ no reason to be chosen. The lever is price, and the gap is not small:</p>
 <p class="small">DeepSeek prices are the published USD rate card of
 2026-08-02, unchanged at GA; they are a conversion of the RMB card
 (&yen;3 / &yen;0.025 / &yen;6 per 1M for pro) at one consistent rate. GPT-5.6
-Sol prices are from OpenAI's own listing. A <a href="{{root}}news/">broad
-DeepSeek repricing</a> is announced but has no date, so it is not applied here.</p>
+Sol prices are from OpenAI's own listing. From 2026-08-16 16:00 UTC DeepSeek
+bills peak/off-peak on a higher card &ndash; the
+<a href="{{root}}pricing/">pricing page</a> has the dated schedule. Even at
+the new peak rate, pro stays ~3.8x cheaper than GPT-5.6 Sol on cache-miss
+input and ~7.6x on output.</p>
 <p>The sober version matters as much as the slogan. The kill line is real for
 the <em>middle</em> of the market: a model that costs more than V4-Pro and
 scores below it on the table above is hard to justify, and that is most of the
@@ -1362,9 +1591,9 @@ cross-check a live leaderboard before betting on a single cell.</p>
 PAGES.append(dict(
     slug="news/",
     crumb="news",
-    title="DeepSeek API news: dsh ships, V4-Pro GA, the announced price rise",
-    description="What is changing around the DeepSeek API: DeepSeek ships dsh (DeepSeek Harness), its official open-source agent harness, V4-Pro's official release (DeepSeek-V4-Pro-0813), an across-the-board price increase announced with no date yet, the 2x peak-hour pricing policy, V4-Flash's official release, and what each one means for a call.",
-    keywords="deepseek harness, dsh, @deepseek-ai/dsh, install dsh, dsh plugins, dsh skills, dsh-plugin, dsh vs claude code, deepseek cli vs dsh, deepseek v4 pro release, deepseek v4 pro ga, deepseek-v4-pro-0813, deepseek api price increase, deepseek price rise 2026, deepseek peak hour pricing, deepseek api news, deepseek api changelog, deepseek v4 flash release, deepseek pricing change",
+    title="DeepSeek API news: the dated repricing, dsh ships, V4-Pro GA",
+    description="What is changing around the DeepSeek API: the price rise now has a date and numbers (peak/off-peak billing from 2026-08-16 16:00 UTC), DeepSeek ships dsh (DeepSeek Harness), its official open-source agent harness, V4-Pro's official release (DeepSeek-V4-Pro-0813), V4-Flash's official release, and what each one means for a call.",
+    keywords="deepseek harness, dsh, @deepseek-ai/dsh, install dsh, dsh plugins, dsh skills, dsh-plugin, dsh vs claude code, deepseek cli vs dsh, deepseek v4 pro release, deepseek v4 pro ga, deepseek-v4-pro-0813, deepseek api price increase, deepseek price rise 2026, deepseek peak hour pricing, deepseek peak off-peak billing, deepseek repricing 2026-08-16, deepseek api news, deepseek api changelog, deepseek v4 flash release, deepseek pricing change",
     jsonld=faq([
         ("Is DeepSeek V4-Pro officially released?",
          "Yes. On 2026-08-12 the model version on DeepSeek's Models & Pricing page changed to DeepSeek-V4-Pro-0813, ending the preview that had run since 2026-04-24. The model ID is unchanged (deepseek-v4-pro), the rate card is unchanged, and the release focuses on agentic post-training rather than new pretraining."),
@@ -1373,11 +1602,11 @@ PAGES.append(dict(
         ("Is dsh the same as deepseek-cli?",
          "No. dsh (DeepSeek Harness) is DeepSeek's official agent harness: it runs an agent loop, executes tools, and manages plugins, skills and sessions. deepseek-cli is an unofficial single-binary API client: it sends one request in any of DeepSeek's four wire formats, prints the response and its estimated cost, and carries DeepSeek's API documentation offline. They are complementary, not competing: run agents with dsh, and use deepseek-cli to check a key, price a call, debug the wire formats, or query the docs."),
         ("Is DeepSeek raising its API prices?",
-         "Yes, a rise is announced but not yet in effect. On 2026-08-06 (Beijing time) DeepSeek posted a notice in the platform console and emailed API account holders saying all API services will be repriced in the near term and that the increase is expected to be substantial, advising developers to plan call volume and top-ups accordingly. No new rate card and no effective date have been published. Separately, a 2x peak-hour pricing policy has been announced since June 2026, also without an effective date."),
+         "Yes, and the rise now has a date and numbers. At 16:00 UTC on 2026-08-16 DeepSeek moves to peak/off-peak billing on a new, higher card: peak hours are 01:00-04:00 and 06:00-10:00 UTC daily at twice the off-peak rate, and all other hours are off-peak. Per 1M tokens (cache hit / miss / output), deepseek-v4-flash goes to $0.007/$0.22/$0.66 off-peak and $0.014/$0.44/$1.32 peak; deepseek-v4-pro to $0.022/$0.66/$1.98 off-peak and $0.044/$1.32/$3.96 peak. This resolves both the undated broad price rise announced on 2026-08-06 and the undated peak-hour policy announced in June 2026."),
         ("When does DeepSeek's peak-hour pricing start?",
-         "No effective date has been announced. The published policy: during peak hours, 09:00-12:00 and 14:00-18:00 Beijing time (01:00-04:00 and 06:00-10:00 UTC) daily, all billing items cost 2x the regular price. Until DeepSeek announces the date, the policy is not active and estimates should not apply it."),
+         "At 16:00 UTC on August 16, 2026. Peak hours are 01:00-04:00 and 06:00-10:00 UTC (09:00-12:00 and 14:00-18:00 Beijing time) daily, at twice the off-peak rate; every other hour is off-peak. Before that instant the flat card of 2026-08-02 applies at every hour and no multiplier should be applied."),
         ("What are DeepSeek's current API prices?",
-         "Per 1M tokens, from the rate card published 2026-08-02: deepseek-v4-flash is $0.14 input on a cache miss, $0.0028 on a cache hit, and $0.28 output; deepseek-v4-pro is $0.435 input on a miss, $0.003625 on a hit, and $0.87 output."),
+         "Per 1M tokens, from the rate card published 2026-08-02 and in force until 16:00 UTC on 2026-08-16: deepseek-v4-flash is $0.14 input on a cache miss, $0.0028 on a cache hit, and $0.28 output; deepseek-v4-pro is $0.435 input on a miss, $0.003625 on a hit, and $0.87 output. From that instant peak/off-peak billing applies on a new card."),
         ("Where can I follow DeepSeek API changes?",
          "DeepSeek's own change log lives at api-docs.deepseek.com/updates. The deepseek CLI carries the same documentation inside the binary: `deepseek docs changelog` prints it offline, and `deepseek docs sync` refreshes the snapshot."),
     ]),
@@ -1387,6 +1616,30 @@ PAGES.append(dict(
 cost of a call. Curated from official announcements and checked against the
 live API where that is possible; the in-terminal feed is
 <code>ds docs changelog</code>.</p>
+
+<h2 id="repricing">2026-08-13 &middot; the price rise has its date and its numbers<span class="chip warn">effective 2026-08-16</span></h2>
+<p>The other shoe drops. Alongside the V4-Pro GA release, DeepSeek's
+<a href="{{docs}}/quick_start/pricing">Models &amp; Pricing</a> page now
+carries the repricing that the <a href="#price-rise">August 6 notice</a>
+promised and the <a href="#peak-pricing">June peak-hour policy</a>
+sketched, and this time it is dated: <strong>at 16:00 UTC on 2026-08-16
+the API moves to peak/off-peak billing</strong>. Peak hours are
+01:00&ndash;04:00 and 06:00&ndash;10:00 UTC daily &ndash; the boundaries
+are defined in UTC &ndash; at twice the off-peak rate; every other hour is
+off-peak.</p>
+<p>The multiplier is the June policy's, but the base card is new and
+higher. Off-peak is not a discount on today's prices: a flash cache-miss
+input token goes from $0.14 to $0.22 per 1M in the <em>cheapest</em> hour,
+and to $0.44 in peak. The full schedule and both cards are on the
+<a href="{{root}}pricing/">pricing page</a>, which also reads your clock
+and names the period you are in.</p>
+<p><strong>What it changes here: the switch is encoded, not guessed.</strong>
+Estimates price every call with the card in force at the moment it is made
+&ndash; the flat card of 2026-08-02 until the effective instant, peak/off-peak
+after, never early. <code>ds pricing</code> prints the period in effect
+right now with local, UTC and Beijing time, and the
+<a href="{{root}}cost/#ledger">ledger</a> stores token counts, not dollars,
+so history can be repriced under any card.</p>
 
 <h2 id="dsh">2026-08-13 &middot; DeepSeek ships dsh, its own agent harness</h2>
 <p>DeepSeek released <strong>DeepSeek Harness</strong>:
@@ -1598,7 +1851,11 @@ deepseek-v4-pro</code>, the <code>claude-opus-*</code> remap on the
 checkpoint since the cell changed. Same price, stronger model; the
 <a href="{{root}}cost/">estimates</a> already price it correctly.</p>
 
-<h2 id="price-rise">2026-08-06 &middot; a broad price rise is coming<span class="chip warn">date tba</span></h2>
+<h2 id="price-rise">2026-08-06 &middot; a broad price rise is coming<span class="chip ok">resolved 2026-08-13</span></h2>
+<p><strong>Update:</strong> this is no longer a rumour with a direction.
+On 2026-08-13 DeepSeek published <a href="#repricing">the new card and the
+date</a>: peak/off-peak billing from 2026-08-16 16:00 UTC. The entry below
+stands as it was written, as the record of the announcement.</p>
 <p>DeepSeek posted a notice in the
 <a href="https://platform.deepseek.com/">platform console</a>: all API
 services will be repriced &ldquo;in the near term&rdquo;, and the increase is
@@ -1631,7 +1888,13 @@ the published card of 2026-08-02 until DeepSeek publishes a new one. The
 than prices, deliberately &ndash; when the card changes, every historical
 call can be repriced under it.</p>
 
-<h2 id="peak-pricing">announced 2026-06-29 &middot; 2&times; during peak hours<span class="chip warn">date tba</span></h2>
+<h2 id="peak-pricing">announced 2026-06-29 &middot; 2&times; during peak hours<span class="chip ok">dated 2026-08-13</span></h2>
+<p><strong>Update:</strong> the date exists now, and one detail below did
+not survive it. <a href="#repricing">The 2026-08-13 announcement</a> keeps
+the 2&times; multiplier and the same windows but puts them on a new, higher
+base card &ndash; so &ldquo;off-peak, the current card stands&rdquo; is no
+longer true. Effective 2026-08-16 16:00 UTC; the
+<a href="{{root}}pricing/">pricing page</a> has the numbers.</p>
 <p>The pricing page has carried this since late June: the API will move to
 peak/off-peak pricing, with every billing item &ndash; input, cached input,
 output &ndash; costing <strong>2&times; the regular price during peak
@@ -1679,7 +1942,8 @@ error, not a quiet remap.</p>
 what does not. The complete feed:</p>
 <pre><code>ds docs changelog     # DeepSeek's own change log, in the terminal, offline
 ds docs sync          # refresh the snapshot the binary carries
-ds models             # the rate card the estimates use, next to the live model list</code></pre>
+ds models             # the rate card the estimates use, next to the live model list
+ds pricing            # the time-of-day schedule and the billing period right now</code></pre>
 <p>Upstream: the official <a href="{{docs}}/updates">change log</a> and
 <a href="{{docs}}/quick_start/pricing">pricing page</a>, and
 <a href="https://status.deepseek.com/">status.deepseek.com</a> for incidents.</p>
@@ -2022,7 +2286,8 @@ def build(check_only=False):
 <li><a href="BASE/commands/">commands</a> &ndash; every command and flag</li>
 <li><a href="BASE/formats/">formats</a> &ndash; DeepSeek's four wire formats compared</li>
 <li><a href="BASE/cost/">cost</a> &ndash; pricing, the context cache, the usage ledger</li>
-<li><a href="BASE/news/">news</a> &ndash; what is changing upstream, including the announced price rise</li>
+<li><a href="BASE/pricing/">pricing</a> &ndash; the dated peak/off-peak schedule and the period right now</li>
+<li><a href="BASE/news/">news</a> &ndash; what is changing upstream, including the dated repricing</li>
 <li><a href="BASE/agents/">agents</a> &ndash; the scripting contract</li>
 <li><a href="BASE/playground/">playground</a> &ndash; the API in a browser, no key needed</li>
 </ul>

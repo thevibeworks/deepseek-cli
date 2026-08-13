@@ -68,6 +68,7 @@
       <a href="../commands/">commands</a>
       <a href="../formats/">formats</a>
       <a href="../cost/" aria-current="page">cost</a>
+      <a href="../pricing/">pricing</a>
       <a href="../bench/">bench</a>
       <a href="../news/">news</a>
       <a href="../agents/">agents</a>
@@ -90,7 +91,10 @@ makes a repeated prompt prefix roughly fifty times cheaper. That saving is
 invisible unless something is counting &ndash; so this counts.</p>
 
 <h2 id="card">The rate card</h2>
-<p>USD per 1M tokens, as published on 2026-08-02:</p>
+<p>USD per 1M tokens, as published on 2026-08-02 and in force before
+2026-08-16 16:00 UTC &ndash; from that instant DeepSeek bills peak/off-peak
+on a new card, and the <a href="../pricing/">pricing page</a> carries
+the dated schedule:</p>
 <div class="tablewrap">
 <table>
 <thead><tr><th>Model</th><th class="num">Input (cached)</th><th class="num">Input (miss)</th><th class="num">Output</th></tr></thead>
@@ -100,8 +104,9 @@ invisible unless something is counting &ndash; so this counts.</p>
 </tbody>
 </table>
 </div>
-<p><code>ds models</code> prints this next to the live model list, so the price
-is on screen when you pick.</p>
+<p><code>ds models</code> prints the card in force next to the live model
+list, so the price is on screen when you pick, and <code>ds pricing</code>
+prints the full schedule with the period you are in right now.</p>
 
 <h2 id="cache">What the cache is worth</h2>
 <p>On flash, a cache hit costs <strong>1/50th</strong> of a miss. The same
@@ -199,15 +204,18 @@ which is the number that tells you whether prompt structuring is paying off.</p>
 <li><strong>Estimates, not invoices.</strong> Computed from the published USD
 rate card. Your account may bill in another currency &ndash;
 <code>ds balance</code> shows which.</li>
-<li><strong>Peak pricing is not applied.</strong> DeepSeek has announced a 2&times;
-multiplier for 09:00&ndash;12:00 and 14:00&ndash;18:00 Beijing time, with no
-effective date. Applying it now would double every estimate on a guess, so it
-is deliberately left out until the date is announced.</li>
-<li><strong>A broader repricing is coming.</strong> On 2026-08-06 DeepSeek
-gave notice in the platform console that all API services will be repriced
-soon, with a substantial rise expected and no numbers yet. Until there is a
-new published card, estimates stay on the card above &ndash; details on the
-<a href="../news/">news page</a>.</li>
+<li><strong>The repricing is dated, and the switch is encoded.</strong>
+From 2026-08-16 16:00 UTC DeepSeek bills peak/off-peak on a new, higher
+card (peak hours 01:00&ndash;04:00 and 06:00&ndash;10:00 UTC at twice the
+off-peak rate). Estimates use the flat card above until that instant and
+switch automatically on it &ndash; never before, because applying a price
+before its effective date would be inventing data. The
+<a href="../pricing/">pricing page</a> and <code>ds pricing</code>
+carry the schedule and the new numbers.</li>
+<li><strong>The cache discount narrows at the flip.</strong> On the card
+above a cached input token costs 1/50th of a miss on flash and 1/120th
+on pro; on the card of 2026-08-16 both settle at about 1/30th. Still
+the biggest lever on a bill, just a smaller one.</li>
 <li><strong>Local only.</strong> The ledger records calls made by this CLI on
 this machine. It knows nothing about your other clients.</li>
 </ul>
@@ -217,7 +225,7 @@ line, and neither ever fails the command that produced it &ndash; you asked for
 a completion, not for bookkeeping.</p>
 <nav class="pager" aria-label="Pagination">
 <a href="../formats/"><span class="lbl">&larr; previous</span>formats</a>
-<a href="../bench/" style="text-align:right"><span class="lbl">next &rarr;</span>bench</a>
+<a href="../pricing/" style="text-align:right"><span class="lbl">next &rarr;</span>pricing</a>
 </nav>  </div>
 </main>
 <footer class="foot">
