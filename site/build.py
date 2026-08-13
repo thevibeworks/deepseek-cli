@@ -66,6 +66,7 @@ NAV = [
     ("commands/", "commands"),
     ("formats/", "formats"),
     ("cost/", "cost"),
+    ("bench/", "bench"),
     ("news/", "news"),
     ("agents/", "agents"),
     ("playground/", "playground"),
@@ -1181,6 +1182,180 @@ this machine. It knows nothing about your other clients.</li>
 <p><code>--no-ledger</code> skips the write, <code>--no-stats</code> hides the
 line, and neither ever fails the command that produced it &mdash; you asked for
 a completion, not for bookkeeping.</p>
+""",
+))
+
+PAGES.append(dict(
+    slug="bench/",
+    crumb="bench",
+    title="DeepSeek V4-Pro benchmarks vs GPT, Claude, Kimi and GLM, and the kill line",
+    description="How deepseek-v4-pro (GA 0813) and v4-flash score against Kimi K3, GLM-5.2, Claude Opus 4.8 and Fable 5 on the agent suites, what the GA checkpoint changed, and the economics idea behind the DeepSeek kill line.",
+    keywords="deepseek v4 pro benchmarks, deepseek v4 pro vs claude, deepseek vs gpt-5.6, deepseek vs kimi k3, deepseek vs glm, deepseek 斩杀线, deepseek kill line, deepseek v4 pro 0813, deepseek agent benchmarks, terminal bench deepseek, deepswe, toolathlon",
+    jsonld=faq([
+        ("How does DeepSeek-V4-Pro score against other models on agent benchmarks?",
+         "On DeepSeek's own launch-day chart (2026-08-12), V4-Pro-0813 scores Terminal-Bench 2.1 87.9, DeepSWE 62.7, Toolathlon-Verified 74.1, CyberGym 83.3, HLE-with-tools 60.0 and AutomationBench 31.8. It sits in the same cluster as Kimi K3, Claude Fable 5 and Opus 4.8: within a point of Fable 5 on Terminal-Bench (88.0) and CyberGym (83.1), ahead of Opus 4.8 on several execution suites, but behind Kimi K3 on Terminal-Bench, DeepSWE, Toolathlon and DSBench-Hard. These are vendor numbers from one harness and are not yet independently reproduced."),
+        ("What did the V4-Pro GA (0813) checkpoint change over the preview?",
+         "The model ID and the rate card did not change; the checkpoint did. Against the April V4-Pro preview, DeepSeek's chart shows large agentic gains: DeepSWE 12.8 to 62.7, DSBench-Hard 31.1 to 67.2, CyberGym 52.7 to 83.3, Terminal-Bench 2.1 72.1 to 87.9, Toolathlon 55.9 to 74.1. Jumps that size point to agent post-training and better tool-error handling rather than a new base model, and none of them are independently verified yet."),
+        ("What is the DeepSeek kill line (斩杀线)?",
+         "The kill line is a community idea that DeepSeek's price-to-capability ratio sets a threshold that removes the reason to exist for any model that is both weaker and more expensive. V4-Pro is roughly 11x cheaper than GPT-5.6 Sol on cache-miss input and 34x cheaper on output, and about 138x cheaper on cache-hit input. It does not kill the frontier: the strongest closed models still finish the hardest tasks in fewer turns. It kills the middle, where a model costs more and does less."),
+        ("Is DeepSeek-V4-Pro better than Claude or GPT for coding agents?",
+         "Per attempt, the strongest closed models remain more reliable on the hardest multi-step tasks and usually need less steering. Per dollar, V4-Pro changes the arithmetic: its cheap cached input makes repeated review, parallel workers and long tool loops affordable in a way per-token-stronger models are not. The practical answer is to route by role, run an internal bake-off, and measure successful-task cost, not per-token price."),
+    ]),
+    body="""
+<h1>Benchmarks</h1>
+<p class="lede">Where <code>deepseek-v4-pro</code> and <code>deepseek-v4-flash</code>
+sit against the field, what the 0813 checkpoint changed, and the economics
+argument the Chinese community calls the <span lang="zh">斩杀线</span>, the
+kill line. The numbers below are DeepSeek's own launch-day figures unless
+marked otherwise; read the caveats first.</p>
+
+<div class="note warn">
+<span class="tag">read this before quoting a number</span>
+<ul>
+<li><strong>Vendor numbers, one harness.</strong> The table is DeepSeek's own
+agent-benchmark chart, published 2026-08-12 with the GA. A score is a
+model-and-harness result, not a model-only one, and no independent same-harness
+run of 0813 exists yet. Treat these as the claim, not the verdict.</li>
+<li><strong>No GPT-5.6 column.</strong> DeepSeek's chart compares against Kimi
+K3, GLM-5.2, Claude Opus 4.8 and Fable 5 only. GPT figures elsewhere on this
+page are drawn from those vendors' own releases and are cross-vendor, so they
+are looser still.</li>
+<li><strong>Kimi and GLM are single-sourced.</strong> Those two columns appear
+only on the extended variant of the chart; the shared columns are identical
+across every copy, so the numbers are consistent, but the Kimi and GLM rows
+rest on one source.</li>
+<li><strong>Independent history says be careful.</strong> The one held-out
+check on the V4-Pro <em>preview</em>, from NIST/CAISI, put it closer to GPT-5
+and roughly eight months behind the frontier, below its self-reported
+position. No equivalent 0813 evaluation exists yet.</li>
+</ul>
+</div>
+
+<h2 id="table">The launch table</h2>
+<p>Higher is better. HLE is shown as without-tools / with-tools. Every figure
+is from DeepSeek's GA chart of 2026-08-12; a dash means the vendor did not
+report it.</p>
+<div class="tablewrap">
+<table>
+<thead><tr>
+<th>Benchmark</th>
+<th class="num">V4-Pro 0813</th>
+<th class="num">V4-Flash 0731</th>
+<th class="num">Kimi K3</th>
+<th class="num">GLM-5.2</th>
+<th class="num">Opus 4.8</th>
+<th class="num">Fable 5</th>
+</tr></thead>
+<tbody>
+<tr><td>Terminal-Bench 2.1</td><td class="num">87.9</td><td class="num">82.7</td><td class="num">88.3</td><td class="num">81.6</td><td class="num">85.0</td><td class="num">88.0</td></tr>
+<tr><td>DeepSWE</td><td class="num">62.7</td><td class="num">54.4</td><td class="num">67.5</td><td class="num">46.2</td><td class="num">58.0</td><td class="num">70.0</td></tr>
+<tr><td>Toolathlon-Verified</td><td class="num">74.1</td><td class="num">70.3</td><td class="num">76.5</td><td class="num">59.9</td><td class="num">76.2</td><td class="num">77.9</td></tr>
+<tr><td>CyberGym</td><td class="num">83.3</td><td class="num">76.7</td><td class="num">80.0</td><td class="num">&ndash;</td><td class="num">78.3</td><td class="num">83.1</td></tr>
+<tr><td>NL2Repo</td><td class="num">61.5</td><td class="num">54.2</td><td class="num">&ndash;</td><td class="num">48.9</td><td class="num">69.7</td><td class="num">&ndash;</td></tr>
+<tr><td>AutomationBench</td><td class="num">31.8</td><td class="num">25.1</td><td class="num">30.8</td><td class="num">12.9</td><td class="num">27.2</td><td class="num">29.1</td></tr>
+<tr><td>DSBench-FullStack</td><td class="num">71.1</td><td class="num">68.7</td><td class="num">63.0</td><td class="num">51.8</td><td class="num">71.6</td><td class="num">77.2</td></tr>
+<tr><td>DSBench-Hard</td><td class="num">67.2</td><td class="num">59.6</td><td class="num">73.7</td><td class="num">54.5</td><td class="num">71.7</td><td class="num">68.3</td></tr>
+<tr><td>Agents' Last Exam</td><td class="num">25.7</td><td class="num">25.2</td><td class="num">24.5</td><td class="num">23.9</td><td class="num">25.7</td><td class="num">&ndash;</td></tr>
+<tr><td>HLE (no / tools)</td><td class="num">42.7/60.0</td><td class="num">37.8/51.5</td><td class="num">43.5/56.0</td><td class="num">40.5/54.7</td><td class="num">49.8/57.9</td><td class="num">53.3/63.0</td></tr>
+</tbody>
+</table>
+</div>
+<p>The honest read of the row-by-row: V4-Pro is <strong>within a point of Fable
+5</strong> on Terminal-Bench and CyberGym, <strong>ahead of Opus 4.8</strong> on
+Terminal-Bench, DeepSWE, CyberGym and AutomationBench, and <strong>behind Kimi
+K3</strong> on Terminal-Bench, DeepSWE, Toolathlon and DSBench-Hard. It is in
+the cluster, not clear of it. On knowledge without tools (HLE) the closed
+models still lead. Flash trails Pro across the board but stays remarkably close
+for a fifth of the price, which is the whole point of the next two sections.</p>
+
+<h2 id="delta">What GA changed</h2>
+<p>The model ID stayed <code>deepseek-v4-pro</code> and the
+<a href="{{root}}cost/">rate card</a> did not move. What moved is the
+checkpoint. Against the April preview, DeepSeek's own chart shows the gains
+landing almost entirely in the agentic and SWE suites:</p>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Benchmark</th><th class="num">Preview</th><th class="num">GA 0813</th><th class="num">Delta</th></tr></thead>
+<tbody>
+<tr><td>DeepSWE</td><td class="num">12.8</td><td class="num">62.7</td><td class="num">+49.9</td></tr>
+<tr><td>DSBench-Hard</td><td class="num">31.1</td><td class="num">67.2</td><td class="num">+36.1</td></tr>
+<tr><td>CyberGym</td><td class="num">52.7</td><td class="num">83.3</td><td class="num">+30.6</td></tr>
+<tr><td>DSBench-FullStack</td><td class="num">41.8</td><td class="num">71.1</td><td class="num">+29.3</td></tr>
+<tr><td>NL2Repo</td><td class="num">38.5</td><td class="num">61.5</td><td class="num">+23.0</td></tr>
+<tr><td>Toolathlon-Verified</td><td class="num">55.9</td><td class="num">74.1</td><td class="num">+18.2</td></tr>
+<tr><td>Terminal-Bench 2.1</td><td class="num">72.1</td><td class="num">87.9</td><td class="num">+15.8</td></tr>
+</tbody>
+</table>
+</div>
+<p>A near five-fold jump on DeepSWE is not a new base model. Gains shaped like
+this come from agent post-training: better tool-error recovery, better context
+policy, reinforcement on the harness the benchmark runs in. That is real and it
+is useful, and it is also exactly the kind of gain that can be harness-specific,
+which is why the caveats above matter and why the preview numbers are the floor,
+not these.</p>
+
+<h2 id="kill-line">The kill line (<span lang="zh">斩杀线</span>)</h2>
+<p>The term comes from Chinese gaming: the <span lang="zh">斩杀线</span> is the
+health threshold below which a target can be executed outright. Applied to
+models, the idea is that DeepSeek's price-to-capability ratio draws a line, and
+any model that is <em>both weaker and more expensive</em> falls below it and has
+no reason to be chosen. The lever is price, and the gap is not small:</p>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Per 1M tokens</th><th class="num">v4-flash</th><th class="num">v4-pro</th><th class="num">GPT-5.6 Sol</th><th class="num">pro is cheaper by</th></tr></thead>
+<tbody>
+<tr><td>input, cache miss</td><td class="num">$0.14</td><td class="num">$0.435</td><td class="num">$5.00</td><td class="num">~11.5x</td></tr>
+<tr><td>input, cache hit</td><td class="num">$0.0028</td><td class="num">$0.003625</td><td class="num">$0.50</td><td class="num">~138x</td></tr>
+<tr><td>output</td><td class="num">$0.28</td><td class="num">$0.87</td><td class="num">$30.00</td><td class="num">~34.5x</td></tr>
+</tbody>
+</table>
+</div>
+<p class="small">DeepSeek prices are the published USD rate card of
+2026-08-02, unchanged at GA; they are a conversion of the RMB card
+(&yen;3 / &yen;0.025 / &yen;6 per 1M for pro) at one consistent rate. GPT-5.6
+Sol prices are from OpenAI's own listing. A <a href="{{root}}news/">broad
+DeepSeek repricing</a> is announced but has no date, so it is not applied here.</p>
+<p>The sober version matters as much as the slogan. The kill line is real for
+the <em>middle</em> of the market: a model that costs more than V4-Pro and
+scores below it on the table above is hard to justify, and that is most of the
+field. It is <strong>not</strong> real for the frontier. On the hardest
+multi-step work the strongest closed models still finish in fewer turns and
+need less steering, and per-attempt reliability is a thing you can measure in
+wall-clock and interventions, not just in dollars. DeepSeek does not have to win
+per attempt to win per dollar, and it does not have to win per dollar to lose
+the one task where getting it right the first time is the whole job.</p>
+
+<h2 id="practice">What it means in practice</h2>
+<p>The economics only pay off if the workflow is built for them. Three moves,
+each of which this CLI is shaped to support:</p>
+<ul>
+<li><strong>Route by role.</strong> Use <code>deepseek-v4-pro</code> for
+planning, ambiguous changes, security review and recovery; let
+<code>deepseek-v4-flash</code> do bounded implementations and parallel work.
+<code>ds chat -m deepseek-v4-pro</code> and the
+<a href="{{root}}formats/">Anthropic remap</a> make the switch one flag.</li>
+<li><strong>Structure prompts for the cache.</strong> A cached input token
+costs about 1/50th of an uncached one. Keep the system prompt, tool schemas,
+repository map and durable instructions in an identical prefix and put the
+volatile part last; <code>ds usage</code> reports what the cache saved so you
+can see whether it is working. This is where the 138x cache-hit number turns
+from a table cell into a bill.</li>
+<li><strong>Measure successful-task cost, not per-token price.</strong> A
+cheaper model that retries five times can cost more than a dearer one that lands
+first. The <a href="{{root}}cost/#ledger">ledger</a> stores exact token counts
+per call, so you can price a whole task under any rate card, including the one
+that has not been announced yet.</li>
+</ul>
+
+<h2 id="sources">Sources</h2>
+<p>The launch table and the preview deltas are transcribed from DeepSeek's
+official agent-benchmark chart, published on the
+<a href="{{docs}}/quick_start/pricing">Models &amp; Pricing</a> page and
+circulated on 2026-08-12; the extended variant carrying the Kimi K3 and GLM-5.2
+columns was the widest copy available. Rate-card figures are DeepSeek's own and
+OpenAI's own. The independent-evaluation caveat refers to the NIST/CAISI review
+of the V4-Pro preview. Numbers change fast and vendor charts are vendor charts;
+cross-check a live leaderboard before betting on a single cell.</p>
 """,
 ))
 

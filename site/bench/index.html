@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DeepSeek V4-Pro benchmarks vs GPT, Claude, Kimi and GLM, and the kill line</title>
+<meta name="description" content="How deepseek-v4-pro (GA 0813) and v4-flash score against Kimi K3, GLM-5.2, Claude Opus 4.8 and Fable 5 on the agent suites, what the GA checkpoint changed, and the economics idea behind the DeepSeek kill line.">
+<meta name="keywords" content="deepseek v4 pro benchmarks, deepseek v4 pro vs claude, deepseek vs gpt-5.6, deepseek vs kimi k3, deepseek vs glm, deepseek 斩杀线, deepseek kill line, deepseek v4 pro 0813, deepseek agent benchmarks, terminal bench deepseek, deepswe, toolathlon">
+<meta name="author" content="thevibeworks">
+<meta name="theme-color" content="#fbfaf7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://thevibeworks.github.io/deepseek-cli/bench/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="deepseek-cli">
+<meta property="og:title" content="DeepSeek V4-Pro benchmarks vs GPT, Claude, Kimi and GLM, and the kill line">
+<meta property="og:description" content="How deepseek-v4-pro (GA 0813) and v4-flash score against Kimi K3, GLM-5.2, Claude Opus 4.8 and Fable 5 on the agent suites, what the GA checkpoint changed, and the economics idea behind the DeepSeek kill line.">
+<meta property="og:url" content="https://thevibeworks.github.io/deepseek-cli/bench/">
+<meta property="og:image" content="https://thevibeworks.github.io/deepseek-cli/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="deepseek-cli — the whole DeepSeek API from the terminal">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="DeepSeek V4-Pro benchmarks vs GPT, Claude, Kimi and GLM, and the kill line">
+<meta name="twitter:description" content="How deepseek-v4-pro (GA 0813) and v4-flash score against Kimi K3, GLM-5.2, Claude Opus 4.8 and Fable 5 on the agent suites, what the GA checkpoint changed, and the economics idea behind the DeepSeek kill line.">
+<meta name="twitter:image" content="https://thevibeworks.github.io/deepseek-cli/og.png">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="../style.css">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
+<script>try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t}catch(e){}</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"How does DeepSeek-V4-Pro score against other models on agent benchmarks?","acceptedAnswer":{"@type":"Answer","text":"On DeepSeek's own launch-day chart (2026-08-12), V4-Pro-0813 scores Terminal-Bench 2.1 87.9, DeepSWE 62.7, Toolathlon-Verified 74.1, CyberGym 83.3, HLE-with-tools 60.0 and AutomationBench 31.8. It sits in the same cluster as Kimi K3, Claude Fable 5 and Opus 4.8: within a point of Fable 5 on Terminal-Bench (88.0) and CyberGym (83.1), ahead of Opus 4.8 on several execution suites, but behind Kimi K3 on Terminal-Bench, DeepSWE, Toolathlon and DSBench-Hard. These are vendor numbers from one harness and are not yet independently reproduced."}},{"@type":"Question","name":"What did the V4-Pro GA (0813) checkpoint change over the preview?","acceptedAnswer":{"@type":"Answer","text":"The model ID and the rate card did not change; the checkpoint did. Against the April V4-Pro preview, DeepSeek's chart shows large agentic gains: DeepSWE 12.8 to 62.7, DSBench-Hard 31.1 to 67.2, CyberGym 52.7 to 83.3, Terminal-Bench 2.1 72.1 to 87.9, Toolathlon 55.9 to 74.1. Jumps that size point to agent post-training and better tool-error handling rather than a new base model, and none of them are independently verified yet."}},{"@type":"Question","name":"What is the DeepSeek kill line (斩杀线)?","acceptedAnswer":{"@type":"Answer","text":"The kill line is a community idea that DeepSeek's price-to-capability ratio sets a threshold that removes the reason to exist for any model that is both weaker and more expensive. V4-Pro is roughly 11x cheaper than GPT-5.6 Sol on cache-miss input and 34x cheaper on output, and about 138x cheaper on cache-hit input. It does not kill the frontier: the strongest closed models still finish the hardest tasks in fewer turns. It kills the middle, where a model costs more and does less."}},{"@type":"Question","name":"Is DeepSeek-V4-Pro better than Claude or GPT for coding agents?","acceptedAnswer":{"@type":"Answer","text":"Per attempt, the strongest closed models remain more reliable on the hardest multi-step tasks and usually need less steering. Per dollar, V4-Pro changes the arithmetic: its cheap cached input makes repeated review, parallel workers and long tool loops affordable in a way per-token-stronger models are not. The practical answer is to route by role, run an internal bake-off, and measure successful-task cost, not per-token price."}}]}
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"deepseek-cli","item":"https://thevibeworks.github.io/deepseek-cli/"},{"@type":"ListItem","position":2,"name":"bench","item":"https://thevibeworks.github.io/deepseek-cli/bench/"}]}
+</script>
+</head>
+<body>
+<div class="sea" data-ocean></div>
+<div class="gauge" data-depth-gauge aria-hidden="true"><span class="gauge-rail"><span class="gauge-fill"></span></span><span class="gauge-read">0 m</span></div>
+<a class="skip" href="#main">skip to content</a>
+<header class="masthead">
+  <div class="wrap">
+    <a class="brand" href="../">
+      <span class="caret">&gt;</span><svg class="mark" viewBox="0 0 63.1196 46.4033" width="23" height="17" aria-hidden="true"><path d="M62.4575 3.89441C61.7888 3.56726 61.501 4.1908 61.1101 4.50769C60.9763 4.60999 60.863 4.7428 60.75 4.86548C59.7727 5.9082 58.6311 6.59302 57.1394 6.51123C54.9587 6.38855 53.0969 7.07349 51.4512 8.73975C51.1013 6.68506 49.939 5.45837 48.1699 4.67126C47.2441 4.26233 46.3081 3.85352 45.6599 2.96411C45.2073 2.33032 45.084 1.625 44.8577 0.929932C44.7136 0.510864 44.5696 0.081543 44.0862 0.0098877C43.5615 -0.0718994 43.3557 0.367676 43.1501 0.735718C42.3271 2.2384 42.0083 3.89441 42.0391 5.5708C42.1111 9.34277 43.7056 12.3481 46.8738 14.4846C47.2336 14.73 47.3264 14.9753 47.2131 15.333C46.9971 16.0691 46.74 16.7847 46.5137 17.5206C46.3696 17.9908 46.1538 18.093 45.6497 17.8887C43.9114 17.1628 42.4094 16.0895 41.0825 14.7913C38.8298 12.6139 36.7932 10.2117 34.2524 8.33081C33.6558 7.89124 33.0593 7.48242 32.4421 7.09399C29.8499 4.57922 32.7815 2.5144 33.4604 2.26904C34.1702 2.01343 33.7073 1.1344 31.4133 1.14465C29.1196 1.15479 27.0212 1.92151 24.3467 2.94373C23.9558 3.09705 23.5444 3.20947 23.1226 3.30151C20.6951 2.84143 18.1748 2.73926 15.5415 3.03577C10.5835 3.58777 6.62329 5.92859 3.7124 9.92554C0.215088 14.73 -0.60791 20.1886 0.400146 25.8824C1.45972 31.8828 4.5249 36.8508 9.23608 40.7354C14.1221 44.7629 19.7488 46.7357 26.1675 46.3575C30.0659 46.1327 34.4067 45.6113 39.303 41.4713C40.5374 42.0847 41.8335 42.33 43.9834 42.514C45.6394 42.6674 47.2336 42.4323 48.468 42.1766C50.4019 41.7678 50.2683 39.9789 49.5688 39.6517C43.9009 37.0144 45.1455 38.0878 44.0142 37.2189C46.8943 33.8148 51.2351 30.278 52.9324 18.8188C53.0662 17.9091 52.9529 17.3367 52.9324 16.6006C52.9221 16.1509 53.0249 15.9771 53.5393 15.9259C54.9587 15.7625 56.3372 15.3739 57.6023 14.6788C61.2747 12.6753 62.7559 9.38367 63.1055 5.43799C63.157 4.83484 63.0952 4.2113 62.4575 3.89441ZM30.4568 39.4065C24.9639 35.0927 22.2998 33.6718 21.199 33.7332C20.1704 33.7944 20.3557 34.97 20.5818 35.7367C20.8186 36.493 21.1272 37.0144 21.5591 37.6788C21.8574 38.1184 22.0632 38.7727 21.2607 39.2633C19.4915 40.3571 16.416 38.8953 16.272 38.8237C12.6924 36.718 9.69897 33.9375 7.59033 30.1349C5.55347 26.4753 4.37061 22.5499 4.17529 18.3589C4.12378 17.3468 4.42212 16.989 5.43018 16.8051C6.75708 16.5597 8.12524 16.5087 9.45215 16.7029C15.0581 17.5206 19.8311 20.025 23.8323 23.9913C26.116 26.2504 27.844 28.9491 29.6235 31.5864C31.5164 34.3873 33.553 37.0553 36.145 39.2429C37.0605 40.0095 37.791 40.5922 38.4905 41.0215C36.3816 41.2567 32.8638 41.3077 30.4568 39.4065ZM33.0901 22.4886C33.0901 22.0388 33.4502 21.681 33.9026 21.681C34.0056 21.681 34.0981 21.7015 34.1804 21.7322C34.2935 21.7731 34.3965 21.8344 34.4788 21.9264C34.6228 22.0695 34.7051 22.2739 34.7051 22.4886C34.7051 22.9384 34.345 23.2961 33.8923 23.2961C33.4397 23.2961 33.0901 22.9384 33.0901 22.4886ZM41.2676 26.6798C40.7432 26.8944 40.2185 27.0784 39.7144 27.0989C38.9326 27.1398 38.0789 26.8229 37.616 26.4344C36.896 25.8313 36.3816 25.494 36.1658 24.441C36.073 23.9913 36.1245 23.2961 36.2068 22.8975C36.3921 22.0388 36.1863 21.4868 35.5793 20.986C35.0857 20.577 34.4583 20.4646 33.769 20.4646C33.5117 20.4646 33.2751 20.3522 33.1003 20.2601C32.8123 20.1171 32.5757 19.7593 32.802 19.3197C32.874 19.1766 33.2239 18.8291 33.3062 18.7677C34.2422 18.2362 35.3223 18.4099 36.3201 18.8086C37.2458 19.1869 37.9453 19.882 38.9534 20.8633C39.9819 22.0491 40.167 22.3762 40.7534 23.2655C41.2163 23.9607 41.6379 24.6761 41.926 25.494C42.1008 26.0051 41.8745 26.4242 41.2676 26.6798Z"/></svg><span class="org">thevibeworks/</span><span class="name">deepseek-cli</span>
+    </a>
+    <!-- Nav and toggle travel together — they are the controls end of the
+         masthead — but the toggle is beside the nav rather than inside it.
+         Two reasons, and the second is the load-bearing one: a theme
+         preference is not a section of the site, and on a phone the nav
+         becomes a scrolling strip with a mask on it, which would take the
+         toggle with it. A control nobody can see is worse than a control
+         in the wrong list. -->
+    <div class="bar-end">
+      <nav class="sitenav" aria-label="Sections">
+      <a href="../">overview</a>
+      <a href="../install/">install</a>
+      <a href="../commands/">commands</a>
+      <a href="../formats/">formats</a>
+      <a href="../cost/">cost</a>
+      <a href="../bench/" aria-current="page">bench</a>
+      <a href="../news/">news</a>
+      <a href="../agents/">agents</a>
+      <a href="../playground/">playground</a>
+        <a href="https://github.com/thevibeworks/deepseek-cli">github&nbsp;&#8599;</a>
+        <a href="https://github.com/thevibeworks/deepseek-cli/releases">v0.5.0</a>
+      </nav>
+      <button class="themetoggle" id="theme-toggle" type="button" hidden
+              aria-label="Theme: auto. Click to change.">theme:&nbsp;<span class="val">auto</span></button>
+    </div>
+  </div>
+</header>
+<main id="main">
+  <div class="wrap">
+<nav class="crumb" aria-label="Breadcrumb"><a href="../">deepseek-cli</a><span class="sep">/</span>bench</nav>
+
+<h1>Benchmarks</h1>
+<p class="lede">Where <code>deepseek-v4-pro</code> and <code>deepseek-v4-flash</code>
+sit against the field, what the 0813 checkpoint changed, and the economics
+argument the Chinese community calls the <span lang="zh">斩杀线</span>, the
+kill line. The numbers below are DeepSeek's own launch-day figures unless
+marked otherwise; read the caveats first.</p>
+
+<div class="note warn">
+<span class="tag">read this before quoting a number</span>
+<ul>
+<li><strong>Vendor numbers, one harness.</strong> The table is DeepSeek's own
+agent-benchmark chart, published 2026-08-12 with the GA. A score is a
+model-and-harness result, not a model-only one, and no independent same-harness
+run of 0813 exists yet. Treat these as the claim, not the verdict.</li>
+<li><strong>No GPT-5.6 column.</strong> DeepSeek's chart compares against Kimi
+K3, GLM-5.2, Claude Opus 4.8 and Fable 5 only. GPT figures elsewhere on this
+page are drawn from those vendors' own releases and are cross-vendor, so they
+are looser still.</li>
+<li><strong>Kimi and GLM are single-sourced.</strong> Those two columns appear
+only on the extended variant of the chart; the shared columns are identical
+across every copy, so the numbers are consistent, but the Kimi and GLM rows
+rest on one source.</li>
+<li><strong>Independent history says be careful.</strong> The one held-out
+check on the V4-Pro <em>preview</em>, from NIST/CAISI, put it closer to GPT-5
+and roughly eight months behind the frontier, below its self-reported
+position. No equivalent 0813 evaluation exists yet.</li>
+</ul>
+</div>
+
+<h2 id="table">The launch table</h2>
+<p>Higher is better. HLE is shown as without-tools / with-tools. Every figure
+is from DeepSeek's GA chart of 2026-08-12; a dash means the vendor did not
+report it.</p>
+<div class="tablewrap">
+<table>
+<thead><tr>
+<th>Benchmark</th>
+<th class="num">V4-Pro 0813</th>
+<th class="num">V4-Flash 0731</th>
+<th class="num">Kimi K3</th>
+<th class="num">GLM-5.2</th>
+<th class="num">Opus 4.8</th>
+<th class="num">Fable 5</th>
+</tr></thead>
+<tbody>
+<tr><td>Terminal-Bench 2.1</td><td class="num">87.9</td><td class="num">82.7</td><td class="num">88.3</td><td class="num">81.6</td><td class="num">85.0</td><td class="num">88.0</td></tr>
+<tr><td>DeepSWE</td><td class="num">62.7</td><td class="num">54.4</td><td class="num">67.5</td><td class="num">46.2</td><td class="num">58.0</td><td class="num">70.0</td></tr>
+<tr><td>Toolathlon-Verified</td><td class="num">74.1</td><td class="num">70.3</td><td class="num">76.5</td><td class="num">59.9</td><td class="num">76.2</td><td class="num">77.9</td></tr>
+<tr><td>CyberGym</td><td class="num">83.3</td><td class="num">76.7</td><td class="num">80.0</td><td class="num">&ndash;</td><td class="num">78.3</td><td class="num">83.1</td></tr>
+<tr><td>NL2Repo</td><td class="num">61.5</td><td class="num">54.2</td><td class="num">&ndash;</td><td class="num">48.9</td><td class="num">69.7</td><td class="num">&ndash;</td></tr>
+<tr><td>AutomationBench</td><td class="num">31.8</td><td class="num">25.1</td><td class="num">30.8</td><td class="num">12.9</td><td class="num">27.2</td><td class="num">29.1</td></tr>
+<tr><td>DSBench-FullStack</td><td class="num">71.1</td><td class="num">68.7</td><td class="num">63.0</td><td class="num">51.8</td><td class="num">71.6</td><td class="num">77.2</td></tr>
+<tr><td>DSBench-Hard</td><td class="num">67.2</td><td class="num">59.6</td><td class="num">73.7</td><td class="num">54.5</td><td class="num">71.7</td><td class="num">68.3</td></tr>
+<tr><td>Agents' Last Exam</td><td class="num">25.7</td><td class="num">25.2</td><td class="num">24.5</td><td class="num">23.9</td><td class="num">25.7</td><td class="num">&ndash;</td></tr>
+<tr><td>HLE (no / tools)</td><td class="num">42.7/60.0</td><td class="num">37.8/51.5</td><td class="num">43.5/56.0</td><td class="num">40.5/54.7</td><td class="num">49.8/57.9</td><td class="num">53.3/63.0</td></tr>
+</tbody>
+</table>
+</div>
+<p>The honest read of the row-by-row: V4-Pro is <strong>within a point of Fable
+5</strong> on Terminal-Bench and CyberGym, <strong>ahead of Opus 4.8</strong> on
+Terminal-Bench, DeepSWE, CyberGym and AutomationBench, and <strong>behind Kimi
+K3</strong> on Terminal-Bench, DeepSWE, Toolathlon and DSBench-Hard. It is in
+the cluster, not clear of it. On knowledge without tools (HLE) the closed
+models still lead. Flash trails Pro across the board but stays remarkably close
+for a fifth of the price, which is the whole point of the next two sections.</p>
+
+<h2 id="delta">What GA changed</h2>
+<p>The model ID stayed <code>deepseek-v4-pro</code> and the
+<a href="../cost/">rate card</a> did not move. What moved is the
+checkpoint. Against the April preview, DeepSeek's own chart shows the gains
+landing almost entirely in the agentic and SWE suites:</p>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Benchmark</th><th class="num">Preview</th><th class="num">GA 0813</th><th class="num">Delta</th></tr></thead>
+<tbody>
+<tr><td>DeepSWE</td><td class="num">12.8</td><td class="num">62.7</td><td class="num">+49.9</td></tr>
+<tr><td>DSBench-Hard</td><td class="num">31.1</td><td class="num">67.2</td><td class="num">+36.1</td></tr>
+<tr><td>CyberGym</td><td class="num">52.7</td><td class="num">83.3</td><td class="num">+30.6</td></tr>
+<tr><td>DSBench-FullStack</td><td class="num">41.8</td><td class="num">71.1</td><td class="num">+29.3</td></tr>
+<tr><td>NL2Repo</td><td class="num">38.5</td><td class="num">61.5</td><td class="num">+23.0</td></tr>
+<tr><td>Toolathlon-Verified</td><td class="num">55.9</td><td class="num">74.1</td><td class="num">+18.2</td></tr>
+<tr><td>Terminal-Bench 2.1</td><td class="num">72.1</td><td class="num">87.9</td><td class="num">+15.8</td></tr>
+</tbody>
+</table>
+</div>
+<p>A near five-fold jump on DeepSWE is not a new base model. Gains shaped like
+this come from agent post-training: better tool-error recovery, better context
+policy, reinforcement on the harness the benchmark runs in. That is real and it
+is useful, and it is also exactly the kind of gain that can be harness-specific,
+which is why the caveats above matter and why the preview numbers are the floor,
+not these.</p>
+
+<h2 id="kill-line">The kill line (<span lang="zh">斩杀线</span>)</h2>
+<p>The term comes from Chinese gaming: the <span lang="zh">斩杀线</span> is the
+health threshold below which a target can be executed outright. Applied to
+models, the idea is that DeepSeek's price-to-capability ratio draws a line, and
+any model that is <em>both weaker and more expensive</em> falls below it and has
+no reason to be chosen. The lever is price, and the gap is not small:</p>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Per 1M tokens</th><th class="num">v4-flash</th><th class="num">v4-pro</th><th class="num">GPT-5.6 Sol</th><th class="num">pro is cheaper by</th></tr></thead>
+<tbody>
+<tr><td>input, cache miss</td><td class="num">$0.14</td><td class="num">$0.435</td><td class="num">$5.00</td><td class="num">~11.5x</td></tr>
+<tr><td>input, cache hit</td><td class="num">$0.0028</td><td class="num">$0.003625</td><td class="num">$0.50</td><td class="num">~138x</td></tr>
+<tr><td>output</td><td class="num">$0.28</td><td class="num">$0.87</td><td class="num">$30.00</td><td class="num">~34.5x</td></tr>
+</tbody>
+</table>
+</div>
+<p class="small">DeepSeek prices are the published USD rate card of
+2026-08-02, unchanged at GA; they are a conversion of the RMB card
+(&yen;3 / &yen;0.025 / &yen;6 per 1M for pro) at one consistent rate. GPT-5.6
+Sol prices are from OpenAI's own listing. A <a href="../news/">broad
+DeepSeek repricing</a> is announced but has no date, so it is not applied here.</p>
+<p>The sober version matters as much as the slogan. The kill line is real for
+the <em>middle</em> of the market: a model that costs more than V4-Pro and
+scores below it on the table above is hard to justify, and that is most of the
+field. It is <strong>not</strong> real for the frontier. On the hardest
+multi-step work the strongest closed models still finish in fewer turns and
+need less steering, and per-attempt reliability is a thing you can measure in
+wall-clock and interventions, not just in dollars. DeepSeek does not have to win
+per attempt to win per dollar, and it does not have to win per dollar to lose
+the one task where getting it right the first time is the whole job.</p>
+
+<h2 id="practice">What it means in practice</h2>
+<p>The economics only pay off if the workflow is built for them. Three moves,
+each of which this CLI is shaped to support:</p>
+<ul>
+<li><strong>Route by role.</strong> Use <code>deepseek-v4-pro</code> for
+planning, ambiguous changes, security review and recovery; let
+<code>deepseek-v4-flash</code> do bounded implementations and parallel work.
+<code>ds chat -m deepseek-v4-pro</code> and the
+<a href="../formats/">Anthropic remap</a> make the switch one flag.</li>
+<li><strong>Structure prompts for the cache.</strong> A cached input token
+costs about 1/50th of an uncached one. Keep the system prompt, tool schemas,
+repository map and durable instructions in an identical prefix and put the
+volatile part last; <code>ds usage</code> reports what the cache saved so you
+can see whether it is working. This is where the 138x cache-hit number turns
+from a table cell into a bill.</li>
+<li><strong>Measure successful-task cost, not per-token price.</strong> A
+cheaper model that retries five times can cost more than a dearer one that lands
+first. The <a href="../cost/#ledger">ledger</a> stores exact token counts
+per call, so you can price a whole task under any rate card, including the one
+that has not been announced yet.</li>
+</ul>
+
+<h2 id="sources">Sources</h2>
+<p>The launch table and the preview deltas are transcribed from DeepSeek's
+official agent-benchmark chart, published on the
+<a href="https://api-docs.deepseek.com/quick_start/pricing">Models &amp; Pricing</a> page and
+circulated on 2026-08-12; the extended variant carrying the Kimi K3 and GLM-5.2
+columns was the widest copy available. Rate-card figures are DeepSeek's own and
+OpenAI's own. The independent-evaluation caveat refers to the NIST/CAISI review
+of the V4-Pro preview. Numbers change fast and vendor charts are vendor charts;
+cross-check a live leaderboard before betting on a single cell.</p>
+<nav class="pager" aria-label="Pagination">
+<a href="../cost/"><span class="lbl">&larr; previous</span>cost</a>
+<a href="../news/" style="text-align:right"><span class="lbl">next &rarr;</span>news</a>
+</nav>  </div>
+</main>
+<footer class="foot">
+  <div class="wrap">
+    <span>
+      <a href="https://github.com/thevibeworks/deepseek-cli">source</a> &middot;
+      <a href="https://github.com/thevibeworks/deepseek-cli/blob/main/LICENSE">MIT</a> &middot;
+      <a href="https://thevibeworks.github.io/deepseek-cli/llms.txt">llms.txt</a> &middot;
+      <a href="https://thevibeworks.github.io/">thevibeworks</a>
+    </span>
+    <span>unofficial &mdash; not affiliated with DeepSeek</span>
+  </div>
+</footer>
+<script>
+(function () {
+  var b = document.getElementById('theme-toggle');
+  if (!b) return;
+  var order = ['auto', 'light', 'dark'];
+  var read = function () {
+    try { return localStorage.getItem('theme') || 'auto'; } catch (e) { return 'auto'; }
+  };
+  var paint = function (v) {
+    if (v === 'auto') delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = v;
+    b.querySelector('.val').textContent = v;
+    // The button reads "theme: dark" to a screen reader, and announcing
+    // the change is the whole feedback — the visual change is silent.
+    b.setAttribute('aria-label', 'Theme: ' + v + '. Click to change.');
+  };
+  b.hidden = false;
+  paint(read());
+  b.addEventListener('click', function () {
+    var next = order[(order.indexOf(read()) + 1) % order.length];
+    try { localStorage.setItem('theme', next); } catch (e) {}
+    paint(next);
+  });
+})();
+</script>
+<script src="../waves.js" defer></script>
+</body>
+</html>
