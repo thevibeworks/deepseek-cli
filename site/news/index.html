@@ -81,6 +81,47 @@ cost of a call. Curated from official announcements and checked against the
 live API where that is possible; the in-terminal feed is
 <code>ds docs changelog</code>.</p>
 
+<h2 id="no-rollback">2026-08-13 &middot; No, V4-Pro did not roll back</h2>
+<p>Ask <code>deepseek-v4-pro</code> what model it is and it may tell you it is
+GPT-4o. A model that answers with a competitor's name looks like a swap, and
+the question came up: did the 0813 GA get pulled and replaced with something
+older? Short answer, no. The build behind <code>deepseek-v4-pro</code> is still
+<strong>DeepSeek-V4-Pro-0813</strong>.</p>
+<figure class="shot">
+<a href="deepseek-v4-pro-0813-still-live-2026-08-13.jpg">
+<img src="deepseek-v4-pro-0813-still-live-2026-08-13.jpg"
+     alt="DeepSeek's Models &amp; Pricing docs page captured on 2026-08-13: the Model Details table still lists MODEL VERSION DeepSeek-V4-Flash-0731 and DeepSeek-V4-Pro-0813, with 1M context and 384K max output unchanged."
+     width="1400" height="1000" loading="lazy"></a>
+<figcaption>The Models &amp; Pricing page on 2026-08-13. The version cell still
+reads DeepSeek-V4-Pro-0813, and the page has not been edited since it changed
+on 2026-08-12. Click for full size.</figcaption>
+</figure>
+<p>The record is consistent on every side that can actually be checked. The
+<a href="https://api-docs.deepseek.com/quick_start/pricing">Models &amp; Pricing</a> version cell
+still reads DeepSeek-V4-Pro-0813 (the page's last-modified date is 2026-08-12,
+the GA day, and it has not moved since). The API still serves
+<code>deepseek-v4-pro</code>. Third-party hosts that mirror the build, OpenRouter
+and NanoGPT among them, list 0813. The change log carries no rollback. Nothing
+was withdrawn.</p>
+<p>So why does it say GPT-4o? Because a language model does not know its own
+name or its training date. Asked to state its version with nothing to look at,
+<code>deepseek-v4-pro</code> answers differently on different samples:</p>
+<div class="term">
+<div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="title">deepseek-v4-pro: "state only your model name and version"</span></div>
+<pre><code>GPT-4o
+GPT-4o
+DeepSeek-V3-0324
+<span class="c"># and flash, asked the same, answered: Qwen/Qwen2.5-7B-Instruct</span></code></pre>
+</div>
+<p>That is the model repeating identities from its training data, not reporting
+what it was deployed as. It is not a version signal and never was, on any
+model. The signal that is real is the one nobody has to imagine: the docs
+version cell and the model list. <code>ds docs show quick_start/pricing</code>
+prints that same table offline, and <code>ds models</code> lists what the
+endpoint serves. Neither asks the model to introspect, which is exactly why the
+CLI carries the documentation inside the binary: the answer to &ldquo;what am I
+calling&rdquo; should not depend on the model's memory of itself.</p>
+
 <h2 id="v4-pro">2026-08-12 &middot; V4-Pro official release (0813)</h2>
 <p>The preview is over. The
 <a href="https://api-docs.deepseek.com/quick_start/pricing">Models &amp; Pricing page</a> now lists
