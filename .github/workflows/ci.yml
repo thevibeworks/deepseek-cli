@@ -64,6 +64,11 @@ jobs:
           node site/playground.test.js
           node site/playground.dom.test.js
 
+      # The pricing page embeds the schedule its strip reads; this pins
+      # the period arithmetic and the schedule against the ground truth.
+      - name: pricing page
+        run: node site/pricing.test.js
+
       # The rate card exists in two modules that cannot import each other.
       - name: rate cards have not drifted
         run: make price-check

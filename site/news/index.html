@@ -3,25 +3,25 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DeepSeek API news: dsh ships, V4-Pro GA, the announced price rise</title>
-<meta name="description" content="What is changing around the DeepSeek API: DeepSeek ships dsh (DeepSeek Harness), its official open-source agent harness, V4-Pro&#x27;s official release (DeepSeek-V4-Pro-0813), an across-the-board price increase announced with no date yet, the 2x peak-hour pricing policy, V4-Flash&#x27;s official release, and what each one means for a call.">
-<meta name="keywords" content="deepseek harness, dsh, @deepseek-ai/dsh, install dsh, dsh plugins, dsh skills, dsh-plugin, dsh vs claude code, deepseek cli vs dsh, deepseek v4 pro release, deepseek v4 pro ga, deepseek-v4-pro-0813, deepseek api price increase, deepseek price rise 2026, deepseek peak hour pricing, deepseek api news, deepseek api changelog, deepseek v4 flash release, deepseek pricing change">
+<title>DeepSeek API news: the dated repricing, dsh ships, V4-Pro GA</title>
+<meta name="description" content="What is changing around the DeepSeek API: the price rise now has a date and numbers (peak/off-peak billing from 2026-08-16 16:00 UTC), DeepSeek ships dsh (DeepSeek Harness), its official open-source agent harness, V4-Pro&#x27;s official release (DeepSeek-V4-Pro-0813), V4-Flash&#x27;s official release, and what each one means for a call.">
+<meta name="keywords" content="deepseek harness, dsh, @deepseek-ai/dsh, install dsh, dsh plugins, dsh skills, dsh-plugin, dsh vs claude code, deepseek cli vs dsh, deepseek v4 pro release, deepseek v4 pro ga, deepseek-v4-pro-0813, deepseek api price increase, deepseek price rise 2026, deepseek peak hour pricing, deepseek peak off-peak billing, deepseek repricing 2026-08-16, deepseek api news, deepseek api changelog, deepseek v4 flash release, deepseek pricing change">
 <meta name="author" content="thevibeworks">
 <meta name="theme-color" content="#fbfaf7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="canonical" href="https://thevibeworks.github.io/deepseek-cli/news/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="deepseek-cli">
-<meta property="og:title" content="DeepSeek API news: dsh ships, V4-Pro GA, the announced price rise">
-<meta property="og:description" content="What is changing around the DeepSeek API: DeepSeek ships dsh (DeepSeek Harness), its official open-source agent harness, V4-Pro&#x27;s official release (DeepSeek-V4-Pro-0813), an across-the-board price increase announced with no date yet, the 2x peak-hour pricing policy, V4-Flash&#x27;s official release, and what each one means for a call.">
+<meta property="og:title" content="DeepSeek API news: the dated repricing, dsh ships, V4-Pro GA">
+<meta property="og:description" content="What is changing around the DeepSeek API: the price rise now has a date and numbers (peak/off-peak billing from 2026-08-16 16:00 UTC), DeepSeek ships dsh (DeepSeek Harness), its official open-source agent harness, V4-Pro&#x27;s official release (DeepSeek-V4-Pro-0813), V4-Flash&#x27;s official release, and what each one means for a call.">
 <meta property="og:url" content="https://thevibeworks.github.io/deepseek-cli/news/">
 <meta property="og:image" content="https://thevibeworks.github.io/deepseek-cli/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="deepseek-cli: the whole DeepSeek API from the terminal">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="DeepSeek API news: dsh ships, V4-Pro GA, the announced price rise">
-<meta name="twitter:description" content="What is changing around the DeepSeek API: DeepSeek ships dsh (DeepSeek Harness), its official open-source agent harness, V4-Pro&#x27;s official release (DeepSeek-V4-Pro-0813), an across-the-board price increase announced with no date yet, the 2x peak-hour pricing policy, V4-Flash&#x27;s official release, and what each one means for a call.">
+<meta name="twitter:title" content="DeepSeek API news: the dated repricing, dsh ships, V4-Pro GA">
+<meta name="twitter:description" content="What is changing around the DeepSeek API: the price rise now has a date and numbers (peak/off-peak billing from 2026-08-16 16:00 UTC), DeepSeek ships dsh (DeepSeek Harness), its official open-source agent harness, V4-Pro&#x27;s official release (DeepSeek-V4-Pro-0813), V4-Flash&#x27;s official release, and what each one means for a call.">
 <meta name="twitter:image" content="https://thevibeworks.github.io/deepseek-cli/og.png">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30,7 +30,7 @@
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
 <script>try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t}catch(e){}</script>
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Is DeepSeek V4-Pro officially released?","acceptedAnswer":{"@type":"Answer","text":"Yes. On 2026-08-12 the model version on DeepSeek's Models & Pricing page changed to DeepSeek-V4-Pro-0813, ending the preview that had run since 2026-04-24. The model ID is unchanged (deepseek-v4-pro), the rate card is unchanged, and the release focuses on agentic post-training rather than new pretraining."}},{"@type":"Question","name":"What is dsh (DeepSeek Harness)?","acceptedAnswer":{"@type":"Answer","text":"dsh is DeepSeek's official open-source agent harness, released 2026-08-13 as deepseek-ai/deepseek-harness on GitHub and @deepseek-ai/dsh on npm (MIT). It is in developer preview with compatibility-breaking changes promised. Everything in it is a plugin, built on the Cordis runtime; `npx @deepseek-ai/dsh web` starts its Web UI. The official repository does not accept external pull requests, and there is no plugin marketplace or registry: discovery is the dsh-plugin GitHub topic, with the ecosystem explicitly delegated to the community."}},{"@type":"Question","name":"Is dsh the same as deepseek-cli?","acceptedAnswer":{"@type":"Answer","text":"No. dsh (DeepSeek Harness) is DeepSeek's official agent harness: it runs an agent loop, executes tools, and manages plugins, skills and sessions. deepseek-cli is an unofficial single-binary API client: it sends one request in any of DeepSeek's four wire formats, prints the response and its estimated cost, and carries DeepSeek's API documentation offline. They are complementary, not competing: run agents with dsh, and use deepseek-cli to check a key, price a call, debug the wire formats, or query the docs."}},{"@type":"Question","name":"Is DeepSeek raising its API prices?","acceptedAnswer":{"@type":"Answer","text":"Yes, a rise is announced but not yet in effect. On 2026-08-06 (Beijing time) DeepSeek posted a notice in the platform console and emailed API account holders saying all API services will be repriced in the near term and that the increase is expected to be substantial, advising developers to plan call volume and top-ups accordingly. No new rate card and no effective date have been published. Separately, a 2x peak-hour pricing policy has been announced since June 2026, also without an effective date."}},{"@type":"Question","name":"When does DeepSeek's peak-hour pricing start?","acceptedAnswer":{"@type":"Answer","text":"No effective date has been announced. The published policy: during peak hours, 09:00-12:00 and 14:00-18:00 Beijing time (01:00-04:00 and 06:00-10:00 UTC) daily, all billing items cost 2x the regular price. Until DeepSeek announces the date, the policy is not active and estimates should not apply it."}},{"@type":"Question","name":"What are DeepSeek's current API prices?","acceptedAnswer":{"@type":"Answer","text":"Per 1M tokens, from the rate card published 2026-08-02: deepseek-v4-flash is $0.14 input on a cache miss, $0.0028 on a cache hit, and $0.28 output; deepseek-v4-pro is $0.435 input on a miss, $0.003625 on a hit, and $0.87 output."}},{"@type":"Question","name":"Where can I follow DeepSeek API changes?","acceptedAnswer":{"@type":"Answer","text":"DeepSeek's own change log lives at api-docs.deepseek.com/updates. The deepseek CLI carries the same documentation inside the binary: `deepseek docs changelog` prints it offline, and `deepseek docs sync` refreshes the snapshot."}}]}
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Is DeepSeek V4-Pro officially released?","acceptedAnswer":{"@type":"Answer","text":"Yes. On 2026-08-12 the model version on DeepSeek's Models & Pricing page changed to DeepSeek-V4-Pro-0813, ending the preview that had run since 2026-04-24. The model ID is unchanged (deepseek-v4-pro), the rate card is unchanged, and the release focuses on agentic post-training rather than new pretraining."}},{"@type":"Question","name":"What is dsh (DeepSeek Harness)?","acceptedAnswer":{"@type":"Answer","text":"dsh is DeepSeek's official open-source agent harness, released 2026-08-13 as deepseek-ai/deepseek-harness on GitHub and @deepseek-ai/dsh on npm (MIT). It is in developer preview with compatibility-breaking changes promised. Everything in it is a plugin, built on the Cordis runtime; `npx @deepseek-ai/dsh web` starts its Web UI. The official repository does not accept external pull requests, and there is no plugin marketplace or registry: discovery is the dsh-plugin GitHub topic, with the ecosystem explicitly delegated to the community."}},{"@type":"Question","name":"Is dsh the same as deepseek-cli?","acceptedAnswer":{"@type":"Answer","text":"No. dsh (DeepSeek Harness) is DeepSeek's official agent harness: it runs an agent loop, executes tools, and manages plugins, skills and sessions. deepseek-cli is an unofficial single-binary API client: it sends one request in any of DeepSeek's four wire formats, prints the response and its estimated cost, and carries DeepSeek's API documentation offline. They are complementary, not competing: run agents with dsh, and use deepseek-cli to check a key, price a call, debug the wire formats, or query the docs."}},{"@type":"Question","name":"Is DeepSeek raising its API prices?","acceptedAnswer":{"@type":"Answer","text":"Yes, and the rise now has a date and numbers. At 16:00 UTC on 2026-08-16 DeepSeek moves to peak/off-peak billing on a new, higher card: peak hours are 01:00-04:00 and 06:00-10:00 UTC daily at twice the off-peak rate, and all other hours are off-peak. Per 1M tokens (cache hit / miss / output), deepseek-v4-flash goes to $0.007/$0.22/$0.66 off-peak and $0.014/$0.44/$1.32 peak; deepseek-v4-pro to $0.022/$0.66/$1.98 off-peak and $0.044/$1.32/$3.96 peak. This resolves both the undated broad price rise announced on 2026-08-06 and the undated peak-hour policy announced in June 2026."}},{"@type":"Question","name":"When does DeepSeek's peak-hour pricing start?","acceptedAnswer":{"@type":"Answer","text":"At 16:00 UTC on August 16, 2026. Peak hours are 01:00-04:00 and 06:00-10:00 UTC (09:00-12:00 and 14:00-18:00 Beijing time) daily, at twice the off-peak rate; every other hour is off-peak. Before that instant the flat card of 2026-08-02 applies at every hour and no multiplier should be applied."}},{"@type":"Question","name":"What are DeepSeek's current API prices?","acceptedAnswer":{"@type":"Answer","text":"Per 1M tokens, from the rate card published 2026-08-02 and in force until 16:00 UTC on 2026-08-16: deepseek-v4-flash is $0.14 input on a cache miss, $0.0028 on a cache hit, and $0.28 output; deepseek-v4-pro is $0.435 input on a miss, $0.003625 on a hit, and $0.87 output. From that instant peak/off-peak billing applies on a new card."}},{"@type":"Question","name":"Where can I follow DeepSeek API changes?","acceptedAnswer":{"@type":"Answer","text":"DeepSeek's own change log lives at api-docs.deepseek.com/updates. The deepseek CLI carries the same documentation inside the binary: `deepseek docs changelog` prints it offline, and `deepseek docs sync` refreshes the snapshot."}}]}
 </script>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"deepseek-cli","item":"https://thevibeworks.github.io/deepseek-cli/"},{"@type":"ListItem","position":2,"name":"news","item":"https://thevibeworks.github.io/deepseek-cli/news/"}]}
@@ -59,6 +59,7 @@
       <a href="../commands/">commands</a>
       <a href="../formats/">formats</a>
       <a href="../cost/">cost</a>
+      <a href="../pricing/">pricing</a>
       <a href="../bench/">bench</a>
       <a href="../news/" aria-current="page">news</a>
       <a href="../agents/">agents</a>
@@ -80,6 +81,30 @@
 cost of a call. Curated from official announcements and checked against the
 live API where that is possible; the in-terminal feed is
 <code>ds docs changelog</code>.</p>
+
+<h2 id="repricing">2026-08-13 &middot; the price rise has its date and its numbers<span class="chip warn">effective 2026-08-16</span></h2>
+<p>The other shoe drops. Alongside the V4-Pro GA release, DeepSeek's
+<a href="https://api-docs.deepseek.com/quick_start/pricing">Models &amp; Pricing</a> page now
+carries the repricing that the <a href="#price-rise">August 6 notice</a>
+promised and the <a href="#peak-pricing">June peak-hour policy</a>
+sketched, and this time it is dated: <strong>at 16:00 UTC on 2026-08-16
+the API moves to peak/off-peak billing</strong>. Peak hours are
+01:00&ndash;04:00 and 06:00&ndash;10:00 UTC daily &ndash; the boundaries
+are defined in UTC &ndash; at twice the off-peak rate; every other hour is
+off-peak.</p>
+<p>The multiplier is the June policy's, but the base card is new and
+higher. Off-peak is not a discount on today's prices: a flash cache-miss
+input token goes from $0.14 to $0.22 per 1M in the <em>cheapest</em> hour,
+and to $0.44 in peak. The full schedule and both cards are on the
+<a href="../pricing/">pricing page</a>, which also reads your clock
+and names the period you are in.</p>
+<p><strong>What it changes here: the switch is encoded, not guessed.</strong>
+Estimates price every call with the card in force at the moment it is made
+&ndash; the flat card of 2026-08-02 until the effective instant, peak/off-peak
+after, never early. <code>ds pricing</code> prints the period in effect
+right now with local, UTC and Beijing time, and the
+<a href="../cost/#ledger">ledger</a> stores token counts, not dollars,
+so history can be repriced under any card.</p>
 
 <h2 id="dsh">2026-08-13 &middot; DeepSeek ships dsh, its own agent harness</h2>
 <p>DeepSeek released <strong>DeepSeek Harness</strong>:
@@ -291,7 +316,11 @@ deepseek-v4-pro</code>, the <code>claude-opus-*</code> remap on the
 checkpoint since the cell changed. Same price, stronger model; the
 <a href="../cost/">estimates</a> already price it correctly.</p>
 
-<h2 id="price-rise">2026-08-06 &middot; a broad price rise is coming<span class="chip warn">date tba</span></h2>
+<h2 id="price-rise">2026-08-06 &middot; a broad price rise is coming<span class="chip ok">resolved 2026-08-13</span></h2>
+<p><strong>Update:</strong> this is no longer a rumour with a direction.
+On 2026-08-13 DeepSeek published <a href="#repricing">the new card and the
+date</a>: peak/off-peak billing from 2026-08-16 16:00 UTC. The entry below
+stands as it was written, as the record of the announcement.</p>
 <p>DeepSeek posted a notice in the
 <a href="https://platform.deepseek.com/">platform console</a>: all API
 services will be repriced &ldquo;in the near term&rdquo;, and the increase is
@@ -324,7 +353,13 @@ the published card of 2026-08-02 until DeepSeek publishes a new one. The
 than prices, deliberately &ndash; when the card changes, every historical
 call can be repriced under it.</p>
 
-<h2 id="peak-pricing">announced 2026-06-29 &middot; 2&times; during peak hours<span class="chip warn">date tba</span></h2>
+<h2 id="peak-pricing">announced 2026-06-29 &middot; 2&times; during peak hours<span class="chip ok">dated 2026-08-13</span></h2>
+<p><strong>Update:</strong> the date exists now, and one detail below did
+not survive it. <a href="#repricing">The 2026-08-13 announcement</a> keeps
+the 2&times; multiplier and the same windows but puts them on a new, higher
+base card &ndash; so &ldquo;off-peak, the current card stands&rdquo; is no
+longer true. Effective 2026-08-16 16:00 UTC; the
+<a href="../pricing/">pricing page</a> has the numbers.</p>
 <p>The pricing page has carried this since late June: the API will move to
 peak/off-peak pricing, with every billing item &ndash; input, cached input,
 output &ndash; costing <strong>2&times; the regular price during peak
@@ -372,7 +407,8 @@ error, not a quiet remap.</p>
 what does not. The complete feed:</p>
 <pre><code>ds docs changelog     # DeepSeek's own change log, in the terminal, offline
 ds docs sync          # refresh the snapshot the binary carries
-ds models             # the rate card the estimates use, next to the live model list</code></pre>
+ds models             # the rate card the estimates use, next to the live model list
+ds pricing            # the time-of-day schedule and the billing period right now</code></pre>
 <p>Upstream: the official <a href="https://api-docs.deepseek.com/updates">change log</a> and
 <a href="https://api-docs.deepseek.com/quick_start/pricing">pricing page</a>, and
 <a href="https://status.deepseek.com/">status.deepseek.com</a> for incidents.</p>

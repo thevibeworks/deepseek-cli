@@ -4,6 +4,7 @@ import (
 	"math"
 	"strings"
 	"testing"
+	"time"
 )
 
 // The payloads below are verbatim from the live API on 2026-08-05, one
@@ -180,6 +181,54 @@ func TestEstimateExceedsATypicalRealCharge(t *testing.T) {
 	real := Cost("deepseek-v4-flash", Usage{InputTokens: body / 3, OutputTokens: 800, Found: true})
 	if est <= real {
 		t.Errorf("estimate %v is not above a realistic charge %v; unbillable would be cheaper than billable", est, real)
+	}
+}
+
+// The dated repricing: flat until 16:00 UTC on 2026-08-16, then a new
+// base card off-peak with peak windows at exactly double. Under-charging
+// after the flip would drain the credit pool at yesterday's prices.
+func TestRepricingSwitchesOnItsEffectiveInstant(t *testing.T) {
+	u := Usage{InputTokens: 1_000_000, OutputTokens: 1_000_000, Found: true}
+
+	before := CostAt("deepseek-v4-flash", u, RepriceAt.Add(-time.Second))
+	if math.Abs(before-0.42) > 1e-9 {
+		t.Errorf("before the flip: got %v, want the flat 0.42", before)
+	}
+	// 16:00 UTC is outside both peak windows: the off-peak card.
+	at := CostAt("deepseek-v4-flash", u, RepriceAt)
+	if math.Abs(at-0.88) > 1e-9 {
+		t.Errorf("at the flip: got %v, want the off-peak 0.88", at)
+	}
+	// 02:00 UTC is inside 01:00-04:00: double.
+	peak := CostAt("deepseek-v4-flash", u, time.Date(2026, 8, 17, 2, 0, 0, 0, time.UTC))
+	if math.Abs(peak-1.76) > 1e-9 {
+		t.Errorf("in a peak window: got %v, want 1.76", peak)
+	}
+}
+
+// The reservation must be a true upper bound across period boundaries: a
+// request admitted minutes before a peak window (or before the flip) can
+// settle inside it, so its ceiling is priced at the dearer side.
+func TestEstimateCeilingCoversTheNextPeriod(t *testing.T) {
+	const model = "deepseek-v4-flash"
+	justBeforePeak := time.Date(2026, 8, 17, 5, 30, 0, 0, time.UTC)
+	insidePeak := time.Date(2026, 8, 17, 6, 5, 0, 0, time.UTC)
+	if est, peak := EstimateAt(model, 400, 1000, false, justBeforePeak), EstimateAt(model, 400, 1000, false, insidePeak); est < peak {
+		t.Errorf("admitted at 05:30 UTC the reservation %v is under the peak-priced %v it could settle at", est, peak)
+	}
+
+	justBeforeFlip := RepriceAt.Add(-10 * time.Minute)
+	afterFlip := EstimateAt(model, 400, 1000, false, RepriceAt)
+	if est := EstimateAt(model, 400, 1000, false, justBeforeFlip); est < afterFlip {
+		t.Errorf("admitted before the flip the reservation %v is under the post-flip %v", est, afterFlip)
+	}
+
+	// And far from any boundary, off-peak reserves at the off-peak card,
+	// not at a permanent doubling.
+	quiet := time.Date(2026, 8, 17, 12, 0, 0, 0, time.UTC)
+	offPeak := costWith(cardFor(ratesOffPeak, model), Usage{InputTokens: 401, OutputTokens: 1000 + reasoningAllowance})
+	if est := EstimateAt(model, 400, 1000, false, quiet); math.Abs(est-offPeak) > 1e-12 {
+		t.Errorf("quiet off-peak reservation %v, want the off-peak card's %v", est, offPeak)
 	}
 }
 

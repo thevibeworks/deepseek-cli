@@ -4,6 +4,15 @@ import (
 	"encoding/json"
 	"math"
 	"testing"
+	"time"
+)
+
+// Fixed instants, one per pricing period, so these tests do not change
+// meaning as the wall clock crosses RepriceAt.
+var (
+	atFlat    = time.Date(2026, 8, 10, 12, 0, 0, 0, time.UTC) // before the flip
+	atOffPeak = time.Date(2026, 8, 17, 12, 0, 0, 0, time.UTC) // after, outside the windows
+	atPeak    = time.Date(2026, 8, 17, 2, 0, 0, 0, time.UTC)  // after, inside 01:00-04:00 UTC
 )
 
 // The three wire formats report token usage with different conventions.
@@ -120,8 +129,8 @@ func TestCacheHitRate(t *testing.T) {
 }
 
 func TestCost(t *testing.T) {
-	// 1M cache-miss input + 1M output on flash: 0.14 + 0.28.
-	got, ok := Cost(ModelFlash, Usage{InputTokens: 1_000_000, CacheMissTokens: 1_000_000, OutputTokens: 1_000_000})
+	// 1M cache-miss input + 1M output on flash, flat card: 0.14 + 0.28.
+	got, ok := CostAt(ModelFlash, Usage{InputTokens: 1_000_000, CacheMissTokens: 1_000_000, OutputTokens: 1_000_000}, atFlat)
 	if !ok {
 		t.Fatal("flash should be priced")
 	}
@@ -130,21 +139,97 @@ func TestCost(t *testing.T) {
 	}
 
 	// The same prompt served entirely from cache costs 50x less on input.
-	cached, _ := Cost(ModelFlash, Usage{InputTokens: 1_000_000, CacheHitTokens: 1_000_000})
+	cached, _ := CostAt(ModelFlash, Usage{InputTokens: 1_000_000, CacheHitTokens: 1_000_000}, atFlat)
 	if math.Abs(cached-0.0028) > 1e-9 {
 		t.Errorf("cached input = %v, want 0.0028", cached)
 	}
 }
 
+// The dated repricing: flat until 16:00 UTC on 2026-08-16, then a new
+// base card off-peak and exactly double during the two UTC peak windows.
+// Wrong period arithmetic here misprices every estimate by 2x, which is
+// precisely what the TASTE scar about undated multipliers was guarding
+// against — these numbers are dated, so they are encoded and pinned.
+func TestRepricingSwitchesOnItsEffectiveInstant(t *testing.T) {
+	u := Usage{InputTokens: 1_000_000, CacheMissTokens: 1_000_000, OutputTokens: 1_000_000}
+
+	before, _ := CostAt(ModelFlash, u, RepriceAt.Add(-time.Nanosecond))
+	if math.Abs(before-0.42) > 1e-9 {
+		t.Errorf("one instant before the flip: got %v, want the flat 0.42", before)
+	}
+
+	// 16:00 UTC is outside both peak windows, so the flip lands on the
+	// off-peak card: 0.22 + 0.66.
+	at, _ := CostAt(ModelFlash, u, RepriceAt)
+	if math.Abs(at-0.88) > 1e-9 {
+		t.Errorf("at the flip: got %v, want the off-peak 0.88", at)
+	}
+
+	peak, _ := CostAt(ModelFlash, u, atPeak)
+	if math.Abs(peak-1.76) > 1e-9 {
+		t.Errorf("in a peak window: got %v, want 1.76 (2x off-peak)", peak)
+	}
+
+	pro, _ := CostAt(ModelPro, u, atPeak)
+	if math.Abs(pro-(1.32+3.96)) > 1e-9 {
+		t.Errorf("pro in a peak window: got %v, want 5.28", pro)
+	}
+}
+
+func TestPeriodBoundariesAreUTCAndEndExclusive(t *testing.T) {
+	day := time.Date(2026, 8, 17, 0, 0, 0, 0, time.UTC)
+	cases := map[time.Duration]string{
+		0 * time.Hour:                  "off-peak", // midnight UTC
+		1 * time.Hour:                  "peak",     // window start is inclusive
+		4*time.Hour - time.Minute:      "peak",
+		4 * time.Hour:                  "off-peak", // window end is exclusive
+		6 * time.Hour:                  "peak",
+		10*time.Hour - time.Nanosecond: "peak",
+		10 * time.Hour:                 "off-peak",
+		12 * time.Hour:                 "off-peak",
+	}
+	for d, want := range cases {
+		if got := PeriodAt(day.Add(d)); got.Label != want {
+			t.Errorf("PeriodAt(+%v) = %q, want %q", d, got.Label, want)
+		}
+	}
+	if got := PeriodAt(atFlat); got.Label != "flat" || got.Multiplier != 1 {
+		t.Errorf("before the flip: got %+v, want flat at 1x", got)
+	}
+}
+
+func TestNextChange(t *testing.T) {
+	if got := NextChange(atFlat); !got.Equal(RepriceAt) {
+		t.Errorf("before the flip the next change is the flip, got %v", got)
+	}
+	day := time.Date(2026, 8, 17, 0, 0, 0, 0, time.UTC)
+	cases := map[time.Duration]time.Duration{
+		30 * time.Minute: 1 * time.Hour,  // off-peak, next: peak starts
+		2 * time.Hour:    4 * time.Hour,  // peak, next: peak ends
+		5 * time.Hour:    6 * time.Hour,  // gap between windows
+		7 * time.Hour:    10 * time.Hour, // second window
+		12 * time.Hour:   25 * time.Hour, // rest of day: tomorrow's first window
+	}
+	for at, want := range cases {
+		if got := NextChange(day.Add(at)); !got.Equal(day.Add(want)) {
+			t.Errorf("NextChange(+%v) = %v, want +%v", at, got, want)
+		}
+	}
+}
+
 func TestCacheSavings(t *testing.T) {
 	// What the cached tokens would have cost at the miss rate, minus what
-	// they did cost: 1M * (0.14 - 0.0028).
-	got, ok := CacheSavings(ModelFlash, Usage{InputTokens: 1_000_000, CacheHitTokens: 1_000_000})
+	// they did cost, under the card in force now. The exact figure moves
+	// with the era, so pin the identity against PriceFor rather than a
+	// constant that would silently change meaning at the flip.
+	u := Usage{InputTokens: 1_000_000, CacheHitTokens: 1_000_000}
+	got, ok := CacheSavings(ModelFlash, u)
 	if !ok {
 		t.Fatal("flash should be priced")
 	}
-	if math.Abs(got-0.1372) > 1e-9 {
-		t.Errorf("got %v, want 0.1372", got)
+	p, _ := PriceFor(ModelFlash)
+	if want := p.CacheMissInput - p.CacheHitInput; math.Abs(got-want) > 1e-9 {
+		t.Errorf("got %v, want %v", got, want)
 	}
 	if zero, _ := CacheSavings(ModelFlash, Usage{InputTokens: 100, CacheMissTokens: 100}); zero != 0 {
 		t.Errorf("no cache hits should mean no savings, got %v", zero)
@@ -173,8 +258,8 @@ func TestResolveModel(t *testing.T) {
 func TestCostFollowsTheRemappedModel(t *testing.T) {
 	// A Claude name billed at pro rates, not flash rates.
 	u := Usage{InputTokens: 1_000_000, CacheMissTokens: 1_000_000}
-	opus, _ := Cost("claude-opus-4-1", u)
-	pro, _ := Cost(ModelPro, u)
+	opus, _ := CostAt("claude-opus-4-1", u, atOffPeak)
+	pro, _ := CostAt(ModelPro, u, atOffPeak)
 	if opus != pro {
 		t.Errorf("claude-opus cost %v, deepseek-v4-pro cost %v — should match", opus, pro)
 	}
