@@ -234,23 +234,6 @@ body::before {
     z-index: 10;
 }
 
-/* The mark: the sounding fluke, riding the masthead rule the way the
- * 404's whale rides it — the header's border is the site's waterline,
- * and the mark sits on it, tail up, headed for the deep. It lives in
- * the strip of masthead padding above the rule, so it never touches
- * the nav; sized to clear the theme toggle above it. */
-.masthead .mark {
-    position: absolute;
-    right: var(--gutter);
-    bottom: -1px;
-    width: 22px;
-    height: 14px;
-    fill: var(--cyan);
-    opacity: 0.9;
-    pointer-events: none;
-    transition: fill var(--dur-slow) var(--ease);
-}
-
 .masthead .wrap {
     display: flex;
     align-items: center;
@@ -269,6 +252,23 @@ body::before {
     text-decoration: none;
     color: var(--text);
     white-space: nowrap;
+}
+
+/* The mark: DeepSeek's whale, swimming just ahead of the name. It is
+ * part of the brand link, so it centres on the row rather than sitting
+ * on the text baseline, and it answers a hover the way the name does. */
+.brand .mark {
+    width: 23px;
+    height: 17px;
+    align-self: center;
+    flex-shrink: 0;
+    fill: var(--cyan);
+    opacity: 0.9;
+    transition: fill var(--dur-fast) var(--ease);
+}
+
+.brand:hover .mark {
+    fill: var(--pink);
 }
 
 .brand .name {
