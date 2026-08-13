@@ -32,6 +32,12 @@
   // estimates for the same reason they are there.
   var RATES = { cacheHit: 0.0028, cacheMiss: 0.14, output: 0.28 };
 
+  // The markdown renderer (md.js, loaded just before this script). Answers
+  // are markdown and untrusted; md.render escapes every byte the model sent
+  // before emitting HTML. If the file somehow did not load we fall back to
+  // plain text rather than breaking the page.
+  var MD = (typeof dsmd !== 'undefined' && dsmd) || null;
+
   var store = {
     get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
     set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
@@ -480,7 +486,7 @@
       el.prompt.value = '';
     }
 
-    var turn = appendTurn('assistant', '');
+    var turn = appendTurn('assistant', '', !f.fim);
     var started = Date.now();
     setBusy(true);
     renderCommand();
@@ -556,7 +562,7 @@
               turn.reasoningWrap.hidden = false;
             } else {
               content += d.text;
-              turn.body.textContent = content;
+              setTurnBody(turn, content);
             }
             scrollToEnd();
           }
@@ -625,7 +631,11 @@
 
   // --- rendering ----------------------------------------------------------
 
-  function appendTurn(role, text) {
+  // A turn renders the model's markdown into .pg-body. The raw text is kept
+  // alongside so the reader can copy it or flip to it: the answer is
+  // markdown and the reason to be here is often the exact text, not the
+  // prettified version.
+  function appendTurn(role, text, useMd) {
     var wrap = document.createElement('div');
     wrap.className = 'pg-turn pg-' + role;
 
@@ -646,16 +656,74 @@
 
     var body = document.createElement('div');
     body.className = 'pg-body';
-    body.textContent = text;
     wrap.appendChild(body);
+
+    var rawPre = document.createElement('pre');
+    rawPre.className = 'pg-raw';
+    rawPre.hidden = true;
+    wrap.appendChild(rawPre);
+
+    var turn = {
+      el: wrap, body: body, rawPre: rawPre, reasoning: reasoning,
+      reasoningWrap: reasoningWrap, useMd: role === 'assistant' && !!useMd && !!MD,
+      rawText: '',
+    };
+
+    // Only the model's turns get the copy/raw tools; the user's own prompt
+    // is already in front of them.
+    if (role === 'assistant') {
+      var tools = document.createElement('div');
+      tools.className = 'pg-turn-tools';
+      tools.hidden = true;
+
+      var copyBtn = document.createElement('button');
+      copyBtn.type = 'button';
+      copyBtn.textContent = 'copy';
+      copyBtn.addEventListener('click', function () {
+        navigator.clipboard.writeText(turn.rawText).then(function () {
+          copyBtn.textContent = 'copied';
+          setTimeout(function () { copyBtn.textContent = 'copy'; }, 1200);
+        });
+      });
+      tools.appendChild(copyBtn);
+
+      if (turn.useMd) {
+        var rawBtn = document.createElement('button');
+        rawBtn.type = 'button';
+        rawBtn.textContent = 'raw';
+        rawBtn.addEventListener('click', function () {
+          var showRaw = turn.rawPre.hidden;
+          turn.rawPre.hidden = !showRaw;
+          turn.body.hidden = showRaw;
+          rawBtn.textContent = showRaw ? 'rendered' : 'raw';
+        });
+        tools.appendChild(rawBtn);
+      }
+      turn.tools = tools;
+      wrap.appendChild(tools);
+    }
 
     var footer = document.createElement('div');
     footer.className = 'pg-footer';
     wrap.appendChild(footer);
+    turn.footer = footer;
+
+    setTurnBody(turn, text || '');
 
     el.log.appendChild(wrap);
     scrollToEnd();
-    return { el: wrap, body: body, reasoning: reasoning, reasoningWrap: reasoningWrap, footer: footer };
+    return turn;
+  }
+
+  // Re-render the whole accumulated buffer. Cheap at chat sizes, and it
+  // means partial markdown mid-stream is just the same render on a shorter
+  // string – md.render tolerates an unclosed fence or a dangling '*'.
+  function setTurnBody(turn, text) {
+    turn.rawText = text;
+    if (turn.useMd) turn.body.innerHTML = MD.render(text);
+    else turn.body.textContent = text;
+    turn.rawPre.textContent = text;
+    if (turn.tools && text) turn.tools.hidden = false;
   }
 
   function scrollToEnd() { el.log.scrollTop = el.log.scrollHeight; }
@@ -686,6 +754,20 @@
       setTimeout(function () { el.copy.textContent = 'copy'; }, 1200);
     });
   });
+  // Copy buttons inside rendered code blocks. Delegated, because the blocks
+  // are re-created on every streamed chunk and binding each one would leak.
+  el.log.addEventListener('click', function (e) {
+    var t = e.target;
+    if (!t || String(t.className || '').indexOf('pg-codecopy') < 0) return;
+    var box = t.parentNode;
+    var pre = box && box.getElementsByTagName ? box.getElementsByTagName('pre')[0] : null;
+    if (!pre) return;
+    navigator.clipboard.writeText(pre.textContent).then(function () {
+      t.textContent = 'copied';
+      setTimeout(function () { t.textContent = 'copy'; }, 1200);
+    });
+  });
+
   el.clear.addEventListener('click', function () {
     history = [];
     el.log.innerHTML = '';

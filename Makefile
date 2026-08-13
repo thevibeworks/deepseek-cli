@@ -107,6 +107,7 @@ price-check:
 site-check:
 	python3 site/build.py --check
 	node site/pow.test.js
+	node site/md.test.js
 	node site/playground.test.js
 	node site/playground.dom.test.js
 	node site/waves.test.js
