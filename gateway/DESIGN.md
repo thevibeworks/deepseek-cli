@@ -280,20 +280,29 @@ scarce operation and gets the conservative boundary.
 
 ## Limits, and why these numbers
 
-Worst-case cost per anonymous user per day, at flash rates
-($0.14/M input, $0.28/M output):
+Worst-case cost per anonymous user per day, at flash off-peak rates
+($0.22/M input, $0.66/M output):
 
 ```
-60,000 input  × $0.14/M = $0.0084
-20,000 output × $0.28/M = $0.0056
+60,000 input  × $0.22/M = $0.0132
+20,000 output × $0.66/M = $0.0132
                           -------
-                          $0.014 / user / day  at full burn
+                          $0.0264 / user / day  at full burn, off-peak
+                          $0.0528 / user / day  at full burn, peak
 ```
 
-So a $1/day budget serves ~70 users burning *everything*, or several
-hundred normal ones — a normal turn is a few hundred input and a few
-hundred output tokens, about $0.0003. Roughly **3,300 ordinary turns per
-dollar.**
+So a $1/day budget serves ~38 users burning *everything* off-peak, ~19 at
+peak, or several hundred normal ones — a normal turn is a few hundred
+input and a few hundred output tokens, about $0.0006. Roughly **1,700
+ordinary turns per dollar off-peak, 850 at peak.**
+
+These are the numbers of the card that took effect 2026-08-16 16:00 UTC,
+and they roughly halved the free tier's reach at an unchanged budget: the
+old flat card ($0.14/$0.28) made the same worst case $0.014/user/day. The
+quotas below have not been retuned for it — the budget breaker is what
+actually bounds spend, and it does its job at any card — but the reach
+per dollar is now a time-of-day figure, and the peak windows are the
+expensive seven hours.
 
 | setting | default | why |
 |---|---|---|

@@ -87,20 +87,23 @@
 
 <h1>Cost</h1>
 <p class="lede">DeepSeek's headline feature is a disk-backed context cache that
-makes a repeated prompt prefix roughly fifty times cheaper. That saving is
-invisible unless something is counting &ndash; so this counts.</p>
+makes a repeated prompt prefix roughly thirty times cheaper. Since
+2026-08-16 a second lever sits on top of it: the hour of the day, worth 2&times;.
+Neither is visible unless something is counting &ndash; so this counts.</p>
 
 <h2 id="card">The rate card</h2>
-<p>USD per 1M tokens, as published on 2026-08-02 and in force before
-2026-08-16 16:00 UTC &ndash; from that instant DeepSeek bills peak/off-peak
-on a new card, and the <a href="../pricing/">pricing page</a> carries
-the dated schedule:</p>
+<p>USD per 1M tokens. Peak hours are 01:00&ndash;04:00 and 06:00&ndash;10:00
+UTC daily; every other hour is off-peak at half the peak rate. The
+<a href="../pricing/">pricing page</a> carries the full schedule and
+names the period you are in right now:</p>
 <div class="tablewrap">
 <table>
-<thead><tr><th>Model</th><th class="num">Input (cached)</th><th class="num">Input (miss)</th><th class="num">Output</th></tr></thead>
+<thead><tr><th>Model</th><th>Period</th><th class="num">Input (cached)</th><th class="num">Input (miss)</th><th class="num">Output</th></tr></thead>
 <tbody>
-<tr><td><code>deepseek-v4-flash</code></td><td class="num">$0.0028</td><td class="num">$0.14</td><td class="num">$0.28</td></tr>
-<tr><td><code>deepseek-v4-pro</code></td><td class="num">$0.003625</td><td class="num">$0.435</td><td class="num">$0.87</td></tr>
+<tr><td rowspan="2"><code>deepseek-v4-flash</code></td><td>off-peak</td><td class="num">$0.007</td><td class="num">$0.22</td><td class="num">$0.66</td></tr>
+<tr><td>peak</td><td class="num">$0.014</td><td class="num">$0.44</td><td class="num">$1.32</td></tr>
+<tr><td rowspan="2"><code>deepseek-v4-pro</code></td><td>off-peak</td><td class="num">$0.022</td><td class="num">$0.66</td><td class="num">$1.98</td></tr>
+<tr><td>peak</td><td class="num">$0.044</td><td class="num">$1.32</td><td class="num">$3.96</td></tr>
 </tbody>
 </table>
 </div>
@@ -109,22 +112,32 @@ list, so the price is on screen when you pick, and <code>ds pricing</code>
 prints the full schedule with the period you are in right now.</p>
 
 <h2 id="cache">What the cache is worth</h2>
-<p>On flash, a cache hit costs <strong>1/50th</strong> of a miss. The same
-3,200-token prompt, sent twice:</p>
+<p>On flash, a cache hit costs <strong>1/31st</strong> of a miss per token.
+The same 2,900-token prompt, sent twice:</p>
 <div class="term">
-<div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="title">measured, not illustrative</span></div>
+<div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="title">measured 2026-08-17, off-peak</span></div>
 <pre><code><span class="p">$</span> ds chat <span class="w">"..."</span> <span class="k">--system</span> @prefix.txt
 <span class="o">one</span>
-<span class="c">&middot; flash &middot; 3.2k in &middot; 1 out &middot; ~$0.000450 &middot; 0.84s</span>
+<span class="c">&middot; flash &middot; 2.9k in &middot; 1 out &middot; ~$0.000642 &middot; 580ms</span>
 
 <span class="p">$</span> ds chat <span class="w">"..."</span> <span class="k">--system</span> @prefix.txt
 <span class="o">two</span>
-<span class="c">&middot; flash &middot; 3.2k in (100% cached) &middot; 1 out &middot; ~$0.000011 &middot; 1.04s</span></code></pre>
+<span class="c">&middot; flash &middot; 2.9k in (97% cached) &middot; 1 out &middot; ~$0.000043 &middot; 630ms</span></code></pre>
 </div>
-<p>A 40&times; drop, for changing nothing but sending the same prefix again.
-The practical rule: <strong>put the stable part of a prompt first</strong>
-&ndash; same system prompt, same files, in the same order &ndash; and let the
-variable part come last.</p>
+<p>A 15&times; drop on the whole call, for changing nothing but sending the
+same prefix again. It is 15&times; and not 31&times; because the 3% that
+changed &ndash; the tail of the prompt, and the question itself &ndash;
+still bills at the miss rate: the realised saving is always the rate ratio
+times how much of the prompt you kept identical. Hence the practical rule:
+<strong>put the stable part of a prompt first</strong> &ndash; same system
+prompt, same files, in the same order &ndash; and let the variable part come
+last.</p>
+<div class="note">
+<span class="tag">a trap worth knowing</span>
+<p><code>ds tokens</code> counts by sending the text to the FIM endpoint, so
+it warms the cache: measure the cache with two <code>chat</code> calls, or
+the first one is already a hit.</p>
+</div>
 
 <h2 id="thinking">The thinking surcharge</h2>
 <p>Thinking mode is on by default and adds a fixed template to your input
@@ -204,18 +217,16 @@ which is the number that tells you whether prompt structuring is paying off.</p>
 <li><strong>Estimates, not invoices.</strong> Computed from the published USD
 rate card. Your account may bill in another currency &ndash;
 <code>ds balance</code> shows which.</li>
-<li><strong>The repricing is dated, and the switch is encoded.</strong>
-From 2026-08-16 16:00 UTC DeepSeek bills peak/off-peak on a new, higher
-card (peak hours 01:00&ndash;04:00 and 06:00&ndash;10:00 UTC at twice the
-off-peak rate). Estimates use the flat card above until that instant and
-switch automatically on it &ndash; never before, because applying a price
-before its effective date would be inventing data. The
-<a href="../pricing/">pricing page</a> and <code>ds pricing</code>
-carry the schedule and the new numbers.</li>
-<li><strong>The cache discount narrows at the flip.</strong> On the card
-above a cached input token costs 1/50th of a miss on flash and 1/120th
-on pro; on the card of 2026-08-16 both settle at about 1/30th. Still
-the biggest lever on a bill, just a smaller one.</li>
+<li><strong>The hour is part of the price.</strong> Since 2026-08-16
+16:00 UTC a call costs twice as much inside a peak window as outside it,
+so an estimate that ignores the clock is wrong for seven hours a day.
+Every call is priced at the card in force at the moment it was made, and
+the <a href="#ledger">ledger</a> keeps token counts rather than
+dollars, so history reprices correctly under whichever card was real.</li>
+<li><strong>The cache discount narrowed at the flip.</strong> On the old
+flat card a cached input token cost 1/50th of a miss on flash and 1/120th
+on pro; on the card above both settle at about 1/30th. Still the biggest
+lever on a bill, just a smaller one.</li>
 <li><strong>Local only.</strong> The ledger records calls made by this CLI on
 this machine. It knows nothing about your other clients.</li>
 </ul>

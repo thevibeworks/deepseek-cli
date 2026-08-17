@@ -412,7 +412,11 @@ func TestModelsJoinsThePublishedRateCard(t *testing.T) {
 	if !strings.Contains(got.stdout, "deepseek-v4-flash") {
 		t.Errorf("stdout = %q", got.stdout)
 	}
-	if !strings.Contains(got.stdout, "0.14") {
+	// Which figure depends on the hour: flash cache-miss input is $0.22
+	// off-peak and $0.44 peak. Both are published numbers, so asserting
+	// on either keeps this a real check without making it a time bomb
+	// that fails whenever the suite runs inside a peak window.
+	if !strings.Contains(got.stdout, "0.22") && !strings.Contains(got.stdout, "0.44") {
 		t.Errorf("the price should sit next to the model, got %q", got.stdout)
 	}
 }
