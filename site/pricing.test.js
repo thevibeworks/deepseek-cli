@@ -57,8 +57,9 @@ check('the embedded schedule is the upstream ground truth',
   JSON.stringify(schedule) === JSON.stringify(truth),
   JSON.stringify(schedule));
 
-// The visible tables carry the same story: every number of both cards,
-// and the no-JavaScript strip already names the date and the windows.
+// The visible tables carry the same story: every number of both cards.
+// The card in force leads; the flat card stays on the page because the
+// ledger reprices history under it.
 for (const figure of [
   '$0.0028', '$0.14', '$0.28', '$0.003625', '$0.435', '$0.87',
   '$0.007', '$0.22', '$0.66', '$0.014', '$0.44', '$1.32',
@@ -66,8 +67,10 @@ for (const figure of [
 ]) {
   check(`the page carries ${figure}`, page.includes(figure));
 }
-check('the no-script strip names the effective instant',
+check('the page names the effective instant',
   page.includes('2026-08-16 16:00 UTC'));
+check('the no-script strip says time-of-day billing is in force',
+  page.includes('Time-of-day billing is live'));
 check('the schedule table is windowed in UTC',
   page.includes('01:00&ndash;04:00 UTC') && page.includes('06:00&ndash;10:00 UTC'));
 check('the page copy is em-dash-free', !page.includes('\u2014'));

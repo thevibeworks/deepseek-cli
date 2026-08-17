@@ -117,9 +117,14 @@ deepseek balance          # what is left, per currency
 deepseek usage --since 7d # what this CLI has spent
 ```
 
-Cached input tokens cost 50× less than uncached ones, so put the stable
-part of a prompt first — same system prompt, same files, in the same
-order across calls. `deepseek usage` reports what the cache saved.
+Cached input tokens cost about 30× less than uncached ones, so put the
+stable part of a prompt first — same system prompt, same files, in the
+same order across calls. `deepseek usage` reports what the cache saved.
+
+Since 2026-08-16 the rate card is time-of-day: peak hours 01:00–04:00
+and 06:00–10:00 UTC bill at twice the off-peak rate. `deepseek pricing`
+names the period in force right now, offline. Batch work that can wait
+should run off-peak; never quote a price without naming the period.
 
 Costs shown are estimates from the published rate card, not billed
 amounts. Say so when reporting them.

@@ -32,19 +32,25 @@ cover-gate:
 # page by page and extracts the FAQ out of its JS bundle. A sibling
 # checkout is used when there is one — that is the loop while working on
 # both — and otherwise it is fetched, so CI and a bare clone both work.
+#
+# The mirror also tracks dsh, DeepSeek's agent harness, in en/dsh — 112
+# pages of a different product. This binary carries the API reference, so
+# that subtree is excluded: it would quadruple the payload and it out-ranks
+# the API pages on shared words like "tool" and "session".
 CORPUS=internal/docs/corpus.tar.gz
+CORPUS_EXCLUDE=--exclude=en/dsh
 DOCS_REPO=https://github.com/thevibeworks/deepseek-docs
 
 .PHONY: corpus
 corpus:
 	@if [ -d ../deepseek-docs/content/en ]; then \
 	  echo "packing from ../deepseek-docs"; \
-	  tar -C ../deepseek-docs/content -czf $(CORPUS) en; \
+	  tar -C ../deepseek-docs/content $(CORPUS_EXCLUDE) -czf $(CORPUS) en; \
 	else \
 	  echo "fetching from $(DOCS_REPO)"; \
 	  tmp=$$(mktemp -d); \
 	  curl -sSL $(DOCS_REPO)/archive/refs/heads/main.tar.gz | tar -xz -C $$tmp --strip-components=1; \
-	  tar -C $$tmp/content -czf $(CORPUS) en; \
+	  tar -C $$tmp/content $(CORPUS_EXCLUDE) -czf $(CORPUS) en; \
 	  rm -rf $$tmp; \
 	fi
 	@echo "$(CORPUS): $$(du -h $(CORPUS) | cut -f1), $$(tar tzf $(CORPUS) | grep -c '\.md$$') pages"

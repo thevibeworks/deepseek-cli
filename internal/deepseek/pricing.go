@@ -37,10 +37,15 @@ type Price struct {
 	Output         float64
 }
 
-// RepriceAt is when DeepSeek's dated repricing takes effect: 16:00 UTC
-// on 2026-08-16 (midnight, Beijing), announced 2026-08-13 with the V4 GA
+// RepriceAt is when DeepSeek's repricing took effect: 16:00 UTC on
+// 2026-08-16 (midnight, Beijing), announced 2026-08-13 with the V4 GA
 // release. From that instant the API bills peak/off-peak on a new,
 // higher card, with off-peak at half the peak rate.
+//
+// This is live, and measured, not just read off the page: a 188,542
+// cache-miss-token call to pro in the off-peak window on 2026-08-17
+// settled at 0.84 CNY, i.e. 4.46 CNY/1M against the new card's 4.5 and
+// the old card's 3.0.
 //
 // TASTE.md's rule against applying announced-but-undated numbers does
 // not apply here — these numbers carry their date, so the switch is
@@ -49,6 +54,10 @@ type Price struct {
 var RepriceAt = time.Date(2026, time.August, 16, 16, 0, 0, 0, time.UTC)
 
 // pricesFlat is the card published 2026-08-02, in force before RepriceAt.
+// That instant has passed, so nothing live prices against it any more; it
+// stays because the ledger stores token counts rather than dollars, and a
+// call made before the flip must still reprice under the card it was
+// actually billed at.
 var pricesFlat = map[string]Price{
 	ModelFlash: {CacheHitInput: 0.0028, CacheMissInput: 0.14, Output: 0.28},
 	ModelPro:   {CacheHitInput: 0.003625, CacheMissInput: 0.435, Output: 0.87},

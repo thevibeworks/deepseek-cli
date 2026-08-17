@@ -27,10 +27,25 @@
     controls: 'dsplay.controls',
   };
 
-  // Published rate card, per million tokens. Mirrors the CLI's
+  // Published rate card, per million tokens, off-peak. Mirrors the CLI's
   // internal/deepseek/pricing.go; the figures shown here are labelled
   // estimates for the same reason they are there.
-  var RATES = { cacheHit: 0.0028, cacheMiss: 0.14, output: 0.28 };
+  //
+  // Since 2026-08-16 16:00 UTC the card is time-of-day: 01:00-04:00 and
+  // 06:00-10:00 UTC bill at twice these rates. A cost estimate that
+  // ignored the clock would be half the truth for seven hours a day, so
+  // this reads it, exactly as the CLI does.
+  var RATES = { cacheHit: 0.007, cacheMiss: 0.22, output: 0.66 };
+  var PEAK_WINDOWS = [[60, 240], [360, 600]];
+  var PEAK_MULTIPLIER = 2;
+
+  function peakMultiplier(now) {
+    var m = now.getUTCHours() * 60 + now.getUTCMinutes();
+    for (var i = 0; i < PEAK_WINDOWS.length; i++) {
+      if (m >= PEAK_WINDOWS[i][0] && m < PEAK_WINDOWS[i][1]) return PEAK_MULTIPLIER;
+    }
+    return 1;
+  }
 
   // The markdown renderer (md.js, loaded just before this script). Answers
   // are markdown and untrusted; md.render escapes every byte the model sent
@@ -187,7 +202,8 @@
   function cost(u) {
     if (!u) return 0;
     var miss = Math.max(0, u.input - u.cached);
-    return (u.cached * RATES.cacheHit + miss * RATES.cacheMiss + u.output * RATES.output) / 1e6;
+    var mult = peakMultiplier(new Date());
+    return mult * (u.cached * RATES.cacheHit + miss * RATES.cacheMiss + u.output * RATES.output) / 1e6;
   }
 
   function money(usd) {

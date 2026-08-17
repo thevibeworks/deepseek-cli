@@ -30,7 +30,7 @@
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
 <script>try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t}catch(e){}</script>
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"How does DeepSeek-V4-Pro score against other models on agent benchmarks?","acceptedAnswer":{"@type":"Answer","text":"On DeepSeek's own launch-day chart (2026-08-12), V4-Pro-0813 scores Terminal-Bench 2.1 87.9, DeepSWE 62.7, Toolathlon-Verified 74.1, CyberGym 83.3, HLE-with-tools 60.0 and AutomationBench 31.8. It sits in the same cluster as Kimi K3, Claude Fable 5 and Opus 4.8: within a point of Fable 5 on Terminal-Bench (88.0) and CyberGym (83.1), ahead of Opus 4.8 on several execution suites, but behind Kimi K3 on Terminal-Bench, DeepSWE, Toolathlon and DSBench-Hard. These are vendor numbers from one harness and are not yet independently reproduced."}},{"@type":"Question","name":"What did the V4-Pro GA (0813) checkpoint change over the preview?","acceptedAnswer":{"@type":"Answer","text":"The model ID and the rate card did not change; the checkpoint did. Against the April V4-Pro preview, DeepSeek's chart shows large agentic gains: DeepSWE 12.8 to 62.7, DSBench-Hard 31.1 to 67.2, CyberGym 52.7 to 83.3, Terminal-Bench 2.1 72.1 to 87.9, Toolathlon 55.9 to 74.1. Jumps that size point to agent post-training and better tool-error handling rather than a new base model, and none of them are independently verified yet."}},{"@type":"Question","name":"What is the DeepSeek kill line (斩杀线)?","acceptedAnswer":{"@type":"Answer","text":"The kill line is a community idea that DeepSeek's price-to-capability ratio sets a threshold that removes the reason to exist for any model that is both weaker and more expensive. V4-Pro is roughly 11x cheaper than GPT-5.6 Sol on cache-miss input and 34x cheaper on output, and about 138x cheaper on cache-hit input. It does not kill the frontier: the strongest closed models still finish the hardest tasks in fewer turns. It kills the middle, where a model costs more and does less."}},{"@type":"Question","name":"Is DeepSeek-V4-Pro better than Claude or GPT for coding agents?","acceptedAnswer":{"@type":"Answer","text":"Per attempt, the strongest closed models remain more reliable on the hardest multi-step tasks and usually need less steering. Per dollar, V4-Pro changes the arithmetic: its cheap cached input makes repeated review, parallel workers and long tool loops affordable in a way per-token-stronger models are not. The practical answer is to route by role, run an internal bake-off, and measure successful-task cost, not per-token price."}}]}
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"How does DeepSeek-V4-Pro score against other models on agent benchmarks?","acceptedAnswer":{"@type":"Answer","text":"On DeepSeek's own launch-day chart (2026-08-12), V4-Pro-0813 scores Terminal-Bench 2.1 87.9, DeepSWE 62.7, Toolathlon-Verified 74.1, CyberGym 83.3, HLE-with-tools 60.0 and AutomationBench 31.8. It sits in the same cluster as Kimi K3, Claude Fable 5 and Opus 4.8: within a point of Fable 5 on Terminal-Bench (88.0) and CyberGym (83.1), ahead of Opus 4.8 on several execution suites, but behind Kimi K3 on Terminal-Bench, DeepSWE, Toolathlon and DSBench-Hard. These are vendor numbers from one harness and are not yet independently reproduced."}},{"@type":"Question","name":"What did the V4-Pro GA (0813) checkpoint change over the preview?","acceptedAnswer":{"@type":"Answer","text":"The model ID and the rate card did not change; the checkpoint did. Against the April V4-Pro preview, DeepSeek's chart shows large agentic gains: DeepSWE 12.8 to 62.7, DSBench-Hard 31.1 to 67.2, CyberGym 52.7 to 83.3, Terminal-Bench 2.1 72.1 to 87.9, Toolathlon 55.9 to 74.1. Jumps that size point to agent post-training and better tool-error handling rather than a new base model, and none of them are independently verified yet."}},{"@type":"Question","name":"What is the DeepSeek kill line (斩杀线)?","acceptedAnswer":{"@type":"Answer","text":"The kill line is a community idea that DeepSeek's price-to-capability ratio sets a threshold that removes the reason to exist for any model that is both weaker and more expensive. On the card in force since 2026-08-16, V4-Pro is 7.6x cheaper than GPT-5.6 Sol on cache-miss input off-peak (3.8x at peak), 15x cheaper on output (7.6x peak) and 23x cheaper on cache-hit input (11x peak). The repricing narrowed all three: on the flat card that ran until then the figures were 11.5x, 34.5x and 138x. It does not kill the frontier: the strongest closed models still finish the hardest tasks in fewer turns. It kills the middle, where a model costs more and does less."}},{"@type":"Question","name":"Is DeepSeek-V4-Pro better than Claude or GPT for coding agents?","acceptedAnswer":{"@type":"Answer","text":"Per attempt, the strongest closed models remain more reliable on the hardest multi-step tasks and usually need less steering. Per dollar, V4-Pro changes the arithmetic: its cheap cached input makes repeated review, parallel workers and long tool loops affordable in a way per-token-stronger models are not. The practical answer is to route by role, run an internal bake-off, and measure successful-task cost, not per-token price."}}]}
 </script>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"deepseek-cli","item":"https://thevibeworks.github.io/deepseek-cli/"},{"@type":"ListItem","position":2,"name":"bench","item":"https://thevibeworks.github.io/deepseek-cli/bench/"}]}
@@ -178,20 +178,27 @@ no reason to be chosen. The lever is price, and the gap is not small:</p>
 <table>
 <thead><tr><th>Per 1M tokens</th><th class="num">v4-flash</th><th class="num">v4-pro</th><th class="num">GPT-5.6 Sol</th><th class="num">pro is cheaper by</th></tr></thead>
 <tbody>
-<tr><td>input, cache miss</td><td class="num">$0.14</td><td class="num">$0.435</td><td class="num">$5.00</td><td class="num">~11.5x</td></tr>
-<tr><td>input, cache hit</td><td class="num">$0.0028</td><td class="num">$0.003625</td><td class="num">$0.50</td><td class="num">~138x</td></tr>
-<tr><td>output</td><td class="num">$0.28</td><td class="num">$0.87</td><td class="num">$30.00</td><td class="num">~34.5x</td></tr>
+<tr><td>input, cache miss</td><td class="num">$0.22 / $0.44</td><td class="num">$0.66 / $1.32</td><td class="num">$5.00</td><td class="num">7.6x / 3.8x</td></tr>
+<tr><td>input, cache hit</td><td class="num">$0.007 / $0.014</td><td class="num">$0.022 / $0.044</td><td class="num">$0.50</td><td class="num">23x / 11x</td></tr>
+<tr><td>output</td><td class="num">$0.66 / $1.32</td><td class="num">$1.98 / $3.96</td><td class="num">$30.00</td><td class="num">15x / 7.6x</td></tr>
 </tbody>
 </table>
 </div>
-<p class="small">DeepSeek prices are the published USD rate card of
-2026-08-02, unchanged at GA; they are a conversion of the RMB card
-(&yen;3 / &yen;0.025 / &yen;6 per 1M for pro) at one consistent rate. GPT-5.6
-Sol prices are from OpenAI's own listing. From 2026-08-16 16:00 UTC DeepSeek
-bills peak/off-peak on a higher card &ndash; the
-<a href="../pricing/">pricing page</a> has the dated schedule. Even at
-the new peak rate, pro stays ~3.8x cheaper than GPT-5.6 Sol on cache-miss
-input and ~7.6x on output.</p>
+<p class="small">DeepSeek cells read <strong>off-peak / peak</strong>, on the
+card in force since 2026-08-16 16:00 UTC; they are a conversion of the RMB
+card (pro: &yen;4.5 / &yen;0.15 / &yen;13.5 per 1M off-peak, double at peak)
+at one consistent rate. GPT-5.6 Sol prices are from OpenAI's own listing.
+The <a href="../pricing/">pricing page</a> has the full schedule.</p>
+<div class="note warn">
+<span class="tag">the repricing moved this line</span>
+<p>These ratios were <strong>11.5x / 138x / 34.5x</strong> on the flat card
+that ran until 2026-08-16. The cache-hit column is where the argument
+lived &ndash; a 138x edge is what made replayed context, parallel reviewers
+and long tool loops nearly free &ndash; and it is now 23x off-peak, 11x at
+peak. That is still a large advantage. It is no longer a different
+category, and any plan that was built on the old number should be
+re-costed rather than assumed.</p>
+</div>
 <p>The sober version matters as much as the slogan. The kill line is real for
 the <em>middle</em> of the market: a model that costs more than V4-Pro and
 scores below it on the table above is hard to justify, and that is most of the
@@ -212,11 +219,16 @@ planning, ambiguous changes, security review and recovery; let
 <code>ds chat -m deepseek-v4-pro</code> and the
 <a href="../formats/">Anthropic remap</a> make the switch one flag.</li>
 <li><strong>Structure prompts for the cache.</strong> A cached input token
-costs about 1/50th of an uncached one. Keep the system prompt, tool schemas,
+costs about 1/30th of an uncached one. Keep the system prompt, tool schemas,
 repository map and durable instructions in an identical prefix and put the
 volatile part last; <code>ds usage</code> reports what the cache saved so you
-can see whether it is working. This is where the 138x cache-hit number turns
-from a table cell into a bill.</li>
+can see whether it is working. This is where the cache-hit column turns from
+a table cell into a bill &ndash; and since the repricing hit that column
+hardest, it is worth more attention now, not less.</li>
+<li><strong>Schedule what can be scheduled.</strong> The same call costs
+half as much outside 01:00&ndash;04:00 and 06:00&ndash;10:00 UTC. Batch
+evaluation, bulk review and overnight agent runs are exactly the workloads
+that can move; <code>ds pricing</code> says which period you are in.</li>
 <li><strong>Measure successful-task cost, not per-token price.</strong> A
 cheaper model that retries five times can cost more than a dearer one that lands
 first. The <a href="../cost/#ledger">ledger</a> stores exact token counts

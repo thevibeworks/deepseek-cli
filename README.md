@@ -54,9 +54,11 @@ It also does three things `curl` will not:
   on every later request. `--continue` handles that; without tools it
   strips the same field, because replaying it there just burns tokens.
 - **Prices every call.** DeepSeek's disk KV-cache makes a cached input
-  token **50× cheaper** than an uncached one. That split is invisible
-  unless something reads `prompt_cache_hit_tokens` and does the
-  arithmetic. This does, on every call, and keeps a local ledger.
+  token **~30× cheaper** than an uncached one, and since 2026-08-16 the
+  hour of the day doubles the bill on top. Both splits are invisible
+  unless something reads `prompt_cache_hit_tokens`, knows the schedule
+  and does the arithmetic. This does, on every call, and keeps a local
+  ledger.
 - **Carries the manual.** `deepseek docs ask "..."` answers questions
   about the DeepSeek API from DeepSeek's own documentation, offline, with
   a citation per claim. The tool that talks to an API should be able to
@@ -374,9 +376,10 @@ context cache saved ~$0.23 (1.7M of 2.2M prompt tokens replayed)
 costs are estimates from the published USD rate card, not billed amounts
 ```
 
-That last line is the point. Cached input costs $0.0028/M against
-$0.14/M for a miss — structuring prompts so the stable part comes first
-is worth real money, and this is how you see whether it worked.
+That last line is the point. Cached input costs $0.007/M against
+$0.22/M for a miss in an off-peak hour — structuring prompts so the
+stable part comes first is worth real money, and this is how you see
+whether it worked.
 
 Honest limits:
 

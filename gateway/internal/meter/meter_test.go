@@ -7,6 +7,12 @@ import (
 	"time"
 )
 
+// A fixed instant outside every peak window, for the tests that are about
+// token attribution rather than about the schedule. Pricing them at
+// time.Now() made them fail the moment the repricing landed, which told
+// us nothing about the code under test.
+var offPeakInstant = time.Date(2026, 8, 17, 12, 0, 0, 0, time.UTC)
+
 // The payloads below are verbatim from the live API on 2026-08-05, one
 // per wire format, captured with `deepseek raw`. Hand-written fixtures
 // would only prove this package agrees with my memory of the shapes;
@@ -69,9 +75,10 @@ func TestAnthropicCacheReadsAreAddedToInput(t *testing.T) {
 		t.Errorf("cache hits = %d, want 900", u.CacheHitTokens)
 	}
 	// And the price must reflect that only 130 tokens were billed at the
-	// full rate.
-	want := 900*0.0028/1e6 + 130*0.14/1e6 + 7*0.28/1e6
-	if got := Cost("deepseek-v4-flash", u); math.Abs(got-want) > 1e-12 {
+	// full rate. Priced at a fixed off-peak instant: what is under test is
+	// which tokens land on which rate, not which card is in force today.
+	want := 900*0.007/1e6 + 130*0.22/1e6 + 7*0.66/1e6
+	if got := CostAt("deepseek-v4-flash", u, offPeakInstant); math.Abs(got-want) > 1e-12 {
 		t.Errorf("cost = %v, want %v", got, want)
 	}
 }
@@ -82,8 +89,8 @@ func TestOpenAICacheHitsAreInsideInput(t *testing.T) {
 	if u.InputTokens != 1000 || u.CacheHitTokens != 960 {
 		t.Fatalf("in %d hit %d, want 1000/960", u.InputTokens, u.CacheHitTokens)
 	}
-	want := 960*0.0028/1e6 + 40*0.14/1e6 + 10*0.28/1e6
-	if got := Cost("deepseek-v4-flash", u); math.Abs(got-want) > 1e-12 {
+	want := 960*0.007/1e6 + 40*0.22/1e6 + 10*0.66/1e6
+	if got := CostAt("deepseek-v4-flash", u, offPeakInstant); math.Abs(got-want) > 1e-12 {
 		t.Errorf("cost = %v, want %v", got, want)
 	}
 }

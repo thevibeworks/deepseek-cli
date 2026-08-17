@@ -105,10 +105,11 @@ deepseek usage --entries --json  # individual calls
 deepseek pricing --json          # the schedule and the billing period right now
 ```
 
-Pricing is time-of-day from 2026-08-16 16:00 UTC: peak hours 01:00–04:00
-and 06:00–10:00 UTC bill at twice the off-peak rate. `pricing` computes
-the current period locally — no network, nothing spent — from the same
-schedule the cost estimates use.
+Pricing has been time-of-day since 2026-08-16 16:00 UTC: peak hours
+01:00–04:00 and 06:00–10:00 UTC bill at twice the off-peak rate. Never
+quote a DeepSeek price without saying which period it is — `pricing`
+computes the current one locally, no network, nothing spent, from the
+same schedule the cost estimates use.
 
 ### Documentation, offline
 
@@ -264,9 +265,11 @@ Every call prints a usage line to stderr and appends to
   for a quiet run.
 - Costs are estimates from the published USD rate card, not billed
   amounts. Token counts are exact.
-- Cached input tokens cost 50× less than uncached ones. Put the stable
-  part of a prompt first — the same system prompt and files across calls
-  — and `deepseek usage` will show the saving.
+- Cached input tokens cost about 30× less than uncached ones. Put the
+  stable part of a prompt first — the same system prompt and files across
+  calls — and `deepseek usage` will show the saving. Prompt structure is
+  still the biggest lever on a bill; the hour of the day comes second,
+  and it is worth at most 2×.
 
 ## Cautions
 
