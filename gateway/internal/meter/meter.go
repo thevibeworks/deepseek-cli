@@ -48,6 +48,20 @@ type Price struct {
 // copy does.
 var RepriceAt = time.Date(2026, time.August, 16, 16, 0, 0, 0, time.UTC)
 
+// weekendOffPeakAt is when weekends stopped billing peak: 16:00 UTC on
+// 2026-08-22 (00:00 Beijing, Sun 23 Aug). A Saturday or Sunday on the
+// Beijing calendar is off-peak for all 24 hours from that instant.
+//
+// The drift here runs the other way to the repricing's: over-charging our
+// own budget is safe for the credit pool but it is still wrong, and it
+// makes /economics report a cost-per-task the account never paid. The
+// same date gates the CLI's copy; `make price-check` guards the numbers,
+// and this comment is the only thing guarding the clock.
+var weekendOffPeakAt = time.Date(2026, time.August, 22, 16, 0, 0, 0, time.UTC)
+
+// beijing is the vendor's clock; no daylight saving since 1991.
+var beijing = time.FixedZone("CST", 8*60*60)
+
 // ratesFlat is the card published 2026-08-02, in force before RepriceAt.
 var ratesFlat = map[string]Price{
 	"deepseek-v4-flash": {CacheHitInput: 0.0028, CacheMissInput: 0.14, Output: 0.28},
@@ -58,22 +72,42 @@ var ratesFlat = map[string]Price{
 // every billing item costs peakMultiplier times these numbers.
 var ratesOffPeak = map[string]Price{
 	"deepseek-v4-flash": {CacheHitInput: 0.007, CacheMissInput: 0.22, Output: 0.66},
-	"deepseek-v4-pro":   {CacheHitInput: 0.022, CacheMissInput: 0.66, Output: 1.98},
+	// Released 2026-08-21, after the switchover, so it has no flat row
+	// above. Priced identically to flash. Carried here even though the
+	// policy allowlist does not admit it, so that a metering gap can never
+	// be the reason it gets served for free.
+	"deepseek-v4-flash-vision-exp": {CacheHitInput: 0.007, CacheMissInput: 0.22, Output: 0.66},
+	"deepseek-v4-pro":              {CacheHitInput: 0.022, CacheMissInput: 0.66, Output: 1.98},
 }
 
 const peakMultiplier = 2.0
 
-// peakWindows are the daily peak hours from RepriceAt on, in minutes of
-// the UTC day, end exclusive: 01:00-04:00 and 06:00-10:00 UTC.
+// peakWindows are the peak hours from RepriceAt on, in minutes of the UTC
+// day, end exclusive: 01:00-04:00 and 06:00-10:00 UTC. Every day until
+// weekendOffPeakAt, weekdays only after it.
 var peakWindows = [][2]int{{1 * 60, 4 * 60}, {6 * 60, 10 * 60}}
 
 func inPeak(t time.Time) bool {
+	if !t.Before(weekendOffPeakAt) && isBeijingWeekend(t) {
+		return false
+	}
 	u := t.UTC()
 	m := u.Hour()*60 + u.Minute()
 	for _, w := range peakWindows {
 		if m >= w[0] && m < w[1] {
 			return true
 		}
+	}
+	return false
+}
+
+// isBeijingWeekend reports whether an instant is a Saturday or Sunday in
+// Beijing. Read on the vendor's clock because that is how the rule is
+// published, which puts the turnover at 16:00 UTC, not midnight UTC.
+func isBeijingWeekend(t time.Time) bool {
+	switch t.In(beijing).Weekday() {
+	case time.Saturday, time.Sunday:
+		return true
 	}
 	return false
 }

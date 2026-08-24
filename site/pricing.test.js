@@ -47,11 +47,16 @@ const schedule = JSON.parse(m[1]);
 // Upstream ground truth (api-docs.deepseek.com/quick_start/pricing,
 // 2026-08-13): flat until 16:00 UTC 2026-08-16, then peak/off-peak with
 // peak 01:00-04:00 and 06:00-10:00 UTC at twice the off-peak rate.
+// Then, from 16:00 UTC 2026-08-22 (00:00 Beijing, Sun 23 Aug), peak is
+// restricted to Beijing weekdays and weekends bill off-peak all day.
 const truth = [
   { label: 'flat', start: null, end: null, multiplier: 1, effective: '2026-08-02T00:00:00Z' },
   { label: 'off-peak', start: null, end: null, multiplier: 1, effective: '2026-08-16T16:00:00Z' },
   { label: 'peak', start: 60, end: 240, multiplier: 2, effective: '2026-08-16T16:00:00Z' },
   { label: 'peak', start: 360, end: 600, multiplier: 2, effective: '2026-08-16T16:00:00Z' },
+  { label: 'off-peak', start: null, end: null, multiplier: 1, effective: '2026-08-22T16:00:00Z' },
+  { label: 'peak', start: 60, end: 240, multiplier: 2, days: [1, 2, 3, 4, 5], effective: '2026-08-22T16:00:00Z' },
+  { label: 'peak', start: 360, end: 600, multiplier: 2, days: [1, 2, 3, 4, 5], effective: '2026-08-22T16:00:00Z' },
 ];
 check('the embedded schedule is the upstream ground truth',
   JSON.stringify(schedule) === JSON.stringify(truth),
@@ -125,6 +130,52 @@ check('between the windows the next change is the second start',
   nextAt(at(2026, 8, 17, 4, 30)) === '2026-08-17T06:00:00.000Z');
 check('after the last window the next change is tomorrow 01:00',
   nextAt(at(2026, 8, 17, 12, 0)) === '2026-08-18T01:00:00.000Z');
+
+// ---------------------------------------------------------------------
+// The weekend rule, live since 16:00 UTC on 2026-08-22.
+//
+// 2026-08-28 is a Friday, 08-29 a Saturday, 08-30 a Sunday, 08-31 a Monday.
+
+const label = (d) => P.periodFor(schedule, d).label;
+
+check('a Saturday inside a published window still bills off-peak',
+  label(at(2026, 8, 29, 2, 0)) === 'off-peak');
+check('a Sunday inside a published window still bills off-peak',
+  label(at(2026, 8, 30, 2, 0)) === 'off-peak');
+check('a Friday in the same window bills peak',
+  label(at(2026, 8, 28, 2, 0)) === 'peak');
+check('a Monday in the same window bills peak',
+  label(at(2026, 8, 31, 2, 0)) === 'peak');
+
+// The weekend is read on the vendor's clock, so it turns over at 16:00
+// UTC. Both published windows close at 10:00 UTC, well before the point
+// where a UTC date and a Beijing date diverge -- so with today's windows
+// no billed instant tells the two readings apart, and every test written
+// against the schedule passes with the Beijing shift deleted.
+//
+// onDay is therefore pinned directly. It is the only place the shift is
+// observable, and the day a window moves past 16:00 UTC it stops being a
+// matter of taste and starts costing money.
+const weekdays = { days: [1, 2, 3, 4, 5] };
+check('Friday 15:30 UTC is still Friday in Beijing',
+  P.onDay(weekdays, at(2026, 8, 28, 15, 30)) === true);
+check('Friday 16:30 UTC is already Saturday in Beijing',
+  P.onDay(weekdays, at(2026, 8, 28, 16, 30)) === false);
+check('Sunday 16:30 UTC is already Monday in Beijing',
+  P.onDay(weekdays, at(2026, 8, 30, 16, 30)) === true);
+check('a row without days applies on any day',
+  P.onDay({}, at(2026, 8, 29, 2, 0)) === true);
+check('the weekend rule does not reprice the Saturday before it',
+  label(at(2026, 8, 22, 2, 0)) === 'peak');
+check('the first Sunday under the rule bills off-peak',
+  label(at(2026, 8, 23, 2, 0)) === 'off-peak');
+
+// A countdown must not promise a flip that will not happen. Before the
+// rule, Friday 23:00 UTC pointed at Saturday 01:00 UTC.
+check('from Friday night the next peak is Monday, not Saturday',
+  nextAt(at(2026, 8, 28, 23, 0)) === '2026-08-31T01:00:00.000Z');
+check('from Saturday the next peak is still Monday',
+  nextAt(at(2026, 8, 29, 12, 0)) === '2026-08-31T01:00:00.000Z');
 
 // ---------------------------------------------------------------------
 // The strip's sentence, at instants on both sides of the flip.

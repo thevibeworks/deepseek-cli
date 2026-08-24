@@ -217,6 +217,97 @@ func TestNextChange(t *testing.T) {
 	}
 }
 
+func TestWeekendsBillOffPeakAllDay(t *testing.T) {
+	// 02:00 UTC is inside the first published window, so before the rule
+	// every one of these billed peak.
+	cases := []struct {
+		day  time.Time
+		want string
+		why  string
+	}{
+		{time.Date(2026, 8, 28, 2, 0, 0, 0, time.UTC), "peak", "Friday"},
+		{time.Date(2026, 8, 29, 2, 0, 0, 0, time.UTC), "off-peak", "Saturday"},
+		{time.Date(2026, 8, 30, 2, 0, 0, 0, time.UTC), "off-peak", "Sunday"},
+		{time.Date(2026, 8, 31, 2, 0, 0, 0, time.UTC), "peak", "Monday"},
+	}
+	for _, c := range cases {
+		if got := PeriodAt(c.day); got.Label != c.want {
+			t.Errorf("%s %v: got %q, want %q", c.why, c.day, got.Label, c.want)
+		}
+	}
+}
+
+func TestWeekendTurnsOverOnTheVendorClock(t *testing.T) {
+	// The two instants that discriminate. Both published windows close at
+	// 10:00 UTC, well before 16:00 UTC where a UTC date and a Beijing date
+	// start to disagree — so reading the weekday in UTC instead of Beijing
+	// labels all 168 hours of the week identically, and every test written
+	// against the windows passes either way. Only these catch it.
+	friUTCsatBeijing := time.Date(2026, 8, 28, 16, 30, 0, 0, time.UTC)
+	if !isBeijingWeekend(friUTCsatBeijing) {
+		t.Error("Friday 16:30 UTC is already Saturday in Beijing — must count as weekend")
+	}
+	if isBeijingWeekend(friUTCsatBeijing.Add(-time.Hour)) {
+		t.Error("Friday 15:30 UTC is still Friday in Beijing — must not count as weekend")
+	}
+	sunUTCmonBeijing := time.Date(2026, 8, 30, 16, 30, 0, 0, time.UTC)
+	if isBeijingWeekend(sunUTCmonBeijing) {
+		t.Error("Sunday 16:30 UTC is already Monday in Beijing — must not count as weekend")
+	}
+}
+
+func TestWeekendRuleDoesNotRepriceHistory(t *testing.T) {
+	// Exactly one weekend day ever billed peak, and this pins it.
+	//
+	// Time-of-use started 2026-08-16 16:00 UTC and the weekend rule
+	// 2026-08-22 16:00 UTC, six days apart. Both peak windows close at
+	// 10:00 UTC, before either boundary's 16:00, so:
+	//
+	//   Sun 08-16  windows had already passed when time-of-use began -> flat
+	//   Sat 08-22  time-of-use live, weekend rule not yet             -> PEAK
+	//   Sun 08-23  weekend rule live from 00:00 Beijing               -> off-peak
+	//
+	// Saturday 2026-08-22 is the whole of the history that a naive
+	// "weekends were always off-peak" would wrongly refund.
+	sat := time.Date(2026, 8, 22, 2, 0, 0, 0, time.UTC)
+	if got := PeriodAt(sat).Label; got != "peak" {
+		t.Errorf("Sat 2026-08-22 predates the weekend rule: got %q, want peak", got)
+	}
+	sun := time.Date(2026, 8, 16, 2, 0, 0, 0, time.UTC)
+	if got := PeriodAt(sun).Label; got != "flat" {
+		t.Errorf("Sun 2026-08-16 predates time-of-use itself: got %q, want flat", got)
+	}
+	first := time.Date(2026, 8, 23, 2, 0, 0, 0, time.UTC)
+	if got := PeriodAt(first).Label; got != "off-peak" {
+		t.Errorf("Sun 2026-08-23, first weekend under the rule: got %q, want off-peak", got)
+	}
+}
+
+func TestNextChangeCrossesTheWeekend(t *testing.T) {
+	// Friday 23:00 UTC used to promise peak at Saturday 01:00 UTC — a
+	// countdown to a flip that will not happen. The real next peak is
+	// Monday 01:00 UTC.
+	fri := time.Date(2026, 8, 28, 23, 0, 0, 0, time.UTC)
+	want := time.Date(2026, 8, 31, 1, 0, 0, 0, time.UTC)
+	if got := NextChange(fri); !got.Equal(want) {
+		t.Errorf("NextChange(Fri 23:00 UTC) = %v, want %v", got, want)
+	}
+}
+
+func TestVisionModelIsPricedAtFlashRates(t *testing.T) {
+	// Released 2026-08-21, priced identically to Flash on every bucket in
+	// both published currencies. Absent from the card it would meter at zero.
+	at := time.Date(2026, 8, 26, 12, 0, 0, 0, time.UTC) // Wednesday, off-peak
+	vision, ok := PriceAt(ModelFlashVision, at)
+	if !ok {
+		t.Fatal("deepseek-v4-flash-vision-exp has no published rate")
+	}
+	flash, _ := PriceAt(ModelFlash, at)
+	if vision != flash {
+		t.Errorf("vision %+v != flash %+v", vision, flash)
+	}
+}
+
 func TestCacheSavings(t *testing.T) {
 	// What the cached tokens would have cost at the miss rate, minus what
 	// they did cost, under the card in force now. The exact figure moves

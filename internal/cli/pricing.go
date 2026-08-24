@@ -56,7 +56,9 @@ Answer what a token costs at this instant, and when that changes.
 DeepSeek's repricing of 2026-08-13 is dated: until 16:00 UTC on
 2026-08-16 every hour bills at the flat card of 2026-08-02, and from
 that instant billing is peak/off-peak on a new, higher card — peak hours
-01:00-04:00 and 06:00-10:00 UTC daily at twice the off-peak rate.
+01:00-04:00 and 06:00-10:00 UTC on weekdays at twice the off-peak
+rate. Since 2026-08-22 weekends bill off-peak all day, on the Beijing
+calendar, so peak is 35 hours a week rather than 49.
 
 This command reads no network and spends nothing: the schedule is the
 same one the cost estimates use, so what it prints is what the usage
@@ -90,7 +92,7 @@ func pricingAt(now time.Time) *pricingResult {
 		res.PeakWindowsUTC = append(res.PeakWindowsUTC,
 			fmt.Sprintf("%s-%s", fmtMinutes(w.Start), fmtMinutes(w.End)))
 	}
-	for _, m := range []string{deepseek.ModelFlash, deepseek.ModelPro} {
+	for _, m := range deepseek.Models {
 		if p, ok := deepseek.PriceAt(m, now); ok {
 			res.Current[m] = pricingPrice{p.CacheHitInput, p.CacheMissInput, p.Output}
 		}
@@ -133,7 +135,7 @@ func formatPricing(now time.Time) string {
 	fmt.Fprintf(&b, "\nUSD per 1M tokens, in effect now (%s):\n", period.Label)
 	w := tabwriter.NewWriter(&b, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(w, "MODEL\tIN (CACHED)\tIN (MISS)\tOUT")
-	for _, m := range []string{deepseek.ModelFlash, deepseek.ModelPro} {
+	for _, m := range deepseek.Models {
 		if p, ok := deepseek.PriceAt(m, now); ok {
 			fmt.Fprintf(w, "%s\t$%g\t$%g\t$%g\n", m, p.CacheHitInput, p.CacheMissInput, p.Output)
 		}
@@ -145,15 +147,15 @@ func formatPricing(now time.Time) string {
 		windows = append(windows, fmtMinutes(win.Start)+"-"+fmtMinutes(win.End))
 	}
 	if now.Before(deepseek.RepriceAt) {
-		fmt.Fprintf(&b, "\nfrom %s — peak hours %s UTC daily, all other hours off-peak at half of peak:\n",
+		fmt.Fprintf(&b, "\nfrom %s — peak hours %s UTC, Mon-Fri; all other hours, and all weekend, off-peak at half of peak:\n",
 			deepseek.RepriceAt.Format("2006-01-02 15:04 UTC"), strings.Join(windows, " and "))
 	} else {
-		fmt.Fprintf(&b, "\nthe full card — peak hours %s UTC daily, all other hours off-peak at half of peak:\n",
+		fmt.Fprintf(&b, "\nthe full card — peak hours %s UTC, Mon-Fri; all other hours, and all weekend, off-peak at half of peak:\n",
 			strings.Join(windows, " and "))
 	}
 	w = tabwriter.NewWriter(&b, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(w, "MODEL\tPERIOD\tIN (CACHED)\tIN (MISS)\tOUT")
-	for _, m := range []string{deepseek.ModelFlash, deepseek.ModelPro} {
+	for _, m := range deepseek.Models {
 		p, ok := deepseek.PriceAt(m, deepseek.RepriceAt)
 		if !ok {
 			continue

@@ -53,6 +53,29 @@ type Price struct {
 // Source: https://api-docs.deepseek.com/quick_start/pricing (2026-08-13).
 var RepriceAt = time.Date(2026, time.August, 16, 16, 0, 0, 0, time.UTC)
 
+// WeekendOffPeakAt is when weekends stopped billing peak at all: 16:00
+// UTC on 2026-08-22 (00:00 Beijing, Sunday 2026-08-23). From that
+// instant a Saturday or Sunday *on the Beijing calendar* is off-peak for
+// all 24 hours, so peak is 35 hours a week rather than 49.
+//
+// DeepSeek put this only in the pricing-page footnote, and only for the
+// few days before it took effect — there is no changelog entry, and the
+// live page now carries just the settled rule. The announcement survives
+// at web.archive.org/web/20260822141620/https://api-docs.deepseek.com/quick_start/pricing/
+//
+//	"Effective 00:00 (Beijing Time) on Sunday, August 23, 2026, we will
+//	 adjust our peak/off-peak billing rules, with off-peak rates applying
+//	 throughout the day on weekends (Saturdays and Sundays, Beijing Time)."
+//
+// Gated on its own instant rather than folded into RepriceAt because the
+// ledger reprices history: a call made in a peak window on Sunday
+// 2026-08-17 or Saturday 2026-08-22 really did bill peak.
+var WeekendOffPeakAt = time.Date(2026, time.August, 22, 16, 0, 0, 0, time.UTC)
+
+// beijing is the vendor's clock. China has observed no daylight saving
+// since 1991, so a fixed offset is exact and needs no tzdata.
+var beijing = time.FixedZone("CST", 8*60*60)
+
 // pricesFlat is the card published 2026-08-02, in force before RepriceAt.
 // That instant has passed, so nothing live prices against it any more; it
 // stays because the ledger stores token counts rather than dollars, and a
@@ -68,19 +91,26 @@ var pricesFlat = map[string]Price{
 // publishes the peak figures rather than the rule, and they are exactly
 // double, so the multiplier is data, not interpretation.
 var pricesOffPeak = map[string]Price{
-	ModelFlash: {CacheHitInput: 0.007, CacheMissInput: 0.22, Output: 0.66},
-	ModelPro:   {CacheHitInput: 0.022, CacheMissInput: 0.66, Output: 1.98},
+	ModelFlash:       {CacheHitInput: 0.007, CacheMissInput: 0.22, Output: 0.66},
+	ModelFlashVision: {CacheHitInput: 0.007, CacheMissInput: 0.22, Output: 0.66},
+	ModelPro:         {CacheHitInput: 0.022, CacheMissInput: 0.66, Output: 1.98},
 }
+
+// Models are the priced models, in the order the rate card lists them.
+// One list so a new model reaches every table at once: the vision variant
+// was published upstream and absent here, which meters it at zero.
+var Models = []string{ModelFlash, ModelFlashVision, ModelPro}
 
 // PeakMultiplier scales the off-peak card during PeakWindows.
 const PeakMultiplier = 2.0
 
-// Window is a daily time-of-day window in minutes of the UTC day, end
+// Window is a time-of-day window in minutes of the UTC day, end
 // exclusive. Upstream defines the boundaries in UTC, not Beijing.
 type Window struct{ Start, End int }
 
-// PeakWindows are the daily peak hours from RepriceAt on: 01:00-04:00
-// and 06:00-10:00 UTC (09:00-12:00 and 14:00-18:00 Beijing).
+// PeakWindows are the peak hours from RepriceAt on: 01:00-04:00 and
+// 06:00-10:00 UTC (09:00-12:00 and 14:00-18:00 Beijing). Daily until
+// WeekendOffPeakAt, weekdays only after it — see isBeijingWeekend.
 var PeakWindows = []Window{{Start: 1 * 60, End: 4 * 60}, {Start: 6 * 60, End: 10 * 60}}
 
 // Period names the pricing period one instant falls in.
@@ -103,12 +133,27 @@ func PeriodAt(t time.Time) Period {
 }
 
 func inPeak(t time.Time) bool {
+	if !t.Before(WeekendOffPeakAt) && isBeijingWeekend(t) {
+		return false
+	}
 	u := t.UTC()
 	m := u.Hour()*60 + u.Minute()
 	for _, w := range PeakWindows {
 		if m >= w.Start && m < w.End {
 			return true
 		}
+	}
+	return false
+}
+
+// isBeijingWeekend reports whether an instant falls on a Saturday or
+// Sunday in Beijing. The weekday must be read on the vendor's clock
+// because that is how the rule is published, which also means the
+// weekend turns over at 16:00 UTC and not at midnight UTC.
+func isBeijingWeekend(t time.Time) bool {
+	switch t.In(beijing).Weekday() {
+	case time.Saturday, time.Sunday:
+		return true
 	}
 	return false
 }
@@ -120,18 +165,21 @@ func NextChange(t time.Time) time.Time {
 	if t.Before(RepriceAt) {
 		return RepriceAt
 	}
+	// Every boundary this schedule has — a window edge, the weekend
+	// turnover at 16:00 UTC, and the policy start dates — lands on a UTC
+	// hour, so walking hours finds the next change exactly. Scanning a
+	// week of them covers the longest run of one period, Friday 10:00
+	// UTC to Monday 01:00 UTC, with room to spare.
 	u := t.UTC()
-	m := u.Hour()*60 + u.Minute()
-	day := time.Date(u.Year(), u.Month(), u.Day(), 0, 0, 0, 0, time.UTC)
-	for _, w := range PeakWindows {
-		if m < w.Start {
-			return day.Add(time.Duration(w.Start) * time.Minute)
+	here := PeriodAt(u).Label
+	at := u.Truncate(time.Hour).Add(time.Hour)
+	for i := 0; i < 8*24; i++ {
+		if PeriodAt(at).Label != here {
+			return at
 		}
-		if m < w.End {
-			return day.Add(time.Duration(w.End) * time.Minute)
-		}
+		at = at.Add(time.Hour)
 	}
-	return day.Add(24*time.Hour + time.Duration(PeakWindows[0].Start)*time.Minute)
+	return at
 }
 
 // PriceAt returns the effective rate card for a model at one instant:
