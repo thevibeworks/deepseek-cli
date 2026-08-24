@@ -30,6 +30,10 @@ const DefaultBaseURL = "https://api.deepseek.com"
 const (
 	ModelFlash = "deepseek-v4-flash"
 	ModelPro   = "deepseek-v4-pro"
+	// ModelFlashVision is the experimental multimodal variant released
+	// 2026-08-21. It takes image input and bills at exactly the Flash
+	// rates; it does not support FIM completion.
+	ModelFlashVision = "deepseek-v4-flash-vision-exp"
 )
 
 // Client talks to one DeepSeek deployment. The zero value is not usable;

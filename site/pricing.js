@@ -13,6 +13,14 @@
 // wins inside its [start, end) window, and the era's windowless row is
 // the answer everywhere else. Window starts are inclusive, ends
 // exclusive, so 04:00:00 UTC is already off-peak.
+//
+// A row may also carry `days`, the Beijing weekdays it applies on (0 is
+// Sunday, as in getUTCDay). That is how the weekend rule of 2026-08-22
+// is expressed: the era's peak rows are restricted to Mon-Fri, so on a
+// Saturday or Sunday no windowed row matches and the era's windowless
+// off-peak row answers all day. The weekday is read on the vendor's
+// clock because that is how the rule is published, which also means the
+// weekend turns over at 16:00 UTC rather than at midnight UTC.
 (function (global) {
   'use strict';
 
@@ -23,6 +31,22 @@
   // Minute of the UTC day, the unit the schedule's windows are in.
   function utcMinute(date) {
     return date.getUTCHours() * 60 + date.getUTCMinutes();
+  }
+
+  // Beijing is UTC+8 and has observed no daylight saving since 1991, so
+  // a fixed shift is exact and needs no timezone database.
+  var BEIJING_OFFSET_MS = 8 * 3600000;
+
+  // Whether a row applies on the Beijing weekday of this instant. A row
+  // without `days` applies on every day, which is what every pre-weekend
+  // era row is.
+  function onDay(row, date) {
+    if (!row.days) return true;
+    var weekday = new Date(date.getTime() + BEIJING_OFFSET_MS).getUTCDay();
+    for (var i = 0; i < row.days.length; i++) {
+      if (row.days[i] === weekday) return true;
+    }
+    return false;
   }
 
   // The distinct effective instants, ascending, in ms. Each is an era.
@@ -65,43 +89,58 @@
         base = r;
         continue;
       }
-      if (m >= r.start && m < r.end) return r;
+      if (m >= r.start && m < r.end && onDay(r, date)) return r;
     }
     return base;
   }
 
-  // The next instant the answer above changes: the next era's effective
-  // instant, or the next window boundary of the current era, whichever
-  // comes first. Null only for a one-row schedule with no windows.
+  // The next instant the answer above changes.
+  //
+  // Every boundary this schedule has lands on a window edge, an era's
+  // effective instant, or the 16:00 UTC weekend turnover -- so the change
+  // is found by walking the candidate instants in order and returning the
+  // first whose period differs from the one running now.
+  //
+  // The search runs over eight days rather than two because peak is no
+  // longer daily: from Friday 10:00 UTC the next peak is Monday 01:00
+  // UTC, 63 hours away, and a two-day horizon would have missed it and
+  // reported no change at all. Null only for a schedule that never
+  // changes.
   function nextChange(schedule, date) {
     var t = date.getTime();
-    var all = eras(schedule);
-    var era = eraAt(schedule, date);
+    var here = periodFor(schedule, date);
     var candidates = [];
+    var all = eras(schedule);
     for (var i = 0; i < all.length; i++) {
-      if (all[i] > t) {
-        candidates.push(all[i]);
-        break;
-      }
+      if (all[i] > t) candidates.push(all[i]);
     }
+    var era = eraAt(schedule, date);
     var bounds = [];
     for (var j = 0; j < schedule.length; j++) {
       var r = schedule[j];
       if (Date.parse(r.effective) !== era || r.start === null) continue;
       bounds.push(r.start, r.end);
     }
-    if (bounds.length) {
-      var midnight = Date.UTC(
-        date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
-      for (var d = 0; d <= 1; d++) {
-        for (var k = 0; k < bounds.length; k++) {
-          var at = midnight + d * 86400000 + bounds[k] * 60000;
-          if (at > t) candidates.push(at);
-        }
+    var midnight = Date.UTC(
+      date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+    for (var d = 0; d <= 8; d++) {
+      for (var k = 0; k < bounds.length; k++) {
+        var at = midnight + d * 86400000 + bounds[k] * 60000;
+        if (at > t) candidates.push(at);
+      }
+      // The weekend turns over at 16:00 UTC, which is not a window edge.
+      var turn = midnight + d * 86400000 + 16 * 3600000;
+      if (turn > t) candidates.push(turn);
+    }
+    candidates.sort(function (a, b) { return a - b; });
+    for (var n = 0; n < candidates.length; n++) {
+      var next = periodFor(schedule, new Date(candidates[n]));
+      if (!here || !next) continue;
+      if (next.label !== here.label || next.multiplier !== here.multiplier) {
+        return new Date(candidates[n]);
       }
     }
-    if (!candidates.length) return null;
-    return new Date(Math.min.apply(null, candidates));
+    return null;
   }
 
   // A wait, the way a person reads one: days and hours far out, minutes
@@ -192,6 +231,7 @@
     utcMinute: utcMinute,
     eras: eras,
     eraAt: eraAt,
+    onDay: onDay,
     periodFor: periodFor,
     nextChange: nextChange,
     humanUntil: humanUntil,

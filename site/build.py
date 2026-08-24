@@ -100,6 +100,22 @@ NAV = [
 # estimates and `deepseek pricing`.
 REPRICE_AT = "2026-08-16T16:00:00Z"
 
+# A row may also carry `days`, the Beijing weekdays it applies on (0 is
+# Sunday, as getUTCDay numbers them). That is how the weekend rule of
+# 2026-08-22 is expressed: the new era repeats the same two windows but
+# restricted to Mon-Fri, so on a Beijing Saturday or Sunday no windowed
+# row matches and the era's windowless off-peak row answers all day.
+#
+# The weekday is read on the vendor's clock because that is how DeepSeek
+# published it -- "Saturdays and Sundays, Beijing Time" -- which also puts
+# the turnover at 16:00 UTC rather than midnight UTC. DeepSeek announced
+# this only in the pricing-page footnote and only until it took effect;
+# the live page now carries just the settled rule, so the announcement
+# survives at
+# https://web.archive.org/web/20260822141620/https://api-docs.deepseek.com/quick_start/pricing/
+WEEKEND_OFFPEAK_AT = "2026-08-22T16:00:00Z"
+WEEKDAYS = [1, 2, 3, 4, 5]
+
 PRICE_SCHEDULE = [
     dict(label="flat", start=None, end=None, multiplier=1.0,
          effective="2026-08-02T00:00:00Z"),
@@ -109,6 +125,12 @@ PRICE_SCHEDULE = [
          effective=REPRICE_AT),
     dict(label="peak", start=360, end=600, multiplier=2.0,
          effective=REPRICE_AT),
+    dict(label="off-peak", start=None, end=None, multiplier=1.0,
+         effective=WEEKEND_OFFPEAK_AT),
+    dict(label="peak", start=60, end=240, multiplier=2.0, days=WEEKDAYS,
+         effective=WEEKEND_OFFPEAK_AT),
+    dict(label="peak", start=360, end=600, multiplier=2.0, days=WEEKDAYS,
+         effective=WEEKEND_OFFPEAK_AT),
 ]
 
 
@@ -122,9 +144,12 @@ def price_schedule_json():
     for r in PRICE_SCHEDULE:
         start = "null" if r["start"] is None else str(r["start"])
         end = "null" if r["end"] is None else str(r["end"])
+        days = "" if r.get("days") is None else (
+            ',"days":[%s]' % ",".join(str(d) for d in r["days"]))
         rows.append(
-            '{"label":%s,"start":%s,"end":%s,"multiplier":%s,"effective":%s}'
-            % (jstr(r["label"]), start, end, repr(r["multiplier"]), jstr(r["effective"]))
+            '{"label":%s,"start":%s,"end":%s,"multiplier":%s%s,"effective":%s}'
+            % (jstr(r["label"]), start, end, repr(r["multiplier"]), days,
+               jstr(r["effective"]))
         )
     return "[" + ",".join(rows) + "]"
 
@@ -143,9 +168,10 @@ def price_schedule_rows():
             window = "all other hours" if windowed_peers else "all hours"
         else:
             window = f"{_fmt_minutes(r['start'])}&ndash;{_fmt_minutes(r['end'])} UTC"
+        days = "every day" if r.get("days") is None else "Mon&ndash;Fri"
         eff = r["effective"].replace("T", " ").replace(":00Z", " UTC")
         out.append(
-            f"<tr><td>{r['label']}</td><td>{window}</td>"
+            f"<tr><td>{r['label']}</td><td>{window}</td><td>{days}</td>"
             f"<td class=\"num\">{r['multiplier']:g}&times;</td>"
             f"<td>{eff}</td></tr>"
         )
@@ -168,18 +194,26 @@ def price_now_verdict():
             "tiers are in effect, and the card below is the price."
         )
     flip = eras[-1].replace("T", " ").replace(":00Z", " UTC")
-    windows = " and ".join(
-        f"{_fmt_minutes(r['start'])}&ndash;{_fmt_minutes(r['end'])}"
-        for r in PRICE_SCHEDULE if r["start"] is not None
-    )
+    # Deduped: successive eras repeat the same two windows -- the weekend
+    # era changes which days they apply on, not which hours -- and without
+    # this the sentence lists each window once per era.
+    spans = []
+    for r in PRICE_SCHEDULE:
+        if r["start"] is None:
+            continue
+        span = f"{_fmt_minutes(r['start'])}&ndash;{_fmt_minutes(r['end'])}"
+        if span not in spans:
+            spans.append(span)
+    windows = " and ".join(spans)
     live = _now() >= datetime.datetime.strptime(
         eras[-1], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
     if live:
         return (
             "<strong>Time-of-day billing is live.</strong> Peak hours are "
-            f"{windows} UTC daily, at twice the off-peak rate; every other "
-            "hour is off-peak. With JavaScript on, this strip reads your "
-            "clock and names the period you are in right now."
+            f"{windows} UTC, Monday to Friday, at twice the off-peak rate; "
+            "every other hour, and the whole weekend, is off-peak. With "
+            "JavaScript on, this strip reads your clock and names the "
+            "period you are in right now."
         )
     return (
         f"<strong>Before {flip}, every hour bills at the flat card "
@@ -1195,6 +1229,8 @@ names the period you are in right now:</p>
 <tbody>
 <tr><td rowspan="2"><code>deepseek-v4-flash</code></td><td>off-peak</td><td class="num">$0.007</td><td class="num">$0.22</td><td class="num">$0.66</td></tr>
 <tr><td>peak</td><td class="num">$0.014</td><td class="num">$0.44</td><td class="num">$1.32</td></tr>
+<tr><td rowspan="2"><code>deepseek-v4-flash-vision-exp</code></td><td>off-peak</td><td class="num">$0.007</td><td class="num">$0.22</td><td class="num">$0.66</td></tr>
+<tr><td>peak</td><td class="num">$0.014</td><td class="num">$0.44</td><td class="num">$1.32</td></tr>
 <tr><td rowspan="2"><code>deepseek-v4-pro</code></td><td>off-peak</td><td class="num">$0.022</td><td class="num">$0.66</td><td class="num">$1.98</td></tr>
 <tr><td>peak</td><td class="num">$0.044</td><td class="num">$1.32</td><td class="num">$3.96</td></tr>
 </tbody>
@@ -1334,13 +1370,13 @@ PAGES.append(dict(
     slug="pricing/",
     crumb="pricing",
     title="DeepSeek API pricing: the schedule, the peak hours, and the period right now",
-    description="DeepSeek has billed peak/off-peak since 16:00 UTC on 2026-08-16: peak hours 01:00-04:00 and 06:00-10:00 UTC at twice the off-peak rate. The full schedule, the numbers per model in both periods, the flat card it replaced, and a strip that reads your clock and names the billing period you are in right now.",
-    keywords="deepseek pricing, deepseek api pricing, deepseek price increase 2026, deepseek repricing, deepseek peak hours, deepseek off-peak pricing, deepseek peak off-peak billing, deepseek api cost, deepseek v4 flash price, deepseek v4 pro price, deepseek pricing 2026-08-16, deepseek new rate card, deepseek token price",
+    description="DeepSeek has billed peak/off-peak since 16:00 UTC on 2026-08-16: peak hours 01:00-04:00 and 06:00-10:00 UTC, Monday to Friday, at twice the off-peak rate, with weekends off-peak all day since 2026-08-22. The full schedule, the numbers per model in both periods, the flat card it replaced, and a strip that reads your clock and names the billing period you are in right now.",
+    keywords="deepseek pricing, deepseek api pricing, deepseek price increase 2026, deepseek repricing, deepseek peak hours, deepseek off-peak pricing, deepseek peak off-peak billing, deepseek api cost, deepseek v4 flash price, deepseek v4 pro price, deepseek pricing 2026-08-16, deepseek new rate card, deepseek token price, deepseek weekend off-peak, deepseek peak weekdays only, deepseek v4 flash vision exp price",
     jsonld=faq([
         ("What does the DeepSeek API cost right now?",
-         "It depends on the hour. Per 1M tokens (cache hit / cache miss / output): deepseek-v4-flash is $0.007 / $0.22 / $0.66 off-peak and $0.014 / $0.44 / $1.32 peak; deepseek-v4-pro is $0.022 / $0.66 / $1.98 off-peak and $0.044 / $1.32 / $3.96 peak. Peak hours are 01:00-04:00 and 06:00-10:00 UTC daily; every other hour is off-peak at half the peak rate."),
+         "It depends on the hour and the day. Per 1M tokens (cache hit / cache miss / output): deepseek-v4-flash is $0.007 / $0.22 / $0.66 off-peak and $0.014 / $0.44 / $1.32 peak; deepseek-v4-pro is $0.022 / $0.66 / $1.98 off-peak and $0.044 / $1.32 / $3.96 peak. Peak hours are 01:00-04:00 and 06:00-10:00 UTC, Monday to Friday; every other hour, and the whole weekend, is off-peak at half the peak rate. deepseek-v4-flash-vision-exp bills at exactly the deepseek-v4-flash rates."),
         ("What are DeepSeek's peak hours?",
-         "01:00-04:00 and 06:00-10:00 UTC, daily. The boundaries are defined in UTC; in Beijing time (UTC+8) they read 09:00-12:00 and 14:00-18:00. Every other hour is off-peak, at half the peak rate."),
+         "01:00-04:00 and 06:00-10:00 UTC, Monday to Friday. The boundaries are defined in UTC; in Beijing time (UTC+8) they read 09:00-12:00 and 14:00-18:00. Every other hour is off-peak, at half the peak rate. Since 16:00 UTC on 2026-08-22 weekends bill off-peak all day, on the Beijing calendar, so the weekend starts at 16:00 UTC on Friday and peak is 35 hours a week rather than 49."),
         ("When did DeepSeek's peak/off-peak pricing start?",
          "At 16:00 UTC on August 16, 2026, which is midnight in Beijing. Before that instant every hour billed at the flat card published 2026-08-02; from it, DeepSeek bills peak/off-peak on a new, higher card."),
         ("How much did DeepSeek raise its API prices?",
@@ -1353,7 +1389,8 @@ PAGES.append(dict(
     body="""
 <h1>Pricing</h1>
 <p class="lede">Since 16:00 UTC on 2026-08-16, what a DeepSeek token costs
-depends on the hour you spend it in. This page carries the schedule, both
+depends on the hour you spend it in &ndash; and, since 2026-08-22, on the
+day of the week too. This page carries the schedule, both
 rate cards, and a strip that reads your clock &ndash; the same data the
 CLI's estimates switch on, so the page and <code>ds pricing</code> can
 never disagree.</p>
@@ -1366,12 +1403,12 @@ never disagree.</p>
 
 <h2 id="schedule">The schedule</h2>
 <p>One table drives everything on this page: each row is a billing period,
-its daily window in UTC minutes, the multiplier on that era's base card,
-and the instant the row takes effect. The strip above, the CLI's
+its window in UTC minutes, the days it applies on, the multiplier on that
+era's base card, and the instant the row takes effect. The strip above, the CLI's
 estimates and <code>ds pricing</code> all read the same rows.</p>
 <div class="tablewrap">
 <table>
-<thead><tr><th>Period</th><th>Daily window</th><th class="num">Multiplier</th><th>Effective from</th></tr></thead>
+<thead><tr><th>Period</th><th>Window</th><th>Days</th><th class="num">Multiplier</th><th>Effective from</th></tr></thead>
 <tbody>
 """ + price_schedule_rows() + """
 </tbody>
@@ -1381,6 +1418,17 @@ estimates and <code>ds pricing</code> all read the same rows.</p>
 (UTC+8) the peak hours read 09:00&ndash;12:00 and 14:00&ndash;18:00, which
 is the Chinese working day. The off-peak window covers the whole European
 and American working day, so batch work that can move west should.</p>
+<p><strong>Weekends have billed off-peak all day since 2026-08-22 16:00
+UTC</strong> (00:00 Beijing, Sunday 23 August). The weekend is the
+<em>Beijing</em> Saturday and Sunday, so it turns over at 16:00 UTC, not
+at midnight UTC &ndash; a Friday evening in Europe is already Saturday
+upstream. That takes peak from 49 hours a week to 35, and it is the one
+part of this schedule DeepSeek never put in its changelog: the
+announcement sat in a footnote for a few days and the live page now
+carries only the settled rule. It survives
+<a href="https://web.archive.org/web/20260822141620/https://api-docs.deepseek.com/quick_start/pricing/">in
+the Internet Archive</a>. If you are holding batch work for a cheap hour,
+hold it for Saturday instead.</p>
 
 <h2 id="after">The card</h2>
 <p>USD per 1M tokens, in force since 2026-08-16 16:00 UTC. Off-peak is half
@@ -1668,6 +1716,52 @@ cost of a call. Curated from official announcements and checked against the
 live API where that is possible; the in-terminal feed is
 <code>ds docs changelog</code>.</p>
 
+<h2 id="weekends-off-peak">2026-08-22 &middot; weekends are off-peak, all day<span class="chip warn">not in the changelog</span></h2>
+<p>From <strong>16:00 UTC on 2026-08-22</strong> &ndash; 00:00 Beijing on
+Sunday 23 August &ndash; a Saturday or Sunday bills at the off-peak card for
+all 24 hours. Peak drops from <strong>49 hours a week to 35</strong>.</p>
+<p>The weekend is the <strong>Beijing</strong> Saturday and Sunday, which
+matters more than it sounds: the weekend turns over at 16:00 UTC, so a Friday
+evening in Europe or a Friday morning in California is already Saturday
+upstream, and already cheap.</p>
+<p>This is the first pricing change DeepSeek has made without a changelog
+entry. It appeared in the footnote of the
+<a href="{{docs}}/quick_start/pricing">Models &amp; Pricing</a>
+page for a few days before it took effect, and the live page now carries only
+the settled rule &ndash; so the announcement itself exists nowhere on
+api-docs.deepseek.com today. Verbatim, from the
+<a href="https://web.archive.org/web/20260822141620/https://api-docs.deepseek.com/quick_start/pricing/">archived
+copy of 2026-08-22 14:16 UTC</a>:</p>
+<blockquote><p>Effective 00:00 (Beijing Time) on Sunday, August 23, 2026, we
+will adjust our peak/off-peak billing rules, with off-peak rates applying
+throughout the day on weekends (Saturdays and Sundays, Beijing Time).</p></blockquote>
+<p>Worth stating plainly because a cost estimator that reads only the hour is
+now <strong>wrong by 2&times; for 14 hours of every week</strong>, and reports
+peak while the account is being charged half. If you vendored a 24-hour
+schedule from anywhere &ndash; including from us &ndash; it needs a day axis.
+<code>ds pricing</code> and this site were both fixed on 2026-08-24.</p>
+<p class="small">The rate card itself did not move. Only the clock did.</p>
+
+<h2 id="v4-flash-vision">2026-08-21 &middot; deepseek-v4-flash-vision-exp<span class="chip">experimental</span></h2>
+<p>An experimental multimodal variant, reachable by setting
+<code>model=deepseek-v4-flash-vision-exp</code>. It takes image input, and
+images are converted to tokens by their dimensions and billed as ordinary
+input tokens alongside your text.</p>
+<p>It bills at <strong>exactly the deepseek-v4-flash rates</strong>, in both
+currencies and every bucket: $0.007 / $0.22 / $0.66 off-peak and
+$0.014 / $0.44 / $1.32 at peak, per 1M tokens. Same 1M context, same 384K max
+output, same 2500 concurrency as flash. The one capability it drops is
+<strong>FIM completion</strong>, which flash and pro both support in
+non-thinking mode.</p>
+<p>DeepSeek reports it as on par with flash on pure text and a large jump on
+agent benchmarks that need vision &ndash; Chartography 64.3, ZeroBench
+(pass@5) 35.0, DSBench-Hard 63.6 &ndash; putting its multimodal agent
+ability, in their framing, close to Opus-4.8. Those are the vendor's numbers,
+not ours; we have not run them.</p>
+<p>Because it shipped <em>after</em> the 2026-08-16 switchover it has no flat
+card, so there is nothing to reprice for it before that date. It is in
+<code>ds pricing</code> from v0.5.1 on.</p>
+
 <h2 id="repricing-live">2026-08-16 &middot; the repricing is live<span class="chip warn">confirmed against a bill</span></h2>
 <p>It landed on schedule. At <strong>16:00 UTC on 2026-08-16</strong> &ndash;
 midnight in Beijing &ndash; DeepSeek's peak/off-peak card took effect, and
@@ -1688,9 +1782,11 @@ and Chinese editions read the same way.</p>
 </table>
 </div>
 <p class="small">Cells read <strong>off-peak / peak</strong>. Peak hours are
-01:00&ndash;04:00 and 06:00&ndash;10:00 UTC daily &ndash; 09:00&ndash;12:00
+01:00&ndash;04:00 and 06:00&ndash;10:00 UTC &ndash; 09:00&ndash;12:00
 and 14:00&ndash;18:00 Beijing, seven hours a day &ndash; and every other hour
-is off-peak at half the peak rate. In RMB, pro is
+is off-peak at half the peak rate. <em>Peak ran seven days a week until
+2026-08-22; see <a href="#weekends-off-peak">weekends are off-peak</a>
+below.</em> In RMB, pro is
 &yen;0.15 / &yen;4.5 / &yen;13.5 off-peak and &yen;0.3 / &yen;9 / &yen;27 at
 peak.</p>
 <p class="small">Against the flat card of 2026-08-02, off-peak / peak:

@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>DeepSeek API pricing: the schedule, the peak hours, and the period right now</title>
-<meta name="description" content="DeepSeek has billed peak/off-peak since 16:00 UTC on 2026-08-16: peak hours 01:00-04:00 and 06:00-10:00 UTC at twice the off-peak rate. The full schedule, the numbers per model in both periods, the flat card it replaced, and a strip that reads your clock and names the billing period you are in right now.">
-<meta name="keywords" content="deepseek pricing, deepseek api pricing, deepseek price increase 2026, deepseek repricing, deepseek peak hours, deepseek off-peak pricing, deepseek peak off-peak billing, deepseek api cost, deepseek v4 flash price, deepseek v4 pro price, deepseek pricing 2026-08-16, deepseek new rate card, deepseek token price">
+<meta name="description" content="DeepSeek has billed peak/off-peak since 16:00 UTC on 2026-08-16: peak hours 01:00-04:00 and 06:00-10:00 UTC, Monday to Friday, at twice the off-peak rate, with weekends off-peak all day since 2026-08-22. The full schedule, the numbers per model in both periods, the flat card it replaced, and a strip that reads your clock and names the billing period you are in right now.">
+<meta name="keywords" content="deepseek pricing, deepseek api pricing, deepseek price increase 2026, deepseek repricing, deepseek peak hours, deepseek off-peak pricing, deepseek peak off-peak billing, deepseek api cost, deepseek v4 flash price, deepseek v4 pro price, deepseek pricing 2026-08-16, deepseek new rate card, deepseek token price, deepseek weekend off-peak, deepseek peak weekdays only, deepseek v4 flash vision exp price">
 <meta name="author" content="thevibeworks">
 <meta name="theme-color" content="#fbfaf7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
@@ -13,7 +13,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="deepseek-cli">
 <meta property="og:title" content="DeepSeek API pricing: the schedule, the peak hours, and the period right now">
-<meta property="og:description" content="DeepSeek has billed peak/off-peak since 16:00 UTC on 2026-08-16: peak hours 01:00-04:00 and 06:00-10:00 UTC at twice the off-peak rate. The full schedule, the numbers per model in both periods, the flat card it replaced, and a strip that reads your clock and names the billing period you are in right now.">
+<meta property="og:description" content="DeepSeek has billed peak/off-peak since 16:00 UTC on 2026-08-16: peak hours 01:00-04:00 and 06:00-10:00 UTC, Monday to Friday, at twice the off-peak rate, with weekends off-peak all day since 2026-08-22. The full schedule, the numbers per model in both periods, the flat card it replaced, and a strip that reads your clock and names the billing period you are in right now.">
 <meta property="og:url" content="https://thevibeworks.github.io/deepseek-cli/pricing/">
 <meta property="og:image" content="https://thevibeworks.github.io/deepseek-cli/og.png">
 <meta property="og:image:width" content="1200">
@@ -21,7 +21,7 @@
 <meta property="og:image:alt" content="deepseek-cli: the whole DeepSeek API from the terminal">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="DeepSeek API pricing: the schedule, the peak hours, and the period right now">
-<meta name="twitter:description" content="DeepSeek has billed peak/off-peak since 16:00 UTC on 2026-08-16: peak hours 01:00-04:00 and 06:00-10:00 UTC at twice the off-peak rate. The full schedule, the numbers per model in both periods, the flat card it replaced, and a strip that reads your clock and names the billing period you are in right now.">
+<meta name="twitter:description" content="DeepSeek has billed peak/off-peak since 16:00 UTC on 2026-08-16: peak hours 01:00-04:00 and 06:00-10:00 UTC, Monday to Friday, at twice the off-peak rate, with weekends off-peak all day since 2026-08-22. The full schedule, the numbers per model in both periods, the flat card it replaced, and a strip that reads your clock and names the billing period you are in right now.">
 <meta name="twitter:image" content="https://thevibeworks.github.io/deepseek-cli/og.png">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30,7 +30,7 @@
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
 <script>try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t}catch(e){}</script>
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What does the DeepSeek API cost right now?","acceptedAnswer":{"@type":"Answer","text":"It depends on the hour. Per 1M tokens (cache hit / cache miss / output): deepseek-v4-flash is $0.007 / $0.22 / $0.66 off-peak and $0.014 / $0.44 / $1.32 peak; deepseek-v4-pro is $0.022 / $0.66 / $1.98 off-peak and $0.044 / $1.32 / $3.96 peak. Peak hours are 01:00-04:00 and 06:00-10:00 UTC daily; every other hour is off-peak at half the peak rate."}},{"@type":"Question","name":"What are DeepSeek's peak hours?","acceptedAnswer":{"@type":"Answer","text":"01:00-04:00 and 06:00-10:00 UTC, daily. The boundaries are defined in UTC; in Beijing time (UTC+8) they read 09:00-12:00 and 14:00-18:00. Every other hour is off-peak, at half the peak rate."}},{"@type":"Question","name":"When did DeepSeek's peak/off-peak pricing start?","acceptedAnswer":{"@type":"Answer","text":"At 16:00 UTC on August 16, 2026, which is midnight in Beijing. Before that instant every hour billed at the flat card published 2026-08-02; from it, DeepSeek bills peak/off-peak on a new, higher card."}},{"@type":"Question","name":"How much did DeepSeek raise its API prices?","acceptedAnswer":{"@type":"Answer","text":"Against the flat card it replaced, deepseek-v4-pro peak is 3x on cache-miss input ($0.435 to $1.32 per 1M), 4.6x on output ($0.87 to $3.96) and 12x on cache-hit input ($0.003625 to $0.044). Off-peak is half of each of those, so the smallest increase at any hour is still 1.5x on cache-miss input. The rise is steepest where the old card was cheapest."}},{"@type":"Question","name":"Is DeepSeek's off-peak price the same as the old price?","acceptedAnswer":{"@type":"Answer","text":"No. Off-peak is half of peak, but on a new, higher base card: a flash cache-miss input token went from $0.14 to $0.22 per 1M off-peak and $0.44 peak. Even the cheapest hour now costs more than any hour did before the switch."}},{"@type":"Question","name":"How do I check the current DeepSeek billing period from the terminal?","acceptedAnswer":{"@type":"Answer","text":"Run `deepseek pricing`. It prints the period in effect (flat, off-peak or peak) with your local, UTC and Beijing time, when the period next changes, and both rate cards, all computed locally from the same schedule the CLI's cost estimates use. `deepseek pricing --json` emits the same as JSON."}}]}
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What does the DeepSeek API cost right now?","acceptedAnswer":{"@type":"Answer","text":"It depends on the hour and the day. Per 1M tokens (cache hit / cache miss / output): deepseek-v4-flash is $0.007 / $0.22 / $0.66 off-peak and $0.014 / $0.44 / $1.32 peak; deepseek-v4-pro is $0.022 / $0.66 / $1.98 off-peak and $0.044 / $1.32 / $3.96 peak. Peak hours are 01:00-04:00 and 06:00-10:00 UTC, Monday to Friday; every other hour, and the whole weekend, is off-peak at half the peak rate. deepseek-v4-flash-vision-exp bills at exactly the deepseek-v4-flash rates."}},{"@type":"Question","name":"What are DeepSeek's peak hours?","acceptedAnswer":{"@type":"Answer","text":"01:00-04:00 and 06:00-10:00 UTC, Monday to Friday. The boundaries are defined in UTC; in Beijing time (UTC+8) they read 09:00-12:00 and 14:00-18:00. Every other hour is off-peak, at half the peak rate. Since 16:00 UTC on 2026-08-22 weekends bill off-peak all day, on the Beijing calendar, so the weekend starts at 16:00 UTC on Friday and peak is 35 hours a week rather than 49."}},{"@type":"Question","name":"When did DeepSeek's peak/off-peak pricing start?","acceptedAnswer":{"@type":"Answer","text":"At 16:00 UTC on August 16, 2026, which is midnight in Beijing. Before that instant every hour billed at the flat card published 2026-08-02; from it, DeepSeek bills peak/off-peak on a new, higher card."}},{"@type":"Question","name":"How much did DeepSeek raise its API prices?","acceptedAnswer":{"@type":"Answer","text":"Against the flat card it replaced, deepseek-v4-pro peak is 3x on cache-miss input ($0.435 to $1.32 per 1M), 4.6x on output ($0.87 to $3.96) and 12x on cache-hit input ($0.003625 to $0.044). Off-peak is half of each of those, so the smallest increase at any hour is still 1.5x on cache-miss input. The rise is steepest where the old card was cheapest."}},{"@type":"Question","name":"Is DeepSeek's off-peak price the same as the old price?","acceptedAnswer":{"@type":"Answer","text":"No. Off-peak is half of peak, but on a new, higher base card: a flash cache-miss input token went from $0.14 to $0.22 per 1M off-peak and $0.44 peak. Even the cheapest hour now costs more than any hour did before the switch."}},{"@type":"Question","name":"How do I check the current DeepSeek billing period from the terminal?","acceptedAnswer":{"@type":"Answer","text":"Run `deepseek pricing`. It prints the period in effect (flat, off-peak or peak) with your local, UTC and Beijing time, when the period next changes, and both rate cards, all computed locally from the same schedule the CLI's cost estimates use. `deepseek pricing --json` emits the same as JSON."}}]}
 </script>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"deepseek-cli","item":"https://thevibeworks.github.io/deepseek-cli/"},{"@type":"ListItem","position":2,"name":"pricing","item":"https://thevibeworks.github.io/deepseek-cli/pricing/"}]}
@@ -78,7 +78,8 @@
 
 <h1>Pricing</h1>
 <p class="lede">Since 16:00 UTC on 2026-08-16, what a DeepSeek token costs
-depends on the hour you spend it in. This page carries the schedule, both
+depends on the hour you spend it in &ndash; and, since 2026-08-22, on the
+day of the week too. This page carries the schedule, both
 rate cards, and a strip that reads your clock &ndash; the same data the
 CLI's estimates switch on, so the page and <code>ds pricing</code> can
 never disagree.</p>
@@ -86,22 +87,25 @@ never disagree.</p>
 <h2 id="now">Right now</h2>
 <div class="note" id="price-now">
 <span class="tag">your clock decides</span>
-<p id="price-now-line"><strong>Time-of-day billing is live.</strong> Peak hours are 01:00&ndash;04:00 and 06:00&ndash;10:00 UTC daily, at twice the off-peak rate; every other hour is off-peak. With JavaScript on, this strip reads your clock and names the period you are in right now.</p>
+<p id="price-now-line"><strong>Time-of-day billing is live.</strong> Peak hours are 01:00&ndash;04:00 and 06:00&ndash;10:00 UTC, Monday to Friday, at twice the off-peak rate; every other hour, and the whole weekend, is off-peak. With JavaScript on, this strip reads your clock and names the period you are in right now.</p>
 </div>
 
 <h2 id="schedule">The schedule</h2>
 <p>One table drives everything on this page: each row is a billing period,
-its daily window in UTC minutes, the multiplier on that era's base card,
-and the instant the row takes effect. The strip above, the CLI's
+its window in UTC minutes, the days it applies on, the multiplier on that
+era's base card, and the instant the row takes effect. The strip above, the CLI's
 estimates and <code>ds pricing</code> all read the same rows.</p>
 <div class="tablewrap">
 <table>
-<thead><tr><th>Period</th><th>Daily window</th><th class="num">Multiplier</th><th>Effective from</th></tr></thead>
+<thead><tr><th>Period</th><th>Window</th><th>Days</th><th class="num">Multiplier</th><th>Effective from</th></tr></thead>
 <tbody>
-<tr><td>flat</td><td>all hours</td><td class="num">1&times;</td><td>2026-08-02 00:00 UTC</td></tr>
-<tr><td>off-peak</td><td>all other hours</td><td class="num">1&times;</td><td>2026-08-16 16:00 UTC</td></tr>
-<tr><td>peak</td><td>01:00&ndash;04:00 UTC</td><td class="num">2&times;</td><td>2026-08-16 16:00 UTC</td></tr>
-<tr><td>peak</td><td>06:00&ndash;10:00 UTC</td><td class="num">2&times;</td><td>2026-08-16 16:00 UTC</td></tr>
+<tr><td>flat</td><td>all hours</td><td>every day</td><td class="num">1&times;</td><td>2026-08-02 00:00 UTC</td></tr>
+<tr><td>off-peak</td><td>all other hours</td><td>every day</td><td class="num">1&times;</td><td>2026-08-16 16:00 UTC</td></tr>
+<tr><td>peak</td><td>01:00&ndash;04:00 UTC</td><td>every day</td><td class="num">2&times;</td><td>2026-08-16 16:00 UTC</td></tr>
+<tr><td>peak</td><td>06:00&ndash;10:00 UTC</td><td>every day</td><td class="num">2&times;</td><td>2026-08-16 16:00 UTC</td></tr>
+<tr><td>off-peak</td><td>all other hours</td><td>every day</td><td class="num">1&times;</td><td>2026-08-22 16:00 UTC</td></tr>
+<tr><td>peak</td><td>01:00&ndash;04:00 UTC</td><td>Mon&ndash;Fri</td><td class="num">2&times;</td><td>2026-08-22 16:00 UTC</td></tr>
+<tr><td>peak</td><td>06:00&ndash;10:00 UTC</td><td>Mon&ndash;Fri</td><td class="num">2&times;</td><td>2026-08-22 16:00 UTC</td></tr>
 </tbody>
 </table>
 </div>
@@ -109,6 +113,17 @@ estimates and <code>ds pricing</code> all read the same rows.</p>
 (UTC+8) the peak hours read 09:00&ndash;12:00 and 14:00&ndash;18:00, which
 is the Chinese working day. The off-peak window covers the whole European
 and American working day, so batch work that can move west should.</p>
+<p><strong>Weekends have billed off-peak all day since 2026-08-22 16:00
+UTC</strong> (00:00 Beijing, Sunday 23 August). The weekend is the
+<em>Beijing</em> Saturday and Sunday, so it turns over at 16:00 UTC, not
+at midnight UTC &ndash; a Friday evening in Europe is already Saturday
+upstream. That takes peak from 49 hours a week to 35, and it is the one
+part of this schedule DeepSeek never put in its changelog: the
+announcement sat in a footnote for a few days and the live page now
+carries only the settled rule. It survives
+<a href="https://web.archive.org/web/20260822141620/https://api-docs.deepseek.com/quick_start/pricing/">in
+the Internet Archive</a>. If you are holding batch work for a cheap hour,
+hold it for Saturday instead.</p>
 
 <h2 id="after">The card</h2>
 <p>USD per 1M tokens, in force since 2026-08-16 16:00 UTC. Off-peak is half
@@ -173,7 +188,7 @@ to pro, made off-peak on 2026-08-17, settled at <strong>0.84 CNY</strong>
 &ndash; 4.46 CNY per 1M against the published off-peak 4.5, where the old
 flat card would have made it 3.0. The page and the billing system agree.</p>
 
-<script id="price-schedule" type="application/json">[{"label":"flat","start":null,"end":null,"multiplier":1.0,"effective":"2026-08-02T00:00:00Z"},{"label":"off-peak","start":null,"end":null,"multiplier":1.0,"effective":"2026-08-16T16:00:00Z"},{"label":"peak","start":60,"end":240,"multiplier":2.0,"effective":"2026-08-16T16:00:00Z"},{"label":"peak","start":360,"end":600,"multiplier":2.0,"effective":"2026-08-16T16:00:00Z"}]</script>
+<script id="price-schedule" type="application/json">[{"label":"flat","start":null,"end":null,"multiplier":1.0,"effective":"2026-08-02T00:00:00Z"},{"label":"off-peak","start":null,"end":null,"multiplier":1.0,"effective":"2026-08-16T16:00:00Z"},{"label":"peak","start":60,"end":240,"multiplier":2.0,"effective":"2026-08-16T16:00:00Z"},{"label":"peak","start":360,"end":600,"multiplier":2.0,"effective":"2026-08-16T16:00:00Z"},{"label":"off-peak","start":null,"end":null,"multiplier":1.0,"effective":"2026-08-22T16:00:00Z"},{"label":"peak","start":60,"end":240,"multiplier":2.0,"days":[1,2,3,4,5],"effective":"2026-08-22T16:00:00Z"},{"label":"peak","start":360,"end":600,"multiplier":2.0,"days":[1,2,3,4,5],"effective":"2026-08-22T16:00:00Z"}]</script>
 <nav class="pager" aria-label="Pagination">
 <a href="../cost/"><span class="lbl">&larr; previous</span>cost</a>
 <a href="../bench/" style="text-align:right"><span class="lbl">next &rarr;</span>bench</a>
