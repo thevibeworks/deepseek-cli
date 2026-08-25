@@ -18,6 +18,7 @@ import argparse
 import datetime
 import html
 import pathlib
+import re
 import subprocess
 import sys
 
@@ -183,9 +184,15 @@ def price_now_verdict():
 
     Phrased against the era the build lands in, and only ever forwards:
     once the flip is behind us it stays behind us, so this copy cannot go
-    stale the way "from <date>" wording did the morning after. The date
-    and the windows come from the data; the copy cannot drift from the
-    table.
+    stale the way "from <date>" wording did the morning after.
+
+    Every fact in both sentences -- the instant, the windows, and which
+    days they apply on -- is read off PRICE_SCHEDULE. The weekend era of
+    2026-08-22 is why: it repointed eras[-1] at a new instant while the
+    not-yet-live branch went on saying "every hour bills at the flat card",
+    which had been true of the previous last era and was not true of this
+    one. Prose that names a fact the table also holds is prose that will
+    drift; derive it or do not write it.
     """
     eras = sorted({r["effective"] for r in PRICE_SCHEDULE})
     if len(eras) == 1:
@@ -193,7 +200,8 @@ def price_now_verdict():
             "<strong>Flat pricing, at every hour.</strong> No time-of-day "
             "tiers are in effect, and the card below is the price."
         )
-    flip = eras[-1].replace("T", " ").replace(":00Z", " UTC")
+    latest = eras[-1]
+    flip = latest.replace("T", " ").replace(":00Z", " UTC")
     # Deduped: successive eras repeat the same two windows -- the weekend
     # era changes which days they apply on, not which hours -- and without
     # this the sentence lists each window once per era.
@@ -205,23 +213,36 @@ def price_now_verdict():
         if span not in spans:
             spans.append(span)
     windows = " and ".join(spans)
+    # Which days the newest era's peak rows apply on, and therefore what
+    # "every other hour" has to say to stay true.
+    peak_days = {
+        tuple(r["days"]) if r.get("days") else None
+        for r in PRICE_SCHEDULE
+        if r["effective"] == latest and r["start"] is not None
+    }
+    weekdays_only = peak_days == {tuple(WEEKDAYS)}
+    when = "UTC, Monday to Friday" if weekdays_only else "UTC, every day"
+    rest = (
+        "every other hour, and the whole weekend, is off-peak"
+        if weekdays_only
+        else "every other hour is off-peak"
+    )
+    strip = (
+        " With JavaScript on, this strip reads your clock and names the "
+        "period you are in right now."
+    )
     live = _now() >= datetime.datetime.strptime(
-        eras[-1], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
+        latest, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
     if live:
         return (
             "<strong>Time-of-day billing is live.</strong> Peak hours are "
-            f"{windows} UTC, Monday to Friday, at twice the off-peak rate; "
-            "every other hour, and the whole weekend, is off-peak. With "
-            "JavaScript on, this strip reads your clock and names the "
-            "period you are in right now."
+            f"{windows} {when}, at twice the off-peak rate; {rest}."
+            + strip
         )
     return (
-        f"<strong>Before {flip}, every hour bills at the flat card "
-        f"below.</strong> From that instant DeepSeek bills peak/off-peak "
-        f"on a new, higher card: peak hours are {windows} UTC daily, at "
-        "twice the off-peak rate, and every other hour is off-peak. With "
-        "JavaScript on, this strip reads your clock and names the period "
-        "you are in right now."
+        f"<strong>The schedule below changes at {flip}.</strong> From that "
+        f"instant peak hours are {windows} {when}, at twice the off-peak "
+        f"rate, and {rest}." + strip
     )
 
 # Theme. The default is whatever the OS says; the toggle overrides it and
@@ -1220,7 +1241,8 @@ Neither is visible unless something is counting &ndash; so this counts.</p>
 
 <h2 id="card">The rate card</h2>
 <p>USD per 1M tokens. Peak hours are 01:00&ndash;04:00 and 06:00&ndash;10:00
-UTC daily; every other hour is off-peak at half the peak rate. The
+UTC, Monday to Friday; every other hour, and the whole weekend, is off-peak
+at half the peak rate. The
 <a href="{{root}}pricing/">pricing page</a> carries the full schedule and
 names the period you are in right now:</p>
 <div class="tablewrap">
@@ -1665,9 +1687,10 @@ can see whether it is working. This is where the cache-hit column turns from
 a table cell into a bill &ndash; and since the repricing hit that column
 hardest, it is worth more attention now, not less.</li>
 <li><strong>Schedule what can be scheduled.</strong> The same call costs
-half as much outside 01:00&ndash;04:00 and 06:00&ndash;10:00 UTC. Batch
-evaluation, bulk review and overnight agent runs are exactly the workloads
-that can move; <code>ds pricing</code> says which period you are in.</li>
+half as much outside 01:00&ndash;04:00 and 06:00&ndash;10:00 UTC, Monday to
+Friday &ndash; and the whole weekend is off-peak. Batch evaluation, bulk
+review and overnight agent runs are exactly the workloads that can move;
+<code>ds pricing</code> says which period you are in.</li>
 <li><strong>Measure successful-task cost, not per-token price.</strong> A
 cheaper model that retries five times can cost more than a dearer one that lands
 first. The <a href="{{root}}cost/#ledger">ledger</a> stores exact token counts
@@ -1701,11 +1724,11 @@ PAGES.append(dict(
         ("Is dsh the same as deepseek-cli?",
          "No. dsh (DeepSeek Harness) is DeepSeek's official agent harness: it runs an agent loop, executes tools, and manages plugins, skills and sessions. deepseek-cli is an unofficial single-binary API client: it sends one request in any of DeepSeek's four wire formats, prints the response and its estimated cost, and carries DeepSeek's API documentation offline. They are complementary, not competing: run agents with dsh, and use deepseek-cli to check a key, price a call, debug the wire formats, or query the docs."),
         ("Did DeepSeek raise its API prices?",
-         "Yes. The increase took effect at 16:00 UTC on 2026-08-16 and is live: DeepSeek now bills peak/off-peak, with peak hours 01:00-04:00 and 06:00-10:00 UTC daily at twice the off-peak rate. The flat card is gone from the official pricing page. Against it, deepseek-v4-pro peak is 3x on cache-miss input, 4.6x on output and 12x on cache-hit input; off-peak is half of each. This resolved both the undated broad price rise announced on 2026-08-06 and the undated peak-hour policy announced in June 2026."),
+         "Yes. The increase took effect at 16:00 UTC on 2026-08-16 and is live: DeepSeek now bills peak/off-peak, with peak hours 01:00-04:00 and 06:00-10:00 UTC, Monday to Friday, at twice the off-peak rate; every other hour, and the whole weekend since 2026-08-22, is off-peak. The flat card is gone from the official pricing page. Against it, deepseek-v4-pro peak is 3x on cache-miss input, 4.6x on output and 12x on cache-hit input; off-peak is half of each. This resolved both the undated broad price rise announced on 2026-08-06 and the undated peak-hour policy announced in June 2026."),
         ("What are DeepSeek's current API prices?",
-         "Per 1M tokens (cache hit / cache miss / output), on the card in force since 16:00 UTC on 2026-08-16: deepseek-v4-flash is $0.007 / $0.22 / $0.66 off-peak and $0.014 / $0.44 / $1.32 peak; deepseek-v4-pro is $0.022 / $0.66 / $1.98 off-peak and $0.044 / $1.32 / $3.96 peak. In RMB, pro is 0.15 / 4.5 / 13.5 yuan off-peak and 0.3 / 9 / 27 yuan peak. Peak hours are 01:00-04:00 and 06:00-10:00 UTC; every other hour is off-peak."),
+         "Per 1M tokens (cache hit / cache miss / output), on the card in force since 16:00 UTC on 2026-08-16: deepseek-v4-flash is $0.007 / $0.22 / $0.66 off-peak and $0.014 / $0.44 / $1.32 peak; deepseek-v4-pro is $0.022 / $0.66 / $1.98 off-peak and $0.044 / $1.32 / $3.96 peak. In RMB, pro is 0.15 / 4.5 / 13.5 yuan off-peak and 0.3 / 9 / 27 yuan peak. Peak hours are 01:00-04:00 and 06:00-10:00 UTC, Monday to Friday; every other hour, and the whole weekend, is off-peak."),
         ("Which hours are cheapest on the DeepSeek API?",
-         "Every hour outside 01:00-04:00 and 06:00-10:00 UTC, which bill at half the peak rate. Those peak windows are 09:00-12:00 and 14:00-18:00 Beijing time, the Chinese working day, so the whole European and American working day is off-peak. Batch and agent work that can be scheduled should run off-peak; the saving is exactly 2x."),
+         "Every hour outside 01:00-04:00 and 06:00-10:00 UTC, Monday to Friday, which bill at half the peak rate — and since 2026-08-22 the whole weekend, on the Beijing calendar, so the cheap window opens at 16:00 UTC on Friday. Those peak windows are 09:00-12:00 and 14:00-18:00 Beijing time, the Chinese working day, so the whole European and American working day is off-peak. Batch and agent work that can be scheduled should run off-peak; the saving is exactly 2x."),
         ("Where can I follow DeepSeek API changes?",
          "DeepSeek's own change log lives at api-docs.deepseek.com/updates. The deepseek CLI carries the same documentation inside the binary: `deepseek docs changelog` prints it offline, and `deepseek docs sync` refreshes the snapshot."),
     ]),
@@ -1782,11 +1805,12 @@ and Chinese editions read the same way.</p>
 </table>
 </div>
 <p class="small">Cells read <strong>off-peak / peak</strong>. Peak hours are
-01:00&ndash;04:00 and 06:00&ndash;10:00 UTC &ndash; 09:00&ndash;12:00
-and 14:00&ndash;18:00 Beijing, seven hours a day &ndash; and every other hour
-is off-peak at half the peak rate. <em>Peak ran seven days a week until
-2026-08-22; see <a href="#weekends-off-peak">weekends are off-peak</a>
-below.</em> In RMB, pro is
+01:00&ndash;04:00 and 06:00&ndash;10:00 UTC, <strong>Monday to Friday</strong>
+&ndash; 09:00&ndash;12:00 and 14:00&ndash;18:00 Beijing, seven hours a
+weekday &ndash; and every other hour, plus the whole weekend, is off-peak at
+half the peak rate. <em>Peak ran seven days a week until 2026-08-22; see
+<a href="#weekends-off-peak">weekends are off-peak</a> above.</em> In RMB,
+pro is
 &yen;0.15 / &yen;4.5 / &yen;13.5 off-peak and &yen;0.3 / &yen;9 / &yen;27 at
 peak.</p>
 <p class="small">Against the flat card of 2026-08-02, off-peak / peak:
@@ -1841,15 +1865,18 @@ without naming the period.</strong> There is no longer a single number to
 quote, and the difference is a factor of two.</p>
 
 <h2 id="repricing">2026-08-13 &middot; the price rise has its date and its numbers<span class="chip ok">took effect 2026-08-16</span></h2>
+<!-- claim:historical -->
 <p>The other shoe drops. Alongside the V4-Pro GA release, DeepSeek's
 <a href="{{docs}}/quick_start/pricing">Models &amp; Pricing</a> page now
 carries the repricing that the <a href="#price-rise">August 6 notice</a>
 promised and the <a href="#peak-pricing">June peak-hour policy</a>
 sketched, and this time it is dated: <strong>at 16:00 UTC on 2026-08-16
 the API moves to peak/off-peak billing</strong>. Peak hours are
-01:00&ndash;04:00 and 06:00&ndash;10:00 UTC daily &ndash; the boundaries
-are defined in UTC &ndash; at twice the off-peak rate; every other hour is
-off-peak.</p>
+01:00&ndash;04:00 and 06:00&ndash;10:00 UTC, <em>as announced then</em>
+every day of the week &ndash; the boundaries are defined in UTC &ndash; at
+twice the off-peak rate; every other hour is off-peak. (Weekends came off
+the peak calendar nine days later; see
+<a href="#weekends-off-peak">weekends are off-peak</a>.)</p>
 <p>The multiplier is the June policy's, but the base card is new and
 higher. Off-peak is not a discount on today's prices: a flash cache-miss
 input token goes from $0.14 to $0.22 per 1M in the <em>cheapest</em> hour,
@@ -2119,6 +2146,7 @@ than prices, deliberately &ndash; when the card changes, every historical
 call can be repriced under it.</p>
 
 <h2 id="peak-pricing">announced 2026-06-29 &middot; 2&times; during peak hours<span class="chip ok">dated 2026-08-13</span></h2>
+<!-- claim:historical -->
 <p><strong>Update:</strong> the date exists now, and one detail below did
 not survive it. <a href="#repricing">The 2026-08-13 announcement</a> keeps
 the 2&times; multiplier and the same windows but puts them on a new, higher
@@ -2458,11 +2486,94 @@ PAGES.append(dict(
     ),
 ))
 
+# The peak-window claims tripwire.
+#
+# The rate card has a --check that compares committed HTML against the
+# generator, and `make price-check` compares the CLI's card against the
+# gateway's. Neither can see the sentence a reader actually reads: on
+# 2026-08-22 weekends came off the peak calendar, PRICE_SCHEDULE learned
+# it that day, and three FAQ answers plus the cost page went on telling
+# search engines that peak runs "01:00-04:00 and 06:00-10:00 UTC daily".
+# Nothing was red. The table and the prose disagreed and only the table
+# was checked.
+#
+# So: every section that quotes the peak windows has to say which days
+# they apply on, and the phrase it has to carry is read off PRICE_SCHEDULE
+# rather than typed here. Copy that stops matching the data fails the
+# build instead of shipping.
+#
+# The escape hatch is a marker, not a turn of phrase. A news entry about
+# a superseded announcement is quoting what was said on a date, and is
+# supposed to keep saying it -- but "this sentence is history" is a claim
+# the author has to make on purpose, so it is spelled out in the source
+# and cannot be satisfied by accident.
+HISTORICAL_CLAIM = "<!-- claim:historical -->"
+
+
+def peak_days_phrase():
+    """How the current era restricts peak, as the copy must spell it."""
+    latest = sorted({r["effective"] for r in PRICE_SCHEDULE})[-1]
+    days = {
+        tuple(r["days"]) if r.get("days") else None
+        for r in PRICE_SCHEDULE
+        if r["effective"] == latest and r["start"] is not None
+    }
+    if days == {tuple(WEEKDAYS)}:
+        return ("Monday to Friday", ("monday to friday", "mon&ndash;fri",
+                                     "mon-fri", "weekday"))
+    if days == {None}:
+        return ("every day", ("every day", "daily"))
+    raise SystemExit(
+        f"claims: PRICE_SCHEDULE's newest era mixes day restrictions {days}; "
+        "the tripwire cannot say what the copy should claim")
+
+
+def check_peak_claims(pages):
+    """Fail the build if a rendered claim outlives the schedule.
+
+    `pages` is (name, html). Sections are split on <h2>, because that is
+    the unit a reader arrives at from a table of contents or a search
+    result -- a caption that names the windows and a heading that dates
+    them belong to the same claim.
+    """
+    want, accepted = peak_days_phrase()
+    spans = [
+        f"{_fmt_minutes(r['start'])}&ndash;{_fmt_minutes(r['end'])}"
+        for r in PRICE_SCHEDULE if r["start"] is not None
+    ]
+    if len(spans) < 2:
+        return True
+    # The JSON-LD answers are plain text, so they spell the dash out.
+    forms = [spans, [sp.replace("&ndash;", "-") for sp in spans]]
+    bad = []
+    for name, html in pages:
+        for section in re.split(r"(?=<h2\b)", html):
+            flat = re.sub(r"\s+", " ", section)
+            if not any(all(sp in flat for sp in f) for f in forms):
+                continue
+            if HISTORICAL_CLAIM in flat:
+                continue
+            low = flat.lower()
+            if any(a in low for a in accepted):
+                continue
+            head = re.search(r"<h2[^>]*>(.*?)</h2>", section, re.S)
+            where = re.sub(r"<[^>]+>", "", head.group(1)) if head else "(top of page)"
+            bad.append(f"  {name}: {where.strip()[:80]}")
+    if bad:
+        print(f'claims: a peak-hours claim does not say "{want}", which is '
+              "what PRICE_SCHEDULE is in. Say it, or mark the section "
+              f'{HISTORICAL_CLAIM}:', file=sys.stderr)
+        print("\n".join(bad), file=sys.stderr)
+        return False
+    return True
+
+
 def build(check_only=False):
-    written, stale = [], []
+    written, stale, rendered = [], [], []
     for page in PAGES:
         out = ROOT / page["slug"] / "index.html" if page["slug"] else ROOT / "index.html"
         html_text = render(page)
+        rendered.append((page["slug"] or "/", html_text))
         if check_only:
             if not out.exists() or out.read_text() != html_text:
                 stale.append(str(out.relative_to(ROOT)))
@@ -2542,6 +2653,13 @@ def build(check_only=False):
     else:
         out404.write_text(notfound)
         written.append("404.html")
+
+    # Claims are checked on what was rendered, not on what is on disk, so
+    # a stale claim fails the build that would have written it as well as
+    # the --check that would have passed it.
+    rendered.append(("404.html", notfound))
+    if not check_peak_claims(rendered):
+        return 1
 
     if check_only:
         if stale:
