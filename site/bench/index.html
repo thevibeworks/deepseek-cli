@@ -226,9 +226,10 @@ can see whether it is working. This is where the cache-hit column turns from
 a table cell into a bill &ndash; and since the repricing hit that column
 hardest, it is worth more attention now, not less.</li>
 <li><strong>Schedule what can be scheduled.</strong> The same call costs
-half as much outside 01:00&ndash;04:00 and 06:00&ndash;10:00 UTC. Batch
-evaluation, bulk review and overnight agent runs are exactly the workloads
-that can move; <code>ds pricing</code> says which period you are in.</li>
+half as much outside 01:00&ndash;04:00 and 06:00&ndash;10:00 UTC, Monday to
+Friday &ndash; and the whole weekend is off-peak. Batch evaluation, bulk
+review and overnight agent runs are exactly the workloads that can move;
+<code>ds pricing</code> says which period you are in.</li>
 <li><strong>Measure successful-task cost, not per-token price.</strong> A
 cheaper model that retries five times can cost more than a dearer one that lands
 first. The <a href="../cost/#ledger">ledger</a> stores exact token counts
