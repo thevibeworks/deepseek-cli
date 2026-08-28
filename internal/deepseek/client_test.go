@@ -190,6 +190,45 @@ func TestStreamAlwaysAsksForUsage(t *testing.T) {
 	}
 }
 
+func TestStreamTakesUsageFromTheLastContentChunk(t *testing.T) {
+	// The wire shape changed on 2026-08-27. Until then a streamed call ended
+	// with a usage-ONLY chunk: `usage` set, `choices` an empty array, sent
+	// just before `data: [DONE]`. It does not exist any more. Token
+	// statistics now ride on the last CONTENT chunk, which carries exactly
+	// one choice with no new text and a non-null finish_reason.
+	//
+	// A parser that recognised the old chunk by its empty `choices` now sees
+	// no usage at all and prices the call at zero, silently. Nothing errors;
+	// the bill just disappears. This test pins the shape the docs describe
+	// rather than the shape we happened to be written against.
+	c := testClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		for _, frag := range []string{
+			`{"choices":[{"delta":{"content":"hi"}}]}`,
+			`{"choices":[{"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":11,"completion_tokens":2,"total_tokens":13}}`,
+		} {
+			w.Write([]byte("data: " + frag + "\n\n"))
+		}
+		w.Write([]byte("data: [DONE]\n\n"))
+	}))
+
+	resp, err := c.ChatStream(context.Background(), &ChatRequest{Model: ModelFlash}, false, func(*ChatChunk) error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.Usage == nil {
+		t.Fatal("no usage assembled: a streamed call that reports no tokens cannot be priced")
+	}
+	if resp.Usage.PromptTokens != 11 || resp.Usage.CompletionTokens != 2 {
+		t.Errorf("usage = %+v, want prompt 11 completion 2", resp.Usage)
+	}
+	if got := resp.Choices[0].Message.Content; got != "hi" {
+		t.Errorf("content = %q, want %q -- the usage-bearing chunk must not be mistaken for text", got, "hi")
+	}
+	if got := resp.Choices[0].FinishReason; got != "stop" {
+		t.Errorf("finish_reason = %q, want stop", got)
+	}
+}
+
 func TestStreamAssemblesToolCallFragments(t *testing.T) {
 	// The model streams one call's arguments across many chunks; only the
 	// first fragment carries the id and the name.
