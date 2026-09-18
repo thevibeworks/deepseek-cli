@@ -252,7 +252,7 @@ async function main() {
     '{"choices":[{"delta":{"reasoning_content":"thinking about light"}}]}',
     '{"choices":[{"delta":{"content":"The sky is blue "}}]}',
     '{"choices":[{"delta":{"content":"because of scattering."}}]}',
-    '{"model":"deepseek-v4-flash","choices":[{"delta":{},"finish_reason":"stop"}],' +
+    '{"model":"deepseek-flash","choices":[{"delta":{},"finish_reason":"stop"}],' +
       '"usage":{"prompt_tokens":91,"completion_tokens":17,"total_tokens":108,' +
       '"prompt_cache_hit_tokens":40,"completion_tokens_details":{"reasoning_tokens":6}}}',
     '[DONE]',
@@ -334,7 +334,7 @@ async function main() {
   const resp = run([
     '{"type":"response.reasoning_text.delta","delta":"weighing"}',
     '{"type":"response.output_text.delta","delta":"done"}',
-    '{"type":"response.completed","response":{"model":"deepseek-v4-flash",' +
+    '{"type":"response.completed","response":{"model":"deepseek-flash",' +
       '"usage":{"input_tokens":85,"input_tokens_details":{"cached_tokens":0},"output_tokens":16}}}',
   ]);
   resp.byId['pg-enrolBtn'].fire('click');
@@ -362,7 +362,7 @@ async function main() {
     '{"choices":[{"delta":{"content":"```js\\nalert(1)\\n```\\n\\n"}}]}',
     '{"choices":[{"delta":{"content":"<script>alert(2)</script> and "}}]}',
     '{"choices":[{"delta":{"content":"[x](javascript:alert(3))"}}]}',
-    '{"model":"deepseek-v4-flash","choices":[{"delta":{},"finish_reason":"stop"}],' +
+    '{"model":"deepseek-flash","choices":[{"delta":{},"finish_reason":"stop"}],' +
       '"usage":{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15}}',
     '[DONE]',
   ]);

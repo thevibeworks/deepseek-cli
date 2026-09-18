@@ -310,7 +310,6 @@ expensive seven hours.
 | `DSGATE_ANON_DAILY_REQUESTS` | 30 | enough to be useful for a day's work, not enough to script against |
 | `DSGATE_ANON_DAILY_INPUT_TOKENS` | 60000 | ~150 pages of context per day |
 | `DSGATE_ANON_DAILY_OUTPUT_TOKENS` | 20000 | the expensive side; the real cap |
-| `DSGATE_ANON_DAILY_SEARCHES` | 3 | a `web_search` request costs ~10 ordinary turns; the request counter alone would let one caller take a quarter of the day |
 | `DSGATE_ANON_MAX_TOKENS` | 4096 | clamps a single response, bounding overshoot |
 | `DSGATE_MAX_BODY_BYTES` | 131072 | ~32K tokens; bounds the input side of overshoot |
 | `DSGATE_DAILY_BUDGET_USD` | 1.00 | the circuit breaker; the number that actually protects us |
@@ -323,22 +322,29 @@ expensive seven hours.
 | `DSGATE_TOKEN_TTL_DAYS` | 7 | identities age out instead of accumulating |
 | `DSGATE_BALANCE_CHECK_MINUTES` | 15 | the ledger's "we have credit" is checked against the real account |
 
-**`web_search` is carried, and rationed.** Measured on 2026-08-07, one
-search request made eleven server-side calls and billed 40,260 input
-tokens with no separate per-search fee — so its whole cost arrives as
-input tokens the meter already reads. What it breaks is the *reservation*,
-which bounded input at one token per body byte: DeepSeek chooses how many
-pages to read, so a search's input is upstream-controlled. Hence a 256k
-input allowance at admission (about 6x the observed case) plus the daily
-ration above. Within that allowance the budget is still a hard ceiling;
-past it a search can overshoot by the difference, bounded by how many
-distinct callers can be mid-search at once. Every other server-side tool
-stays refused: unknown work at an unknown price, spent from donated
-credit. Reasoning and the expiry condition are in `TASTE.md`.
+**No server-side tool is carried.** From 2026-08-07 to 2026-09-18 the
+free tier carried `web_search`, with a 3/day ration and a 256k input
+allowance at admission, because one measured search billed 40,260 input
+tokens. DeepSeek removed the tool from the Responses API on 2026-09-10,
+with V4.1 Flash: the guide now lists `web_search` among the built-in
+tools that are *ignored*, and a probe on 2026-09-18 billed 21 input
+tokens where a search used to bill ~40K. Forwarding it would bill an
+answer from the model's memory to a caller who believes it searched, so
+it is refused with that reason, and the ration and the allowance are
+gone. Every other server-side tool stays refused: unknown work at an
+unknown price, spent from donated credit. The history is in `TASTE.md`.
 
-**Free tier is flash only.** Pro is 3x the price and the request is
-*rejected*, not silently downgraded — a user who asked for pro and got
-flash without being told would draw wrong conclusions and blame the model.
+**Free tier is `deepseek-flash` only.** It is DeepSeek's current Flash
+model (V4.1, 2026-09-10); `deepseek-v4-flash` and
+`deepseek-v4-flash-vision-exp` are retired names upstream serves as the
+same model, so the gateway accepts them as that model and pins the
+request to the name upstream lists. A `DSGATE_MODEL` that still says
+`deepseek-v4-flash` is served as `deepseek-flash` for the same reason —
+otherwise `/models`, which upstream now answers with the new name only,
+would filter to nothing. Pro is 3.3x flash's price per output token and
+the request is *rejected*, not silently downgraded — a user who asked for
+pro and got flash without being told would draw wrong conclusions about
+the model.
 
 ---
 
@@ -408,7 +414,7 @@ stylesheet; the donation path is a private message to a human.
 
 The key pool answers "what if our key runs out". It does not answer the
 prior question — why is a chat request costing us anything at all, when
-OpenCode Zen serves `deepseek-v4-flash-free` for nothing.
+OpenCode Zen served `deepseek-v4-flash-free` for nothing.
 
 So there are two upstreams now, tried in order. The indirection is not
 "a list of interchangeable backends"; a second lane earns its keep only
@@ -419,7 +425,7 @@ the model by, what it costs, and how often it says no.
 Measured against Zen on 2026-08-12:
 
 - `/chat/completions` works, reporting usage in both streamed and
-  buffered form. `/responses` answers but rejects a server-side
+  buffered form. `/responses` answers but rejected a server-side
   `web_search` tool. `/anthropic/v1/messages`, `/beta/completions` and
   `/user/balance` are 404.
 - About one sequential request in five comes back
@@ -428,10 +434,22 @@ Measured against Zen on 2026-08-12:
 - The model is `deepseek-v4-flash-free` there. Our callers never learn
   that: `policy.Retarget` renames the field on the way out, and the
   allowlist, the `/models` list and the client contract all keep saying
-  `deepseek-v4-flash`.
+  the served name — `deepseek-flash` since 2026-09-18.
 - Zen's own docs say free-lane data **may be used to improve the model**.
   That is a different promise from the paid path's and belongs in the
   user-facing copy, not just here.
+
+**Re-measured 2026-09-18: the lane is dead.** Zen still lists
+`deepseek-v4-flash-free` and answers every request with
+`Model is unavailable` (V4 Flash was retired upstream on 2026-09-10).
+The fallback keeps the service correct — every chat still lands on the
+DeepSeek key — but each one pays a refused round trip, and its prompt
+still reaches Zen. So the operator step is to unset `OPENCODE_API_KEY`
+until Zen serves a free V4.1 model. The rename above is why that check
+cannot be skipped: callers are told `deepseek-flash` whatever the lane
+runs, so a revived free lane has to be shown to serve V4.1 (the 53-token
+billed prompt offset between the V4 and V4.1 families is one test)
+before it goes back on.
 
 A 20% refusal rate is why the lane is first-choice rather than the whole
 service, and why the fallback must happen before a single byte reaches

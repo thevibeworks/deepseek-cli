@@ -89,14 +89,13 @@ func newHarness(t *testing.T, up *upstream, tune func(*Config, *quota.Limits)) *
 		DailyRequests:     5,
 		DailyInputTokens:  10000,
 		DailyOutputTokens: 5000,
-		DailySearches:     2,
 		DailyBudgetUSD:    1,
 		TotalBudgetUSD:    10,
 	}
 	cfg := Config{
 		UpstreamBaseURL:          up.server.URL,
 		UpstreamKeys:             []string{upstreamKey},
-		Model:                    "deepseek-v4-flash",
+		Model:                    "deepseek-flash",
 		MaxBodyBytes:             4096,
 		MaxTokens:                256,
 		MaxInflight:              4,
@@ -516,7 +515,7 @@ func TestProIsRefused(t *testing.T) {
 // health check eat the day's allowance.
 func TestModelsIsNotCharged(t *testing.T) {
 	up := newUpstream(t, func(w http.ResponseWriter, r *http.Request) {
-		io.WriteString(w, `{"object":"list","data":[{"id":"deepseek-v4-flash"}]}`)
+		io.WriteString(w, `{"object":"list","data":[{"id":"deepseek-flash"}]}`)
 	})
 	h := newHarness(t, up, nil)
 	tok := h.enrol(t)
@@ -537,29 +536,34 @@ func TestModelsIsNotCharged(t *testing.T) {
 // /models answers "what can I use here". Through the free tier that is
 // one model, and any client picking off an unfiltered list would have
 // even odds of choosing the one that is then refused.
+//
+// Upstream has listed only deepseek-flash and deepseek-v4-pro since
+// 2026-09-10. An operator whose DSGATE_MODEL still says the retired
+// deepseek-v4-flash must get the model it now is, not an empty list.
 func TestModelsListsOnlyWhatIsServed(t *testing.T) {
-	up := newUpstream(t, func(w http.ResponseWriter, r *http.Request) {
-		io.WriteString(w, `{"object":"list","data":[
-		 {"id":"deepseek-v4-flash","object":"model","owned_by":"deepseek"},
-		 {"id":"deepseek-v4-pro","object":"model","owned_by":"deepseek"}]}`)
-	})
-	h := newHarness(t, up, nil)
-	tok := h.enrol(t)
+	for _, configured := range []string{"deepseek-flash", "deepseek-v4-flash"} {
+		t.Run(configured, func(t *testing.T) {
+			up := newUpstream(t, func(w http.ResponseWriter, r *http.Request) {
+				io.WriteString(w, `{"object":"list","data":[
+				 {"id":"deepseek-flash","object":"model","owned_by":"deepseek"},
+				 {"id":"deepseek-v4-pro","object":"model","owned_by":"deepseek"}]}`)
+			})
+			h := newHarness(t, up, func(c *Config, _ *quota.Limits) { c.Model = configured })
+			tok := h.enrol(t)
 
-	resp := h.do(t, "GET", "/models", tok, "")
-	defer resp.Body.Close()
-	raw, _ := io.ReadAll(resp.Body)
+			resp := h.do(t, "GET", "/models", tok, "")
+			defer resp.Body.Close()
+			raw, _ := io.ReadAll(resp.Body)
 
-	if strings.Contains(string(raw), "deepseek-v4-pro") {
-		t.Errorf("the free tier advertised a model it refuses to serve: %s", raw)
-	}
-	if !strings.Contains(string(raw), "deepseek-v4-flash") {
-		t.Errorf("the served model was filtered out too: %s", raw)
-	}
-	// Still a real upstream call, so `deepseek status` keeps answering
-	// whether DeepSeek itself is reachable.
-	if up.count() != 1 {
-		t.Errorf("upstream saw %d model requests, want 1", up.count())
+			if strings.Contains(string(raw), "deepseek-v4-pro") {
+				t.Errorf("the free tier advertised a model it refuses to serve: %s", raw)
+			}
+			if !strings.Contains(string(raw), `"deepseek-flash"`) {
+				t.Errorf("the served model was filtered out too: %s", raw)
+			}
+			// Still a real upstream call, so `deepseek status` keeps answering
+			// whether DeepSeek itself is reachable.
+		})
 	}
 }
 
@@ -844,7 +848,7 @@ func TestExpiredTokenIsRefused(t *testing.T) {
 func TestModelsIsCached(t *testing.T) {
 	up := newUpstream(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		io.WriteString(w, `{"object":"list","data":[{"id":"deepseek-v4-flash","object":"model"}]}`)
+		io.WriteString(w, `{"object":"list","data":[{"id":"deepseek-flash","object":"model"}]}`)
 	})
 	h := newHarness(t, up, nil)
 	tok := h.enrol(t)
@@ -853,7 +857,7 @@ func TestModelsIsCached(t *testing.T) {
 		resp := h.do(t, "GET", "/models", tok, "")
 		raw, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
-		if resp.StatusCode != 200 || !strings.Contains(string(raw), "deepseek-v4-flash") {
+		if resp.StatusCode != 200 || !strings.Contains(string(raw), "deepseek-flash") {
 			t.Fatalf("models call %d: HTTP %d: %s", i, resp.StatusCode, raw)
 		}
 	}
@@ -903,54 +907,36 @@ func TestUpstreamDryBalanceStopsAdmissions(t *testing.T) {
 	}
 }
 
-// web_search has to work end to end on the free tier — it is the reason
-// `deepseek respond --web-search` exists — and it has to stay rationed,
-// because one search costs about what ten ordinary turns cost.
-func TestWebSearchIsCarriedAndRationed(t *testing.T) {
+// DeepSeek removed server-side web_search from the Responses API on
+// 2026-09-10 and now ignores the tool. Forwarding it would bill a request
+// that answers from memory while the caller believes it searched, so the
+// gateway refuses it with the reason, before any quota or money moves.
+func TestWebSearchIsRefusedWithTheReason(t *testing.T) {
 	up := newUpstream(t, func(w http.ResponseWriter, r *http.Request) {
 		io.WriteString(w, chatReply(100, 50))
 	})
-	h := newHarness(t, up, nil) // DailySearches: 2
+	h := newHarness(t, up, nil)
 	tok := h.enrol(t)
 
-	const search = `{"input":"who won","tools":[{"type":"web_search"}]}`
-	for i := 0; i < 2; i++ {
-		resp := h.do(t, "POST", "/responses", tok, search)
-		resp.Body.Close()
-		if resp.StatusCode != http.StatusOK {
-			t.Fatalf("search %d: status = %d, want 200", i+1, resp.StatusCode)
-		}
-		h.settle(t)
-	}
-	// The tool must reach DeepSeek intact — a gateway that quietly dropped
-	// it would return a confidently unsourced answer.
-	tools, _ := up.last(t).Body["tools"].([]any)
-	if len(tools) != 1 {
-		t.Fatalf("upstream saw %d tools, want the one that was sent", len(tools))
-	}
-	if kind, _ := tools[0].(map[string]any)["type"].(string); kind != "web_search" {
-		t.Errorf("upstream saw tool type %q, want web_search", kind)
-	}
-
-	resp := h.do(t, "POST", "/responses", tok, search)
+	resp := h.do(t, "POST", "/responses", tok, `{"input":"who won","tools":[{"type":"web_search"}]}`)
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusTooManyRequests {
-		t.Fatalf("a third search past a ration of two: status = %d, want 429", resp.StatusCode)
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", resp.StatusCode)
 	}
 	var body struct {
 		Error struct {
-			Type    string `json:"type"`
 			Message string `json:"message"`
 		} `json:"error"`
 	}
 	json.NewDecoder(resp.Body).Decode(&body)
-	if !strings.Contains(body.Error.Message, "search") {
-		t.Errorf("the refusal does not say searches ran out: %q", body.Error.Message)
+	if !strings.Contains(body.Error.Message, "removed") {
+		t.Errorf("the refusal does not say the tool was removed upstream: %q", body.Error.Message)
 	}
-	// Ordinary requests must survive an exhausted search ration.
-	plain := h.do(t, "POST", "/responses", tok, `{"input":"hi"}`)
-	defer plain.Body.Close()
-	if plain.StatusCode != http.StatusOK {
-		t.Errorf("an ordinary request was refused after searches ran out: status = %d", plain.StatusCode)
+	if up.count() != 0 {
+		t.Error("a web_search request was forwarded")
+	}
+	h.settle(t)
+	if used := h.ledger.Status(subjectOf(t, tok), "anon").Used.Requests; used != 0 {
+		t.Errorf("a refused web_search consumed %d requests of quota", used)
 	}
 }

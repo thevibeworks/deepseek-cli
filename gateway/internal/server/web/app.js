@@ -514,7 +514,6 @@
     setText("lim-req", fmtInt(lim.requests));
     setText("lim-in", fmtCompact(lim.input_tokens));
     setText("lim-out", fmtCompact(lim.output_tokens));
-    setText("lim-search", fmtInt(lim.searches));
 
     var rAt = Date.parse(d.resets_at);
     var sNow = Date.parse(d.now);

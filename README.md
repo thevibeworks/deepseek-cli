@@ -134,7 +134,7 @@ The free tier relays your prompts to DeepSeek through a gateway run by
 this project. No account, no API key.
 
   gateway   https://freeseek.1lm.io
-  model     deepseek-v4-flash
+  model     deepseek-flash
   per day   30 requests · 60k input · 20k output tokens
   privacy   prompts and completions are relayed to DeepSeek and are not
             stored or logged by this gateway; only token counts and cost
@@ -189,7 +189,7 @@ One command per endpoint, named for what it does.
 | --- | --- | --- |
 | `chat` | `POST /chat/completions` | The default. OpenAI format, the one most tools speak. |
 | `anthropic` | `POST /anthropic/v1/messages` | The format Claude Code and the Anthropic SDKs speak. |
-| `respond` | `POST /responses` | The format Codex speaks. JSON Schema output and server-side `web_search` live only here. |
+| `respond` | `POST /responses` | The format Codex speaks. JSON Schema output lives only here. |
 | `fim` | `POST /beta/completions` | Fill in the middle — the shape editors use for inline completion. |
 | `models` | `GET /models` | Available models, joined with the published rate card. |
 | `balance` | `GET /user/balance` | What is left, per currency. |
@@ -209,7 +209,7 @@ One command per endpoint, named for what it does.
 deepseek chat "why is the sky blue"
 git diff | deepseek chat "write a commit message"
 deepseek chat "explain" --file server.go --file server_test.go
-deepseek chat "review this" --model deepseek-v4-pro --effort max
+deepseek chat "review this" --effort max
 deepseek chat "summarise" --system @house-style.md
 ```
 
@@ -322,11 +322,11 @@ page keeps the upstream URL it was converted from.
 ```bash
 # Anthropic Messages. Claude model names are accepted and remapped
 # server-side; the usage line shows both so cost stays traceable.
-deepseek anthropic "hello" --model claude-opus-4-1
-# · claude-opus-4-1→pro · 10 in · 8 out · ~$0.000011 · 0.9s
+deepseek anthropic "hello" --model claude-sonnet-4-5
+# · claude-sonnet-4-5→flash · 10 in · 8 out · ~$0.000006 · 0.9s
 
-# Responses: JSON Schema output, and a web_search tool DeepSeek runs
-deepseek respond "what shipped in Go 1.26" --web-search
+# Responses: JSON Schema output. Its server-side web_search tool was
+# removed upstream on 2026-09-10; --web-search now exits with that reason.
 deepseek respond "Berlin" -s "Return city and country." --schema @city.json
 
 # FIM: prefix in, suffix optional, the middle comes back
@@ -366,13 +366,13 @@ JSONL ledger:
 
 ```console
 $ deepseek usage --since 7d
-                   CALLS  IN     CACHED  OUT    COST
-deepseek-v4-flash  184    2.1M   78%     94k    $0.19
-deepseek-v4-pro    12     88k    41%     11k    $0.03
-total              196    2.2M   77%     105k   $0.22
+                 CALLS  IN     CACHED  OUT    COST
+deepseek-flash   184    2.1M   78%     94k    $0.13
+deepseek-v4-pro  12     88k    41%     11k    $0.06
+total            196    2.2M   77%     105k   $0.19
 
 by format: chat 170, anthropic 14, responses 8, fim 4
-context cache saved ~$0.23 (1.7M of 2.2M prompt tokens replayed)
+context cache saved ~$0.26 (1.7M of 2.2M prompt tokens replayed)
 costs are estimates from the published USD rate card, not billed amounts
 ```
 

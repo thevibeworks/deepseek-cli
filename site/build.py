@@ -585,7 +585,7 @@ answer.</p>
 this project. No account, no API key.</span>
 
 <span class="c">  gateway   https://freeseek.1lm.io
-  model     deepseek-v4-flash
+  model     deepseek-flash
   per day   30 requests &middot; 60k input &middot; 20k output tokens
   privacy   prompts are relayed, not stored; only token counts are recorded</span>
 
@@ -716,7 +716,7 @@ Full reference on the <a href="{{root}}commands/">commands page</a>.</p>
 <tbody>
 <tr><td><code>chat</code></td><td><code>POST /chat/completions</code></td><td>The default. OpenAI format, the one most tools speak.</td></tr>
 <tr><td><code>anthropic</code></td><td><code>POST /anthropic/v1/messages</code></td><td>What Claude Code and the Anthropic SDKs speak.</td></tr>
-<tr><td><code>respond</code></td><td><code>POST /responses</code></td><td>What Codex speaks. JSON Schema output and server-side web search live only here.</td></tr>
+<tr><td><code>respond</code></td><td><code>POST /responses</code></td><td>What Codex speaks. JSON Schema output lives only here.</td></tr>
 <tr><td><code>fim</code></td><td><code>POST /beta/completions</code></td><td>Fill in the middle &ndash; the shape editors use for inline completion.</td></tr>
 <tr><td><code>models</code></td><td><code>GET /models</code></td><td>Available models, joined with the published rate card.</td></tr>
 <tr><td><code>balance</code></td><td><code>GET /user/balance</code></td><td>What is left, per currency.</td></tr>
@@ -866,7 +866,7 @@ format that supports chat prefix completion.</p>
 <pre><code>ds chat "why is the sky blue"
 git diff | ds chat "write a commit message"
 ds chat "explain" --file server.go --file server_test.go
-ds chat "review this" --model deepseek-v4-pro --effort max
+ds chat "review this" --effort max
 ds chat "and now in one line" --continue</code></pre>
 <p>Arguments are the instruction; piped stdin and <code>--file</code> are the
 material. All three compose.</p>
@@ -950,18 +950,17 @@ shows both names so the cost stays traceable to the model that actually ran.
 See <a href="{{root}}formats/">formats</a> for the mapping.</p>
 
 <h2 id="respond">respond</h2>
-<p><code>POST /responses</code> &ndash; the format Codex speaks. Two things
-live only here: JSON Schema structured output, and a <code>web_search</code>
-tool DeepSeek runs server-side.</p>
-<pre><code>ds respond "what shipped in Go 1.26" --web-search
-ds respond "Berlin" -s "Return city and country." --schema @city.json</code></pre>
-<p><code>--web-search</code> is the whole setup: the search runs on
-DeepSeek's side, there is nothing to execute locally, and the searches the
-model makes are reported on stderr as they happen. It is the one tool in the
-whole API that this CLI can &ldquo;run&rdquo; for you, because DeepSeek runs
-it. The API ignores the OpenAI knobs (<code>search_context_size</code>,
-<code>user_location</code>), and in multi-turn use the server restores
-search results replayed from earlier turns by itself.</p>
+<p><code>POST /responses</code> &ndash; the format Codex speaks. JSON Schema
+structured output lives only here.</p>
+<pre><code>ds respond "Berlin" -s "Return city and country." --schema @city.json</code></pre>
+<p>There is no server-side web search any more. DeepSeek removed the
+<code>web_search</code> tool from the Responses API on 2026-09-10, with V4.1
+Flash; the <a href="https://api-docs.deepseek.com/guides/responses_api">Responses
+API guide</a> now lists it among the built-in tools that are ignored. The
+<code>--web-search</code> flag fails with that reason and sends nothing,
+rather than bill a request that answers from memory as if it had searched.
+To ground an answer, search on your side and pass the results with
+<code>--file</code> or stdin.</p>
 <p>Both models, since V4-Pro's official release &ndash; it was flash-only
 before 2026-08-12.</p>
 
@@ -1098,7 +1097,7 @@ PAGES.append(dict(
     keywords="deepseek anthropic api, deepseek openai compatible, deepseek responses api, deepseek claude code, deepseek codex, deepseek api format comparison, deepseek cache_read_input_tokens, deepseek model mapping",
     jsonld=faq([
         ("Which DeepSeek API format should I use?",
-         "Use the OpenAI /chat/completions format unless you have a reason not to: it is the most widely supported and the only one with chat prefix completion. Use /anthropic/v1/messages when the surrounding tooling speaks Anthropic Messages, such as Claude Code. Use /responses when you need JSON Schema structured output or DeepSeek's server-side web search, or when the tool is Codex. Use FIM only for fill-in-the-middle code completion."),
+         "Use the OpenAI /chat/completions format unless you have a reason not to: it is the most widely supported and the only one with chat prefix completion. Use /anthropic/v1/messages when the surrounding tooling speaks Anthropic Messages, such as Claude Code. Use /responses when you need JSON Schema structured output, or when the tool is Codex. It no longer offers server-side web search: DeepSeek removed that tool on 2026-09-10. Use FIM only for fill-in-the-middle code completion."),
         ("Does DeepSeek's Anthropic endpoint count tokens the same way?",
          "No. On /anthropic/v1/messages the usage.input_tokens field excludes cache reads, so the full prompt is input_tokens plus cache_read_input_tokens. The OpenAI chat and Responses formats use the opposite convention, where the input count already includes cached tokens. Treating them the same misprices every cached call."),
         ("What happens if I send a Claude model name to DeepSeek?",
@@ -1120,7 +1119,7 @@ without code changes. They are not interchangeable.</p>
 <tbody>
 <tr><td><strong>OpenAI chat</strong><br><code>ds chat</code></td><td><code>/chat/completions</code></td><td>Default. Widest tool support, and the only format with chat prefix completion.</td></tr>
 <tr><td><strong>Anthropic Messages</strong><br><code>ds anthropic</code></td><td><code>/anthropic/v1/messages</code></td><td>The surrounding tooling speaks Anthropic &ndash; Claude Code, the Anthropic SDKs, the Claude desktop app.</td></tr>
-<tr><td><strong>OpenAI Responses</strong><br><code>ds respond</code></td><td><code>/responses</code></td><td>You need JSON Schema output or server-side web search. Also what Codex speaks.</td></tr>
+<tr><td><strong>OpenAI Responses</strong><br><code>ds respond</code></td><td><code>/responses</code></td><td>You need JSON Schema output. Also what Codex speaks. (Its server-side web search was removed upstream on 2026-09-10.)</td></tr>
 <tr><td><strong>FIM</strong><br><code>ds fim</code></td><td><code>/beta/completions</code></td><td>Fill-in-the-middle code completion. No chat structure at all.</td></tr>
 </tbody>
 </table>
@@ -1136,7 +1135,7 @@ without code changes. They are not interchangeable.</p>
 <tr><th>Thinking toggle</th><td><code>thinking.type</code></td><td><code>thinking.type</code></td><td><code>reasoning.effort: none</code></td><td>never thinks</td></tr>
 <tr><th>Effort control</th><td><code>reasoning_effort</code></td><td><code>output_config.effort</code></td><td><code>reasoning.effort</code></td><td>&ndash;</td></tr>
 <tr><th>JSON Schema output</th><td>&ndash;</td><td>&ndash;</td><td><strong>yes</strong></td><td>&ndash;</td></tr>
-<tr><th>Server-side web search</th><td>&ndash;</td><td>&ndash;</td><td><strong>yes</strong></td><td>&ndash;</td></tr>
+<tr><th>Server-side web search</th><td>&ndash;</td><td>&ndash;</td><td>removed 2026-09-10</td><td>&ndash;</td></tr>
 <tr><th>Prefix completion</th><td><strong>yes</strong> (beta path)</td><td>&ndash;</td><td>&ndash;</td><td>&ndash;</td></tr>
 <tr><th>Models</th><td>both</td><td>both</td><td>both</td><td>both</td></tr>
 <tr><th>Stream terminator</th><td><code>data: [DONE]</code></td><td><code>message_stop</code></td><td><code>response.completed</code></td><td><code>data: [DONE]</code></td></tr>
@@ -1343,9 +1342,9 @@ ds tokens "your prompt here" -e low    # what it costs without the template</cod
 <h2 id="ledger">The ledger</h2>
 <p>Every call prints one line to stderr and appends one row to
 <code>~/.local/state/deepseek/usage.jsonl</code>:</p>
-<pre><code>{"ts":"2026-08-05T05:18:12Z","api":"chat","model":"deepseek-v4-flash",
+<pre><code>{"ts":"2026-09-18T05:18:12Z","api":"chat","model":"deepseek-flash",
  "in":3242,"cache_hit":3200,"cache_miss":42,"out":1,
- "cost_usd":0.0000109,"saved_usd":0.000439,"ms":1041}</code></pre>
+ "cost_usd":0.0000165,"saved_usd":0.00047,"ms":1041}</code></pre>
 <p>Token counts are exact and are what gets stored; the cost field is a
 convenience. That is deliberate &ndash; when DeepSeek changes the rate card,
 every historical row can be repriced.</p>
@@ -1357,13 +1356,13 @@ ds usage --entries        # individual calls</code></pre>
 
 <div class="term">
 <div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="title">ds usage --since 7d</span></div>
-<pre><code>                   CALLS  IN     CACHED  OUT    COST
-deepseek-v4-flash  184    2.1M   78%     94k    $0.19
-deepseek-v4-pro    12     88k    41%     11k    $0.03
-total              196    2.2M   77%     105k   $0.22
+<pre><code>                 CALLS  IN     CACHED  OUT    COST
+deepseek-flash   184    2.1M   78%     94k    $0.13
+deepseek-v4-pro  12     88k    41%     11k    $0.06
+total            196    2.2M   77%     105k   $0.19
 
 <span class="c">by format: chat 170, anthropic 14, responses 8, fim 4</span>
-<span class="c">context cache saved ~$0.23 (1.7M of 2.2M prompt tokens replayed)</span>
+<span class="c">context cache saved ~$0.26 (1.7M of 2.2M prompt tokens replayed)</span>
 <span class="c">costs are estimates from the published USD rate card, not billed amounts</span></code></pre>
 </div>
 
@@ -1384,10 +1383,11 @@ so an estimate that ignores the clock is wrong for seven hours a day.
 Every call is priced at the card in force at the moment it was made, and
 the <a href="#ledger">ledger</a> keeps token counts rather than
 dollars, so history reprices correctly under whichever card was real.</li>
-<li><strong>The cache discount narrowed at the flip.</strong> On the old
+<li><strong>The cache discount has moved twice.</strong> On the old
 flat card a cached input token cost 1/50th of a miss on flash and 1/120th
-on pro; on the card above both settle at about 1/30th. Still the biggest
-lever on a bill, just a smaller one.</li>
+on pro; the V4 card of 2026-08-16 settled both at about 1/30th; V4.1
+Flash (2026-09-10) put flash back at 1/50th, and pro stayed at 1/30th.
+Still the biggest lever on a bill.</li>
 <li><strong>Local only.</strong> The ledger records calls made by this CLI on
 this machine. It knows nothing about your other clients.</li>
 </ul>
@@ -1483,17 +1483,19 @@ and pro did not change:</p>
 <p>The retired names <code>deepseek-v4-flash</code> and
 <code>deepseek-v4-flash-vision-exp</code> still work: V4.1 Flash serves them,
 at the <code>deepseek-flash</code> price.</p>
-<p>DeepSeek dated the cut and published no time, so <strong>the instant the
-CLI switches cards is inferred</strong>: 11:00 UTC on 2026-09-10. Our docs
-mirror fetched the old card at 04:50 UTC that day and the new one at 11:27
-UTC; 11:00 is the last whole hour between the two, so an estimate for a call
-made in that gap can overstate what it cost and never understate it.</p>
+<p>The CLI switches cards at <strong>04:00 UTC on 2026-09-10</strong>, the
+instant DeepSeek's <a href="https://api-docs.deepseek.com/news/news260910">release
+note</a> gives: &ldquo;New pricing takes effect at 04:00 UTC on Sept 10,
+2026.&rdquo; The pricing page itself carries no time, and until 2026-09-18 we
+used an inferred 11:00 UTC, bracketed by our docs mirror fetching the old card
+at 04:50 UTC and the new one at 11:27 UTC.</p>
 <p>The <a href="{{root}}cost/#cache">context cache</a> stays the biggest
 lever: a cached input token costs 1/50th of a miss on flash and 1/30th on
 pro. Prompt structure still dominates a bill &ndash; it is worth up to
 50&times;, where the hour of the day is worth 2&times;.</p>
 
 <h2 id="before">What it replaced</h2>
+<!-- claim:historical -->
 <p>Two superseded cards. They are here because the
 <a href="{{root}}cost/#ledger">ledger</a> keeps token counts rather than
 dollars, so every call reprices under the card it was actually billed
@@ -1557,10 +1559,14 @@ The V4.1 Flash card has not been checked against a bill yet.</p>
 PAGES.append(dict(
     slug="bench/",
     crumb="bench",
-    title="DeepSeek V4-Pro benchmarks vs GPT, Claude, Kimi and GLM, and the kill line",
-    description="How deepseek-v4-pro (GA 0813) and v4-flash score against Kimi K3, GLM-5.2, Claude Opus 4.8 and Fable 5 on the agent suites, what the GA checkpoint changed, and the economics idea behind the DeepSeek kill line.",
-    keywords="deepseek v4 pro benchmarks, deepseek v4 pro vs claude, deepseek vs gpt-5.6, deepseek vs kimi k3, deepseek vs glm, deepseek 斩杀线, deepseek kill line, deepseek v4 pro 0813, deepseek agent benchmarks, terminal bench deepseek, deepswe, toolathlon",
+    title="DeepSeek V4.1 Flash benchmarks, the V4 launch table, and the kill line",
+    description="DeepSeek-V4.1-Flash (deepseek-flash) as DeepSeek's changelog scores it, next to V4-Pro-0813 on the benchmarks both charts name; the dated V4 launch table against Kimi K3, GLM-5.2, Claude Opus 4.8 and Fable 5; and the economics idea behind the DeepSeek kill line.",
+    keywords="deepseek v4.1 flash benchmarks, deepseek-flash benchmarks, deepseek v4.1 flash vs v4 pro, deepseek v4 pro benchmarks, deepseek v4 pro vs claude, deepseek vs gpt-5.6, deepseek vs kimi k3, deepseek vs glm, deepseek 斩杀线, deepseek kill line, deepseek v4 pro 0813, deepseek agent benchmarks, terminal bench deepseek, deepswe, toolathlon",
     jsonld=faq([
+        ("How does DeepSeek-V4.1-Flash score?",
+         "On DeepSeek's changelog entry of 2026-09-10: Terminal-Bench 2.1 90.6, DeepSWE v1.1 74.2, GPQA Diamond 90.9, CyberGym 88.1, HLE 36.8 (39.1 on the text-only subset), HLE with tools 63.9, Agents' Last Exam 31.8, Codeforces rating 3471. Of the five benchmarks that DeepSeek's V4-Pro-0813 chart also names, Flash is ahead on four (Terminal-Bench 2.1, CyberGym, Agents' Last Exam, HLE with tools) and behind on HLE without tools. These are vendor numbers from two charts a month apart, not an independent head-to-head."),
+        ("Should I use deepseek-flash or deepseek-v4-pro?",
+         "deepseek-flash, unless your own measurements say otherwise. DeepSeek's 2026-09-10 release note says V4.1 Flash is ahead of V4-Pro on performance, cost, speed and total runtime, and its published scores back that on most shared benchmarks. It is also about 4x cheaper on uncached input and 3x on output, and it takes images, which pro does not. deepseek-v4-pro stays available at an unchanged price."),
         ("How does DeepSeek-V4-Pro score against other models on agent benchmarks?",
          "On DeepSeek's own launch-day chart (2026-08-12), V4-Pro-0813 scores Terminal-Bench 2.1 87.9, DeepSWE 62.7, Toolathlon-Verified 74.1, CyberGym 83.3, HLE-with-tools 60.0 and AutomationBench 31.8. It sits in the same cluster as Kimi K3, Claude Fable 5 and Opus 4.8: within a point of Fable 5 on Terminal-Bench (88.0) and CyberGym (83.1), ahead of Opus 4.8 on several execution suites, but behind Kimi K3 on Terminal-Bench, DeepSWE, Toolathlon and DSBench-Hard. These are vendor numbers from one harness and are not yet independently reproduced."),
         ("What did the V4-Pro GA (0813) checkpoint change over the preview?",
@@ -1572,11 +1578,47 @@ PAGES.append(dict(
     ]),
     body="""
 <h1>Benchmarks</h1>
-<p class="lede">Where <code>deepseek-v4-pro</code> and <code>deepseek-v4-flash</code>
-sit against the field, what the 0813 checkpoint changed, and the economics
-argument the Chinese community calls the <span lang="zh">斩杀线</span>, the
-kill line. The numbers below are DeepSeek's own launch-day figures unless
-marked otherwise; read the caveats first.</p>
+<p class="lede"><code>deepseek-flash</code>, DeepSeek-V4.1-Flash since
+2026-09-10, is the default model here and the one this page recommends.
+Below: how DeepSeek scores it, the V4 launch table from August kept as
+dated history, and the economics argument the Chinese community calls the
+<span lang="zh">斩杀线</span>, the kill line. Every number is DeepSeek's own
+unless marked otherwise; read the caveats first.</p>
+
+<h2 id="v41-flash">2026-09-10 &middot; V4.1 Flash, as DeepSeek scores it</h2>
+<p>From the <a href="{{docs}}/updates">changelog</a> entry of 2026-09-10 and
+the <a href="{{docs}}/news/news260910">release note</a>, which says V4.1
+Flash is ahead of V4-Pro &ldquo;on performance, cost, speed &amp; total
+runtime&rdquo;. Where DeepSeek's V4-Pro-0813 chart names the same benchmark,
+its score sits alongside; nothing else is compared:</p>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Benchmark</th><th class="num">V4.1 Flash (2026-09-10)</th><th class="num">V4-Pro 0813 (2026-08-12)</th></tr></thead>
+<tbody>
+<tr><td>Terminal-Bench 2.1</td><td class="num">90.6</td><td class="num">87.9</td></tr>
+<tr><td>CyberGym</td><td class="num">88.1</td><td class="num">83.3</td></tr>
+<tr><td>Agents' Last Exam</td><td class="num">31.8</td><td class="num">25.7</td></tr>
+<tr><td>HLE, with tools</td><td class="num">63.9</td><td class="num">60.0</td></tr>
+<tr><td>HLE, no tools</td><td class="num">36.8 (39.1 text-only)</td><td class="num">42.7</td></tr>
+</tbody>
+</table>
+</div>
+<p>The rest of the changelog's list has no V4-Pro counterpart under the
+same name: DeepSWE v1.1 74.2, GPQA Diamond 90.9, Codeforces 3471, MathArena
+Apex 65.6, NL2Repo-Bench 65.4, SEC-Bench Pro 62.8, Automation-Bench 54.8,
+ProgramBench 20.3, Terminal-Bench 3.0 30.0 and 4.0 31.2. Two charts a month
+apart can differ in harness and settings, so read the right-hand column as
+context, not as a controlled head-to-head. On price there is nothing to
+qualify: flash is about 4&times; cheaper than pro on uncached input and
+3&times; on output, and it takes images, which pro does not.</p>
+
+
+<h2 id="table">The V4 launch table (2026-08-12)</h2>
+<!-- claim:historical -->
+<p>History: the V4 generation as it launched, before V4.1 Flash retired
+V4 Flash. Higher is better. HLE is shown as without-tools / with-tools. Every figure
+is from DeepSeek's GA chart of 2026-08-12; a dash means the vendor did not
+report it.</p>
 
 <div class="note warn">
 <span class="tag">read this before quoting a number</span>
@@ -1599,11 +1641,6 @@ and roughly eight months behind the frontier, below its self-reported
 position. No equivalent 0813 evaluation exists yet.</li>
 </ul>
 </div>
-
-<h2 id="table">The launch table</h2>
-<p>Higher is better. HLE is shown as without-tools / with-tools. Every figure
-is from DeepSeek's GA chart of 2026-08-12; a dash means the vendor did not
-report it.</p>
 <div class="tablewrap">
 <table>
 <thead><tr>
@@ -1634,10 +1671,12 @@ report it.</p>
 Terminal-Bench, DeepSWE, CyberGym and AutomationBench, and <strong>behind Kimi
 K3</strong> on Terminal-Bench, DeepSWE, Toolathlon and DSBench-Hard. It is in
 the cluster, not clear of it. On knowledge without tools (HLE) the closed
-models still lead. Flash trails Pro across the board but stays remarkably close
-for a fifth of the price, which is the whole point of the next two sections.</p>
+models still lead. V4 Flash trailed V4 Pro across the board at a fifth of the
+price; its successor, V4.1 Flash, is <a href="#v41-flash">scored above
+V4-Pro-0813</a> on most of the benchmarks both charts name.</p>
 
-<h2 id="delta">What GA changed</h2>
+<h2 id="delta">What V4-Pro's GA changed (2026-08-13)</h2>
+<!-- claim:historical -->
 <p>The model ID stayed <code>deepseek-v4-pro</code> and the
 <a href="{{root}}cost/">rate card</a> did not move. What moved is the
 checkpoint. Against the April preview, DeepSeek's own chart shows the gains
@@ -1671,11 +1710,11 @@ any model that is <em>both weaker and more expensive</em> falls below it and has
 no reason to be chosen. The lever is price, and the gap is not small:</p>
 <div class="tablewrap">
 <table>
-<thead><tr><th>Per 1M tokens</th><th class="num">flash</th><th class="num">v4-pro</th><th class="num">GPT-5.6 Sol</th><th class="num">pro is cheaper by</th></tr></thead>
+<thead><tr><th>Per 1M tokens</th><th class="num">flash</th><th class="num">v4-pro</th><th class="num">GPT-5.6 Sol</th><th class="num">flash is cheaper by</th><th class="num">pro is cheaper by</th></tr></thead>
 <tbody>
-<tr><td>input, cache miss</td><td class="num">$0.15 / $0.30</td><td class="num">$0.66 / $1.32</td><td class="num">$5.00</td><td class="num">7.6x / 3.8x</td></tr>
-<tr><td>input, cache hit</td><td class="num">$0.003 / $0.006</td><td class="num">$0.022 / $0.044</td><td class="num">$0.50</td><td class="num">23x / 11x</td></tr>
-<tr><td>output</td><td class="num">$0.60 / $1.20</td><td class="num">$1.98 / $3.96</td><td class="num">$30.00</td><td class="num">15x / 7.6x</td></tr>
+<tr><td>input, cache miss</td><td class="num">$0.15 / $0.30</td><td class="num">$0.66 / $1.32</td><td class="num">$5.00</td><td class="num">33x / 17x</td><td class="num">7.6x / 3.8x</td></tr>
+<tr><td>input, cache hit</td><td class="num">$0.003 / $0.006</td><td class="num">$0.022 / $0.044</td><td class="num">$0.50</td><td class="num">167x / 83x</td><td class="num">23x / 11x</td></tr>
+<tr><td>output</td><td class="num">$0.60 / $1.20</td><td class="num">$1.98 / $3.96</td><td class="num">$30.00</td><td class="num">50x / 25x</td><td class="num">15x / 7.6x</td></tr>
 </tbody>
 </table>
 </div>
@@ -1685,9 +1724,13 @@ V4.1) on the lower card of 2026-09-10. They are a conversion of the RMB
 card (pro: &yen;4.5 / &yen;0.15 / &yen;13.5 per 1M off-peak, double at peak)
 at one consistent rate. GPT-5.6 Sol prices are from OpenAI's own listing.
 The <a href="{{root}}pricing/">pricing page</a> has the full schedule.</p>
+<p>Since 2026-09-10 the line is drawn by flash, not pro: it is the cheaper
+model and, on DeepSeek's own numbers, the <a href="#v41-flash">higher-scoring
+one</a> on most shared benchmarks.</p>
 <div class="note warn">
 <span class="tag">the repricing moved this line</span>
-<p>These ratios were <strong>11.5x / 138x / 34.5x</strong> on the flat card
+<!-- claim:historical -->
+<p>Pro's ratios were <strong>11.5x / 138x / 34.5x</strong> on the flat card
 that ran until 2026-08-16. The cache-hit column is where the argument
 lived &ndash; a 138x edge is what made replayed context, parallel reviewers
 and long tool loops nearly free &ndash; and it is now 23x off-peak, 11x at
@@ -1696,9 +1739,8 @@ category, and any plan that was built on the old number should be
 re-costed rather than assumed.</p>
 </div>
 <p>The sober version matters as much as the slogan. The kill line is real for
-the <em>middle</em> of the market: a model that costs more than V4-Pro and
-scores below it on the table above is hard to justify, and that is most of the
-field. It is <strong>not</strong> real for the frontier. On the hardest
+the <em>middle</em> of the market: a model that costs more than DeepSeek's
+and scores below it is hard to justify, and that is most of the field. It is <strong>not</strong> real for the frontier. On the hardest
 multi-step work the strongest closed models still finish in fewer turns and
 need less steering, and per-attempt reliability is a thing you can measure in
 wall-clock and interventions, not just in dollars. DeepSeek does not have to win
@@ -1709,13 +1751,15 @@ the one task where getting it right the first time is the whole job.</p>
 <p>The economics only pay off if the workflow is built for them. Three moves,
 each of which this CLI is shaped to support:</p>
 <ul>
-<li><strong>Route by role.</strong> Use <code>deepseek-v4-pro</code> for
-planning, ambiguous changes, security review and recovery; let
-<code>deepseek-v4-flash</code> do bounded implementations and parallel work.
-<code>ds chat -m deepseek-v4-pro</code> and the
-<a href="{{root}}formats/">Anthropic remap</a> make the switch one flag.</li>
+<li><strong>Start on flash.</strong> <code>deepseek-flash</code> is the
+default everywhere in this CLI, and DeepSeek's 2026-09-10 note puts it ahead
+of V4-Pro on performance, cost and speed. Keep
+<code>deepseek-v4-pro</code> for a task where your own bake-off says it
+lands more often; <code>ds chat -m deepseek-v4-pro</code> is the one flag,
+and the <a href="{{root}}formats/">Anthropic remap</a> sends
+<code>claude-opus-*</code> there.</li>
 <li><strong>Structure prompts for the cache.</strong> A cached input token
-costs about 1/30th of an uncached one. Keep the system prompt, tool schemas,
+costs 1/50th of an uncached one on flash, 1/30th on pro. Keep the system prompt, tool schemas,
 repository map and durable instructions in an identical prefix and put the
 volatile part last; <code>ds usage</code> reports what the cache saved so you
 can see whether it is working. This is where the cache-hit column turns from
@@ -1734,8 +1778,10 @@ that has not been announced yet.</li>
 </ul>
 
 <h2 id="sources">Sources</h2>
-<p>The launch table and the preview deltas are transcribed from DeepSeek's
-official agent-benchmark chart, published on the
+<p>The V4.1 Flash scores are DeepSeek's changelog entry of 2026-09-10,
+also carried offline by <code>ds docs changelog</code>. The launch table and
+the preview deltas are transcribed from DeepSeek's official agent-benchmark
+chart, published on the
 <a href="{{docs}}/quick_start/pricing">Models &amp; Pricing</a> page and
 circulated on 2026-08-12; the extended variant carrying the Kimi K3 and GLM-5.2
 columns was the widest copy available. Rate-card figures are DeepSeek's own and
@@ -1748,10 +1794,12 @@ cross-check a live leaderboard before betting on a single cell.</p>
 PAGES.append(dict(
     slug="news/",
     crumb="news",
-    title="DeepSeek API news: V4.1 Flash cuts the Flash price, the repricing is live, dsh ships",
-    description="What is changing around the DeepSeek API: DeepSeek-V4.1-Flash shipped 2026-09-10 as deepseek-flash, on a lower Flash card, with the V4 Flash names retired; peak/off-peak billing went live at 2026-08-16 16:00 UTC and is confirmed against a real bill, DeepSeek ships dsh (DeepSeek Harness), its official open-source agent harness, V4-Pro's official release (DeepSeek-V4-Pro-0813), V4-Flash's official release, and what each one means for a call.",
-    keywords="deepseek v4.1 flash, deepseek-flash, deepseek v4.1 flash price, deepseek price cut, deepseek-v4-flash retired, deepseek harness, dsh, @deepseek-ai/dsh, install dsh, dsh plugins, dsh skills, dsh-plugin, dsh vs claude code, deepseek cli vs dsh, deepseek v4 pro release, deepseek v4 pro ga, deepseek-v4-pro-0813, deepseek api price increase, deepseek price rise 2026, deepseek peak hour pricing, deepseek peak off-peak billing, deepseek repricing 2026-08-16, deepseek new prices live, deepseek api news, deepseek api changelog, deepseek v4 flash release, deepseek pricing change",
+    title="DeepSeek API news: deepseek-flash is the default, web search is gone, V4.1 Flash cuts the price",
+    description="What is changing around the DeepSeek API: this project defaults to deepseek-flash everywhere and the Responses API's server-side web_search is gone; DeepSeek-V4.1-Flash shipped 2026-09-10 as deepseek-flash, on a lower Flash card, with the V4 Flash names retired; peak/off-peak billing went live at 2026-08-16 16:00 UTC and is confirmed against a real bill, DeepSeek ships dsh (DeepSeek Harness), its official open-source agent harness, V4-Pro's official release (DeepSeek-V4-Pro-0813), V4-Flash's official release, and what each one means for a call.",
+    keywords="deepseek v4.1 flash, deepseek-flash, deepseek web_search removed, deepseek responses api web search, deepseek v4.1 flash price, deepseek price cut, deepseek-v4-flash retired, deepseek harness, dsh, @deepseek-ai/dsh, install dsh, dsh plugins, dsh skills, dsh-plugin, dsh vs claude code, deepseek cli vs dsh, deepseek v4 pro release, deepseek v4 pro ga, deepseek-v4-pro-0813, deepseek api price increase, deepseek price rise 2026, deepseek peak hour pricing, deepseek peak off-peak billing, deepseek repricing 2026-08-16, deepseek new prices live, deepseek api news, deepseek api changelog, deepseek v4 flash release, deepseek pricing change",
     jsonld=faq([
+        ("Does DeepSeek's Responses API still have web search?",
+         "No. DeepSeek removed the server-side web_search tool from the Responses API with the V4.1 Flash release of 2026-09-10; the Responses API guide now lists it among the built-in tools that are ignored. A request that still sends it is answered without searching: a probe on 2026-09-18 billed 21 input tokens, where one search request used to bill about 40,000. The deepseek CLI's respond --web-search now fails with that reason, and the free tier refuses the tool."),
         ("What is DeepSeek-V4.1-Flash?",
          "DeepSeek's Flash model since 2026-09-10, with native image input, called as deepseek-flash. It retired V4 Flash and V4 Flash Vision Exp; their names, deepseek-v4-flash and deepseek-v4-flash-vision-exp, are still accepted, are served by V4.1 Flash and bill at the Flash price. The Flash card fell to $0.003 / $0.15 / $0.60 per 1M tokens off-peak (cache hit / cache miss / output), from $0.007 / $0.22 / $0.66. deepseek-v4-pro continues with its card unchanged."),
         ("Is DeepSeek V4-Pro officially released?",
@@ -1765,7 +1813,7 @@ PAGES.append(dict(
         ("What are DeepSeek's current API prices?",
          "Per 1M tokens (cache hit / cache miss / output), deepseek-flash is $0.003 / $0.15 / $0.60 off-peak and $0.006 / $0.30 / $1.20 peak, on the card in force since the V4.1 Flash release of 2026-09-10; deepseek-v4-pro, unchanged since 16:00 UTC on 2026-08-16, is $0.022 / $0.66 / $1.98 off-peak and $0.044 / $1.32 / $3.96 peak. In RMB, flash is 0.02 / 1 / 4 yuan off-peak and 0.04 / 2 / 8 yuan peak, and pro is 0.15 / 4.5 / 13.5 yuan off-peak and 0.3 / 9 / 27 yuan peak. Peak hours are 01:00-04:00 and 06:00-10:00 UTC, Monday to Friday; every other hour, and the whole weekend, is off-peak."),
         ("Which hours are cheapest on the DeepSeek API?",
-         "Every hour outside 01:00-04:00 and 06:00-10:00 UTC, Monday to Friday, which bill at half the peak rate — and since 2026-08-22 the whole weekend, on the Beijing calendar, so the cheap window opens at 16:00 UTC on Friday. Those peak windows are 09:00-12:00 and 14:00-18:00 Beijing time, the Chinese working day, so the whole European and American working day is off-peak. Batch and agent work that can be scheduled should run off-peak; the saving is exactly 2x."),
+         "Every hour outside 01:00-04:00 and 06:00-10:00 UTC, Monday to Friday, which bill at half the peak rate, and since 2026-08-22 the whole weekend, on the Beijing calendar, so the cheap window opens at 16:00 UTC on Friday. Those peak windows are 09:00-12:00 and 14:00-18:00 Beijing time, the Chinese working day, so the whole European and American working day is off-peak. Batch and agent work that can be scheduled should run off-peak; the saving is exactly 2x."),
         ("Where can I follow DeepSeek API changes?",
          "DeepSeek's own change log lives at api-docs.deepseek.com/updates. The deepseek CLI carries the same documentation inside the binary: `deepseek docs changelog` prints it offline, and `deepseek docs sync` refreshes the snapshot."),
     ]),
@@ -1775,6 +1823,25 @@ PAGES.append(dict(
 cost of a call. Curated from official announcements and checked against the
 live API where that is possible; the in-terminal feed is
 <code>ds docs changelog</code>.</p>
+
+<h2 id="flash-default">2026-09-18 &middot; deepseek-flash everywhere, and web search is gone<span class="chip warn">removed upstream</span></h2>
+<p>This project now defaults to <code>deepseek-flash</code> everywhere: the
+CLI, the <a href="{{root}}playground/">playground</a>, and the free tier at
+<a href="https://freeseek.1lm.io">freeseek.1lm.io</a>, which serves
+<code>deepseek-flash</code> and treats the retired flash names as the same
+model. DeepSeek's changelog puts V4.1 Flash ahead of V4-Pro-0813 on most of
+the benchmarks both charts name, at about a quarter of pro's input price; the
+<a href="{{root}}bench/#v41-flash">bench page</a> has the numbers.
+<code>deepseek-v4-pro</code> stays one flag away and correctly priced.</p>
+<p>Server-side web search is gone. DeepSeek removed the
+<code>web_search</code> tool from the Responses API on 2026-09-10; the
+<a href="{{docs}}/guides/responses_api">Responses API guide</a> now lists it
+among the built-in tools that are ignored. The request is still accepted,
+which is what makes it dangerous: a probe on 2026-09-18 billed 21 input
+tokens, where one search request used to bill about 40,000, and the answer
+came from memory. So <code>ds respond --web-search</code> now fails with that
+reason and sends nothing, and the free tier refuses the tool and has dropped
+its three-a-day search ration.</p>
 
 <h2 id="v41-flash">2026-09-10 &middot; V4.1 Flash, on a cheaper card<span class="chip">price cut</span></h2>
 <p>DeepSeek-V4.1-Flash is on the API as <code>deepseek-flash</code>, with
@@ -1801,11 +1868,12 @@ Pro's card did not move, and DeepSeek says it will "continue providing API
 services for DeepSeek V4 Pro after September 14, 2026, with the billing method
 remaining unchanged." The peak windows and the weekend rule are unchanged
 too.</p>
-<p>The changelog dates the release and not the price change. <code>ds
-pricing</code> and the cost estimates switch cards at <strong>11:00 UTC on
-2026-09-10, an inferred instant</strong>: our docs mirror fetched the old card
-at 04:50 UTC that day and the new one at 11:27 UTC, and a call estimated in
-that gap can only be overstated. The
+<p>The changelog dates the release and not the price change; the
+<a href="https://api-docs.deepseek.com/news/news260910">release note</a>
+does: 04:00 UTC on 2026-09-10. <code>ds pricing</code> and the cost
+estimates switch cards at that instant. Until 2026-09-18 they used an
+inferred 11:00 UTC, bracketed by our docs mirror's fetches of the old and
+new cards. The
 <a href="{{root}}pricing/#after">pricing page</a> has both cards.</p>
 
 <h2 id="weekends-off-peak">2026-08-22 &middot; weekends are off-peak, all day<span class="chip warn">not in the changelog</span></h2>
@@ -2257,6 +2325,7 @@ explicitly adapted for Codex. The official V4-Pro release &ldquo;will follow
 soon&rdquo;.</p>
 
 <h2 id="v4">2026-04-24 &middot; V4 arrives, the old names leave</h2>
+<!-- claim:historical -->
 <p><code>deepseek-v4-pro</code> and <code>deepseek-v4-flash</code> became the
 API's two models, served through both the OpenAI and Anthropic interfaces.
 The legacy names <code>deepseek-chat</code> and <code>deepseek-reasoner</code>
@@ -2389,8 +2458,8 @@ about a second of CPU and nothing else &ndash; no account, no email, no card.</p
     <li><span>per day</span> 30 requests &middot; 60k input &middot; 20k output tokens</li>
     <li><span>privacy</span> prompts are relayed to DeepSeek and are not stored or
         logged by the gateway; only token counts and cost are recorded</li>
-    <li><span>when it runs out</span> the quota resets at 00:00 UTC, and the
-        <a href="{{root}}install/">CLI with your own key</a> has no limits at all</li>
+    <li><span>when it runs out</span> <span>the quota resets at 00:00 UTC, and the
+        <a href="{{root}}install/">CLI with your own key</a> has no limits at all</span></li>
   </ul>
   <button id="pg-enrolBtn" class="pg-primary" type="button">Enrol this browser</button>
 {{turnstile_widget}}  <p id="pg-enrolStatus" class="pg-status" hidden></p>
@@ -2432,16 +2501,6 @@ about a second of CPU and nothing else &ndash; no account, no email, no card.</p
       <option value="fim">fim &ndash; fill in the middle</option>
     </select>
     <p id="pg-formatNote" class="pg-note"></p>
-
-    <div id="pg-searchField" hidden>
-      <label class="pg-check" for="pg-search">
-        <input id="pg-search" type="checkbox">
-        web search
-      </label>
-      <p class="pg-note">DeepSeek searches and reads pages server-side. Costs
-      one of the free tier's three daily searches, because the pages it reads
-      are billed as input tokens &ndash; about ten ordinary turns' worth.</p>
-    </div>
 
     <label for="pg-think">thinking</label>
     <select id="pg-think">
@@ -2637,6 +2696,73 @@ def check_peak_claims(pages):
     return True
 
 
+# The model names are the second claim that outlives its data. On
+# 2026-09-10 DeepSeek retired V4 Flash for V4.1 Flash under a new name,
+# and removed the Responses API's server-side web_search in the same drop.
+# The CLI learned both in code; a page that still says "deepseek-v4-flash"
+# as if it were the model to call, or offers --web-search, would go on
+# teaching readers the old API with every check green.
+#
+# The names are read from the CLI's own source rather than typed here, so
+# a rename in client.go moves the tripwire with it.
+def model_names():
+    """(current flash name, [retired flash names]) from internal/deepseek."""
+    src = (ROOT.parent / "internal" / "deepseek" / "client.go").read_text()
+    consts = dict(re.findall(r'^\s*(Model\w+)\s*=\s*"([^"]+)"', src, re.M))
+    try:
+        return consts["ModelFlash"], [consts["ModelFlashVision"], consts["ModelFlashV4"]]
+    except KeyError as missing:
+        raise SystemExit(f"claims: internal/deepseek/client.go no longer defines {missing}")
+
+
+# "web search", "web_search", "--web-search", in any case: one spelling
+# per line of copy is enough to be a claim about the feature.
+WEB_SEARCH = re.compile(r"web[ _-]search", re.I)
+
+
+def check_model_claims(pages):
+    """Fail the build on a retired flash name or a live web-search claim.
+
+    `pages` is (name, text). A section (split on <h2>, or on a markdown
+    "## " heading for llms.txt) that names a retired flash model must also
+    name the current one, so the old name is only ever read as an alias.
+    A section that mentions web search must say it was removed, and no
+    code example may offer --web-search. Every rule is waived by the
+    historical marker, placed on purpose.
+    """
+    current, retired = model_names()
+    tok = lambda name: re.compile(r"(?<![\w-])" + re.escape(name) + r"(?![\w-])")
+    cur_re = tok(current)
+    old_res = [(n, tok(n)) for n in retired]
+    bad = []
+    for name, text in pages:
+        for section in re.split(r"(?=<h2\b)|(?=^## )", text, flags=re.M):
+            flat = re.sub(r"\s+", " ", section)
+            if HISTORICAL_CLAIM in flat:
+                continue
+            head = (re.search(r"<h2[^>]*>(.*?)</h2>", section, re.S)
+                    or re.search(r"^## (.*)$", section, re.M))
+            where = re.sub(r"<[^>]+>", "", head.group(1)) if head else "(top of page)"
+            where = f"  {name}: {where.strip()[:80]}"
+            for old, rx in old_res:
+                if rx.search(flat) and not cur_re.search(flat):
+                    bad.append(f"{where} -- names {old} but never {current}")
+                    break
+            if WEB_SEARCH.search(flat) and "removed" not in flat.lower():
+                bad.append(f"{where} -- mentions web search without saying it was removed")
+            # Prose may name the flag to say it fails; an example may not
+            # offer it, however the surrounding text is worded.
+            elif any("--web-search" in pre for pre in re.findall(r"<pre\b.*?</pre>", flat)):
+                bad.append(f"{where} -- a code example offers --web-search")
+    if bad:
+        print(f"claims: {current} is the flash model and server-side web search "
+              "was removed on 2026-09-10. Fix the copy, or mark the section "
+              f"{HISTORICAL_CLAIM}:", file=sys.stderr)
+        print("\n".join(bad), file=sys.stderr)
+        return False
+    return True
+
+
 def build(check_only=False):
     written, stale, rendered = [], [], []
     for page in PAGES:
@@ -2728,6 +2854,9 @@ def build(check_only=False):
     # the --check that would have passed it.
     rendered.append(("404.html", notfound))
     if not check_peak_claims(rendered):
+        return 1
+    llms = ROOT / "llms.txt"
+    if not check_model_claims(rendered + [("llms.txt", llms.read_text())]):
         return 1
 
     if check_only:

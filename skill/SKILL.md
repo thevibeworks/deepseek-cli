@@ -1,6 +1,6 @@
 ---
 name: deepseek
-description: Call the DeepSeek API from the shell — chat completions in OpenAI, Anthropic Messages or OpenAI Responses format, FIM completion, model list, account balance, and local cost accounting. Use when the task needs a DeepSeek model answer, needs to verify a DeepSeek API key or endpoint, needs structured or JSON output from a model, or asks what DeepSeek usage has cost. Triggers on deepseek, deepseek-v4, flash, pro, "ask the model", "check my API key", token cost, context cache, "deepseek without an API key", free tier.
+description: Call the DeepSeek API from the shell — chat completions in OpenAI, Anthropic Messages or OpenAI Responses format, FIM completion, model list, account balance, and local cost accounting. Use when the task needs a DeepSeek model answer, needs to verify a DeepSeek API key or endpoint, needs structured or JSON output from a model, or asks what DeepSeek usage has cost. Triggers on deepseek, deepseek-flash, deepseek-v4, flash, pro, "ask the model", "check my API key", token cost, context cache, "deepseek without an API key", free tier.
 ---
 
 # deepseek
@@ -50,11 +50,17 @@ answer alone.
 
 | Want | Use |
 | --- | --- |
-| Cheap, fast, most work | default (`deepseek-flash`) |
-| Hardest reasoning | `--model deepseek-v4-pro --effort max` |
+| Almost everything | default (`deepseek-flash`, V4.1 Flash) |
+| Hardest reasoning | `--effort max` on the default |
+| A result pinned to V4 Pro | `--model deepseek-v4-pro` — still served, text only, 3.3x flash's output price |
 | Short factual answer | `--think off` — no reasoning, no template |
 | Cheap reasoning | `--effort low` — still reasons, but adds **no** input template on flash |
 | Long answer | `--max-tokens N` |
+
+Flash is the default because DeepSeek's own V4.1 Flash release note
+(2026-09-10) reports it ahead of V4 Pro on their benchmarks — read it with
+`deepseek docs show news/news260910`. That is DeepSeek's claim, not a
+measurement of ours.
 
 Thinking is on by default. The template it adds to the input depends on
 the effort, measured live rather than documented, on V4 Flash before it
@@ -95,12 +101,14 @@ deepseek respond "..."      # the format Codex speaks
 deepseek fim "def f():" --suffix "    return x"
 ```
 
-Two things exist only on `respond`:
+JSON Schema output exists only on `respond`:
 
 ```bash
 deepseek respond "Berlin" -s "Return city and country." --schema @city.json
-deepseek respond "what shipped recently in Go" --web-search
 ```
+
+`--web-search` exits 1: DeepSeek removed server-side search on 2026-09-10.
+Search yourself and pass the results in.
 
 ## Tools
 
@@ -186,8 +194,8 @@ deepseek free status --json  # what is left of today
 ```
 
 Then every command works as normal. Limits per UTC day: 30 requests, 60K
-input, 20K output tokens, flash only. A pro request is refused, not
-downgraded — if the task needs pro, it needs a key.
+input, 20K output tokens, `deepseek-flash` only. A pro request is
+refused, not downgraded — if the task needs pro, it needs a key.
 
 Errors carrying `"type":"free_tier_*"` came from the gateway, not from
 DeepSeek. Their message already contains the next step; pass it through

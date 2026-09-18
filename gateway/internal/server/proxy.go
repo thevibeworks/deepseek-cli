@@ -116,7 +116,7 @@ func (s *Server) handleProxy(w http.ResponseWriter, r *http.Request) {
 	// `deepseek status` free and safe in a loop against the free tier,
 	// exactly as it is against the real API.
 	billable := route.Format != policy.FormatNone
-	adm := quota.Admission{Search: decision.Search}
+	adm := quota.Admission{}
 	if billable {
 		// Whether this particular request could be carried for nothing.
 		// It decides two things below: whether an empty credit pool is
@@ -140,7 +140,7 @@ func (s *Server) handleProxy(w http.ResponseWriter, r *http.Request) {
 		// reservation, every in-flight request is unbilled and the breaker
 		// only notices after the money is spent.
 		if !adm.Free {
-			adm.ReserveUSD = meter.Estimate(decision.Model, len(decision.Body), decision.MaxTokens, decision.Search)
+			adm.ReserveUSD = meter.Estimate(decision.Model, len(decision.Body), decision.MaxTokens)
 		}
 		if err := s.ledger.Admit(subject, adm); err != nil {
 			// Out of money, but this request need not cost any: retry the
@@ -151,7 +151,7 @@ func (s *Server) handleProxy(w http.ResponseWriter, r *http.Request) {
 				s.writeLimit(w, err)
 				return
 			}
-			adm = quota.Admission{Search: decision.Search, Free: true}
+			adm = quota.Admission{Free: true}
 			if err := s.ledger.Admit(subject, adm); err != nil {
 				s.writeLimit(w, err)
 				return
@@ -672,12 +672,6 @@ func (s *Server) writeLimit(w http.ResponseWriter, err error) {
 		w.Header().Set("Retry-After", "30")
 		writeError(w, http.StatusServiceUnavailable, typeInternal,
 			"the free tier is temporarily unavailable; retry shortly")
-	case quota.ReasonSearches:
-		// A distinct message because the fix is distinct: the rest of the
-		// tier still works, so "come back tomorrow" would be wrong.
-		retryAfter(w, lim.RetryAfter(time.Now()))
-		writeError(w, http.StatusTooManyRequests, typeQuota,
-			"you have used today's web-search allowance. Ordinary requests still work — searches reset at 00:00 UTC, or bring your own key for unlimited search: https://platform.deepseek.com/api_keys")
 	case quota.ReasonDailyBudget:
 		retryAfter(w, lim.RetryAfter(time.Now()))
 		writeError(w, http.StatusTooManyRequests, typeQuota,

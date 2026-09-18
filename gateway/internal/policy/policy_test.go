@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func limits() Limits { return Limits{MaxTokens: 4096, Model: "deepseek-v4-flash"} }
+func limits() Limits { return Limits{MaxTokens: 4096, Model: "deepseek-flash"} }
 
 func apply(t *testing.T, routeKey, body string) map[string]any {
 	t.Helper()
@@ -90,23 +90,56 @@ func TestProIsRefusedNotDowngraded(t *testing.T) {
 
 func TestModelIsPinnedEvenWhenAbsent(t *testing.T) {
 	got := apply(t, "POST /chat/completions", `{"messages":[]}`)
-	if got["model"] != "deepseek-v4-flash" {
+	if got["model"] != "deepseek-flash" {
 		t.Errorf("model = %v, want the free model pinned in", got["model"])
 	}
 }
 
-// Claude names are remapped server-side by the Anthropic endpoint. The
-// ones that land on flash have to keep working, or `deepseek anthropic`
-// breaks against the free tier for no reason.
+// Claude names are remapped server-side by the Anthropic endpoint, exactly
+// as the Anthropic API guide states it: claude-opus* is pro, claude-haiku*,
+// claude-sonnet* and any unknown name are deepseek-flash. The ones that land
+// on flash have to keep working, or `deepseek anthropic` breaks against the
+// free tier for no reason.
 func TestClaudeNamesThatMapToFlashAreAllowed(t *testing.T) {
 	route, _ := Lookup("POST", "/anthropic/v1/messages")
-	for _, model := range []string{"claude-sonnet-4-5", "claude-haiku-4-5"} {
+	for _, model := range []string{"claude-sonnet-4-5", "claude-haiku-4-5", "claude-fable-5"} {
 		if _, err := Apply(route, []byte(`{"model":"`+model+`","messages":[]}`), "S", limits()); err != nil {
 			t.Errorf("%s was refused: %v", model, err)
 		}
 	}
 	if _, err := Apply(route, []byte(`{"model":"claude-opus-4-1","messages":[]}`), "S", limits()); err == nil {
 		t.Error("claude-opus maps to pro and should be refused")
+	}
+}
+
+// The names retired on 2026-09-10 are the same model upstream, served and
+// billed as deepseek-flash. A client that still asks for one must be served,
+// and an operator whose DSGATE_MODEL predates the rename must not start
+// refusing the new name the CLI sends by default.
+func TestRetiredFlashNamesAreTheSameModel(t *testing.T) {
+	route, _ := Lookup("POST", "/chat/completions")
+	for _, free := range []string{"deepseek-flash", "deepseek-v4-flash"} {
+		lim := Limits{MaxTokens: 4096, Model: free}
+		for _, asked := range []string{"deepseek-flash", "deepseek-v4-flash", "deepseek-v4-flash-vision-exp"} {
+			if _, err := Apply(route, []byte(`{"model":"`+asked+`","messages":[]}`), "S", lim); err != nil {
+				t.Errorf("serving %s, a request for %s was refused: %v", free, asked, err)
+			}
+		}
+		if _, err := Apply(route, []byte(`{"model":"deepseek-v4-pro","messages":[]}`), "S", lim); err == nil {
+			t.Errorf("serving %s, a request for pro was accepted", free)
+		}
+	}
+	for in, want := range map[string]string{
+		"deepseek-flash":               "deepseek-flash",
+		"deepseek-v4-flash":            "deepseek-flash",
+		"deepseek-v4-flash-vision-exp": "deepseek-flash",
+		"deepseek-v4-pro":              "deepseek-v4-pro",
+		"claude-opus-4-8":              "deepseek-v4-pro",
+		"claude-sonnet-5":              "deepseek-flash",
+	} {
+		if got := Canonical(in); got != want {
+			t.Errorf("Canonical(%q) = %q, want %q", in, got, want)
+		}
 	}
 }
 
@@ -276,39 +309,37 @@ func asReject(err error, target **Reject) bool {
 	return ok
 }
 
-// web_search is carried, because measurement showed its whole cost
-// arrives as input tokens this gateway already meters. Every other
-// server-side tool is unknown work at an unknown price and stays refused.
-// Client function tools only declare a schema and were never in question.
+// No server-side tool is carried. web_search is refused with the reason:
+// DeepSeek removed it on 2026-09-10 and now ignores it, so forwarding it
+// would answer from memory while the caller believes it searched. Every
+// other server-side tool is unknown work at an unknown price. Client
+// function tools only declare a schema and were never in question.
 func TestServerSideToolsAreRefused(t *testing.T) {
 	route, _ := Lookup("POST", "/responses")
-	lim := Limits{MaxTokens: 100, Model: "deepseek-v4-flash"}
+	lim := Limits{MaxTokens: 100, Model: "deepseek-flash"}
 
 	for _, kind := range []string{"web_search", "web_search_2025_08_26"} {
-		d, err := Apply(route, []byte(`{"input":"hi","tools":[{"type":"`+kind+`"}]}`), "sub", lim)
-		if err != nil {
-			t.Fatalf("%s was refused: %v", kind, err)
+		var rej *Reject
+		_, err := Apply(route, []byte(`{"input":"hi","tools":[{"type":"`+kind+`"}]}`), "sub", lim)
+		if !asReject(err, &rej) {
+			t.Fatalf("%s passed policy: %v", kind, err)
 		}
-		if !d.Search {
-			t.Errorf("%s did not set Decision.Search, so it would be reserved and rationed as an ordinary request", kind)
+		if !strings.Contains(rej.Message, "removed") || !strings.Contains(rej.Message, "2026-09-10") {
+			t.Errorf("%s refusal does not say it was removed upstream, and when: %q", kind, rej.Message)
 		}
 	}
 
-	// An unknown server-side tool is still a refusal, and the message has
-	// to point at the one that does work rather than only at the exit.
 	var rej *Reject
 	_, err := Apply(route, []byte(`{"input":"hi","tools":[{"type":"code_interpreter"}]}`), "sub", lim)
 	if !asReject(err, &rej) {
 		t.Fatalf("an unknown server-side tool passed policy: %v", err)
 	}
-	if !strings.Contains(rej.Hint, "web_search") {
-		t.Errorf("the refusal does not mention the tool that works: %q", rej.Hint)
+	if strings.Contains(rej.Hint, "web_search") {
+		t.Errorf("the refusal still points at web_search: %q", rej.Hint)
 	}
 
-	if d, err := Apply(route, []byte(`{"input":"hi","tools":[{"type":"function","name":"f"}]}`), "sub", lim); err != nil {
+	if _, err := Apply(route, []byte(`{"input":"hi","tools":[{"type":"function","name":"f"}]}`), "sub", lim); err != nil {
 		t.Errorf("a client function tool was refused: %v", err)
-	} else if d.Search {
-		t.Error("a function tool was counted as a search")
 	}
 
 	// The other formats have no server-side tools; their tools stay open.

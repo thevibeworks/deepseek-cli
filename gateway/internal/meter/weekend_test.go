@@ -71,19 +71,21 @@ func TestEveryFlashNameIsMeteredAsFlash(t *testing.T) {
 }
 
 func TestV41CutFlashAndLeftPro(t *testing.T) {
-	before := v41At.Add(-time.Minute) // 10:59 UTC Thursday, off-peak
-	if got := PriceAt("deepseek-flash", before); got != (Price{CacheHitInput: 0.007, CacheMissInput: 0.22, Output: 0.66}) {
-		t.Errorf("flash just before V4.1 = %+v, want the V4 card", got)
+	// 04:00 UTC Thursday: the card changes as the 01:00-04:00 peak window
+	// ends, so the minute before is the V4 card at peak.
+	before := v41At.Add(-time.Minute)
+	if got := PriceAt("deepseek-flash", before); got != (Price{CacheHitInput: 0.014, CacheMissInput: 0.44, Output: 1.32}) {
+		t.Errorf("flash just before V4.1 = %+v, want the V4 card at peak", got)
 	}
 	if got := PriceAt("deepseek-flash", v41At); got != (Price{CacheHitInput: 0.003, CacheMissInput: 0.15, Output: 0.6}) {
 		t.Errorf("flash at V4.1 = %+v, want the V4.1 card", got)
 	}
-	if a, b := PriceAt("deepseek-v4-pro", before), PriceAt("deepseek-v4-pro", v41At); a != b {
-		t.Errorf("pro moved at V4.1: %+v -> %+v", a, b)
+	if a, b := PriceAt("deepseek-v4-pro", before), scale(PriceAt("deepseek-v4-pro", v41At), peakMultiplier); a != b {
+		t.Errorf("pro moved at V4.1: %+v at peak, want its unchanged card doubled, %+v", a, b)
 	}
 	// A reservation made before the cut must still cover a settlement
 	// after it: the ceiling may not be beaten by the clock.
-	if est, after := EstimateAt("deepseek-flash", 400, 1000, false, before), EstimateAt("deepseek-flash", 400, 1000, false, v41At); est < after {
+	if est, after := EstimateAt("deepseek-flash", 400, 1000, before), EstimateAt("deepseek-flash", 400, 1000, v41At); est < after {
 		t.Errorf("admitted before the cut the reservation %v is under the post-cut %v", est, after)
 	}
 }

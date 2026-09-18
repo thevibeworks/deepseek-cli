@@ -6,9 +6,10 @@ import (
 	"fmt"
 )
 
-// The OpenAI Responses format. DeepSeek added it for Codex, and it is the
-// only one of the four formats with a server-side tool: web_search runs
-// on DeepSeek's side and comes back as web_search_call output items.
+// The OpenAI Responses format. DeepSeek added it for Codex. It carried the
+// API's only server-side tool, web_search, until DeepSeek removed it on
+// 2026-09-10; web_search_call items passed back as input are still
+// restored upstream, which is all Action below is for now.
 //
 // It is stateless. previous_response_id and conversation are rejected, so
 // multi-turn means resending the whole input list every time.
@@ -51,7 +52,7 @@ type TextFormat struct {
 	Schema json.RawMessage `json:"schema,omitempty"`
 }
 
-// ResponsesTool is a function or the built-in server-side web_search.
+// ResponsesTool is a function tool, flattened the way this format wants it.
 type ResponsesTool struct {
 	Type        string          `json:"type"`
 	Name        string          `json:"name,omitempty"`

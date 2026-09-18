@@ -166,6 +166,15 @@ type Server struct {
 }
 
 func New(cfg Config, signer *token.Signer, m *mint.Mint, ledger *quota.Ledger) *Server {
+	// Serve the model under the name upstream uses today. A DSGATE_MODEL
+	// written before 2026-09-10 says deepseek-v4-flash, which upstream
+	// still answers but no longer lists — so without this the /models
+	// filter would keep nothing, and the status page would advertise a
+	// retired name.
+	if canon := policy.Canonical(cfg.Model); canon != cfg.Model {
+		log.Printf("model %s is served upstream as %s; using that name", cfg.Model, canon)
+		cfg.Model = canon
+	}
 	origins := map[string]bool{}
 	for _, o := range cfg.Origins {
 		origins[strings.TrimSuffix(strings.TrimSpace(o), "/")] = true
@@ -263,15 +272,15 @@ func (l *lane) label() string {
 // The free lane is deliberately narrow. Measured against OpenCode Zen on
 // 2026-08-12: /chat/completions works and reports usage in both streamed
 // and buffered form; /anthropic/v1/messages, /beta/completions and
-// /user/balance are 404; /responses answers, but rejects a server-side
-// web_search tool outright. So chat is the one route it is trusted with,
+// /user/balance are 404; /responses is a translation layer we have not
+// measured beyond that. So chat is the one route it is trusted with,
 // which is also where nearly all of the volume is. Everything else goes
 // to DeepSeek, exactly as before.
 func (l *lane) serves(route policy.Route, d *policy.Decision) bool {
 	if !l.free {
 		return true
 	}
-	return route.Name == "chat" && !d.Search
+	return route.Name == "chat"
 }
 
 // lanesFor is the order to try upstreams in for one request.

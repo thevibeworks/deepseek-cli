@@ -14,7 +14,7 @@ DSGATE_UPSTREAM_KEY=sk-... dsgate
 ```
 
 That listens on `:8787`, writes state to `./state`, serves
-`deepseek-v4-flash`, and stops spending at **$1.00 a day / $20.00
+`deepseek-flash` (DeepSeek-V4.1-Flash), and stops spending at **$1.00 a day / $20.00
 total**. Point a CLI at it:
 
 ```bash
@@ -39,8 +39,18 @@ anything. `GET /v1/status` reports the share it is carrying under
 Two things to know before turning it on. Zen's free lane says the prompts
 it sees **may be used to improve the model**, which is a different promise
 from the one the paid path makes, so say so wherever you tell users where
-their prompts go. And it only carries `chat`: FIM, the Anthropic and
-Responses formats, and web search still spend real credit.
+their prompts go. And it only carries `chat`: FIM and the Anthropic and
+Responses formats still spend real credit.
+
+**As of 2026-09-18 Zen answers its free DeepSeek model with
+`Model is unavailable` on every request** (V4 Flash was retired upstream
+on 2026-09-10), so the lane saves nothing and adds a refused round trip
+to every chat. Leave `OPENCODE_API_KEY` unset until that changes; see the
+gateway README.
+
+A `DSGATE_MODEL` written before 2026-09-10 (`deepseek-v4-flash`) still
+works: the gateway serves it under the name upstream uses today,
+`deepseek-flash`, and says so in its boot log.
 
 ## Docker
 

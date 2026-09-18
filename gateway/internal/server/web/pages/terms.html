@@ -18,7 +18,7 @@
 </header>
 <main class="prose">
   <h1>Terms of service</h1>
-  <p class="note">Last updated: 2026-08-06</p>
+  <p class="note">Last updated: 2026-09-18</p>
 
   <p class="lede">This service, dsgate at freeseek.1lm.io, is a free, keyless proxy to the DeepSeek API. It is a hobby project run by the maintainers of the open-source project <a href="https://github.com/thevibeworks/deepseek-cli">thevibeworks/deepseek-cli</a>. It is not a company and there is no legal entity behind it. These terms are written to be honest rather than to sound like a contract, because they are not one: they are the conditions under which we are willing to spend our own money on your API calls. By using the service you accept them.</p>
 
@@ -35,7 +35,7 @@
     <li>60,000 input tokens and 20,000 output tokens</li>
     <li>4,096 output tokens per call</li>
     <li>128 KB per request body</li>
-    <li>the <code>deepseek-v4-flash</code> model only; a request for any other model is refused, not silently downgraded</li>
+    <li>the <code>deepseek-flash</code> model only (DeepSeek-V4.1-Flash; the retired names <code>deepseek-v4-flash</code> and <code>deepseek-v4-flash-vision-exp</code> are the same model); a request for any other model is refused, not silently downgraded</li>
   </ul>
   <p>Enrolment tokens expire seven days after they are minted; the CLI renews them automatically.</p>
   <p>Circumventing the quota system is prohibited. That includes minting multiple identities to multiply your allowance, evading or outsourcing the proof-of-work, stockpiling tokens, and sharing or distributing tokens to others. The proof-of-work exists to make each identity cost something; treating it as a farming target is abuse of a shared resource that other people paid for.</p>
@@ -55,7 +55,7 @@
   <p>If you have real volume or a real product, bring your own key from <a href="https://platform.deepseek.com">platform.deepseek.com</a>. It is cheap, it is unmetered by us, and it is the intended path.</p>
 
   <h2>6. What the gateway does to your requests</h2>
-  <p>This is a policy-enforcing proxy, and you should know what the policy touches. The gateway pins the model, clamps the output-token cap, and overwrites any user identity field with your subject id. It refuses request parameters that multiply cost (<code>n</code>, <code>best_of</code> above 1) and server-side tools such as web search, whose cost cannot be metered. Only an allowlisted set of endpoints is proxied at all. Apart from those named fields, your request is forwarded as you sent it.</p>
+  <p>This is a policy-enforcing proxy, and you should know what the policy touches. The gateway pins the model, clamps the output-token cap, and overwrites any user identity field with your subject id. It refuses request parameters that multiply cost (<code>n</code>, <code>best_of</code> above 1) and server-side tools: web search because DeepSeek removed it on 2026-09-10 and now ignores it, anything else because its cost cannot be metered. Only an allowlisted set of endpoints is proxied at all. Apart from those named fields, your request is forwarded as you sent it.</p>
 
   <h2>7. Revocation and termination</h2>
   <p>Any token may be revoked at any time, without notice and without appeal. A revoked token does not heal at midnight. In practice revocation is used against abuse, but nothing here obliges us to justify it: this is a gift, and a gift can be withdrawn.</p>

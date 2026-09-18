@@ -435,54 +435,6 @@ func TestReplaySkipsACorruptLine(t *testing.T) {
 	}
 }
 
-// A search costs roughly ten times an ordinary turn, so it has its own
-// ration. Two properties matter and neither is obvious: running out of
-// searches must not touch the rest of the tier, and a search that never
-// reached the model must give the ration back.
-func TestSearchesAreRationedWithoutBlockingOrdinaryRequests(t *testing.T) {
-	lim := testLimits()
-	lim.DailyRequests = 100
-	lim.DailySearches = 2
-	l, done := open(t, t.TempDir(), lim)
-	defer done()
-
-	for i := 0; i < 2; i++ {
-		if err := l.Admit("alice", Admission{Search: true}); err != nil {
-			t.Fatalf("search %d refused: %v", i+1, err)
-		}
-	}
-
-	err := l.Admit("alice", Admission{Search: true})
-	if err == nil {
-		t.Fatal("a third search was admitted against a ration of two")
-	}
-	if got := reasonOf(t, err); got != ReasonSearches {
-		t.Errorf("reason = %q, want %q", got, ReasonSearches)
-	}
-
-	// The point of a separate ration: everything else still works.
-	if err := l.Admit("alice", Admission{}); err != nil {
-		t.Errorf("an ordinary request was refused because searches ran out: %v", err)
-	}
-
-	// And a refunded search is not a spent one.
-	l.Refund("alice", Admission{Search: true})
-	if err := l.Admit("alice", Admission{Search: true}); err != nil {
-		t.Errorf("a refunded search ration was not returned: %v", err)
-	}
-}
-
-func TestSearchRationIsPublishedWithTheOtherLimits(t *testing.T) {
-	lim := testLimits()
-	lim.DailySearches = 3
-	l, done := open(t, t.TempDir(), lim)
-	defer done()
-
-	if got := l.Status("alice", "anon").Limits.Searches; got != 3 {
-		t.Errorf("published search limit = %d, want 3 — a limit a caller cannot read is one they can only discover by hitting it", got)
-	}
-}
-
 // A free request passes the money ceilings and nothing else. This is the
 // whole security argument for Admission.Free: it is sound only because
 // such a request cannot reach an upstream that charges.

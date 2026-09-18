@@ -73,17 +73,15 @@ var RepriceAt = time.Date(2026, time.August, 16, 16, 0, 0, 0, time.UTC)
 var WeekendOffPeakAt = time.Date(2026, time.August, 22, 16, 0, 0, 0, time.UTC)
 
 // V41At is when the Flash card dropped with the DeepSeek-V4.1-Flash
-// release. The changelog dates the release 2026-09-10 and says only that
-// "API prices have been reduced accordingly"; the pricing page carries
-// the new card and no effective instant. Pro's card did not move.
+// release. Pro's card did not move. The changelog dates the release and
+// the pricing page carries no instant, but DeepSeek's release note does:
+// "New pricing takes effect at 04:00 UTC on Sept 10, 2026"
+// (api-docs.deepseek.com/news/news260910, read 2026-09-18).
 //
-// The instant is INFERRED, not published. Our docs mirror fetched the
-// pricing page at 04:50 UTC on 2026-09-10 and got the old card, and at
-// 11:27 UTC the same day and got the new one. 11:00 UTC is the last whole
-// hour inside that bracket, which errs toward the old, dearer card: an
-// estimate for a call in the bracket can overstate what it cost, never
-// understate it. Move it if DeepSeek publishes the real instant.
-var V41At = time.Date(2026, time.September, 10, 11, 0, 0, 0, time.UTC)
+// Until that was read, this was 11:00 UTC, inferred from our docs mirror,
+// which fetched the old card at 04:50 UTC that day and the new one at
+// 11:27 UTC. The pricing page lagged the price; the note is the source.
+var V41At = time.Date(2026, time.September, 10, 4, 0, 0, 0, time.UTC)
 
 // beijing is the vendor's clock. China has observed no daylight saving
 // since 1991, so a fixed offset is exact and needs no tzdata.

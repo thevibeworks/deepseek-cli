@@ -3,25 +3,25 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DeepSeek V4-Pro benchmarks vs GPT, Claude, Kimi and GLM, and the kill line</title>
-<meta name="description" content="How deepseek-v4-pro (GA 0813) and v4-flash score against Kimi K3, GLM-5.2, Claude Opus 4.8 and Fable 5 on the agent suites, what the GA checkpoint changed, and the economics idea behind the DeepSeek kill line.">
-<meta name="keywords" content="deepseek v4 pro benchmarks, deepseek v4 pro vs claude, deepseek vs gpt-5.6, deepseek vs kimi k3, deepseek vs glm, deepseek 斩杀线, deepseek kill line, deepseek v4 pro 0813, deepseek agent benchmarks, terminal bench deepseek, deepswe, toolathlon">
+<title>DeepSeek V4.1 Flash benchmarks, the V4 launch table, and the kill line</title>
+<meta name="description" content="DeepSeek-V4.1-Flash (deepseek-flash) as DeepSeek&#x27;s changelog scores it, next to V4-Pro-0813 on the benchmarks both charts name; the dated V4 launch table against Kimi K3, GLM-5.2, Claude Opus 4.8 and Fable 5; and the economics idea behind the DeepSeek kill line.">
+<meta name="keywords" content="deepseek v4.1 flash benchmarks, deepseek-flash benchmarks, deepseek v4.1 flash vs v4 pro, deepseek v4 pro benchmarks, deepseek v4 pro vs claude, deepseek vs gpt-5.6, deepseek vs kimi k3, deepseek vs glm, deepseek 斩杀线, deepseek kill line, deepseek v4 pro 0813, deepseek agent benchmarks, terminal bench deepseek, deepswe, toolathlon">
 <meta name="author" content="thevibeworks">
 <meta name="theme-color" content="#fbfaf7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="canonical" href="https://thevibeworks.github.io/deepseek-cli/bench/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="deepseek-cli">
-<meta property="og:title" content="DeepSeek V4-Pro benchmarks vs GPT, Claude, Kimi and GLM, and the kill line">
-<meta property="og:description" content="How deepseek-v4-pro (GA 0813) and v4-flash score against Kimi K3, GLM-5.2, Claude Opus 4.8 and Fable 5 on the agent suites, what the GA checkpoint changed, and the economics idea behind the DeepSeek kill line.">
+<meta property="og:title" content="DeepSeek V4.1 Flash benchmarks, the V4 launch table, and the kill line">
+<meta property="og:description" content="DeepSeek-V4.1-Flash (deepseek-flash) as DeepSeek&#x27;s changelog scores it, next to V4-Pro-0813 on the benchmarks both charts name; the dated V4 launch table against Kimi K3, GLM-5.2, Claude Opus 4.8 and Fable 5; and the economics idea behind the DeepSeek kill line.">
 <meta property="og:url" content="https://thevibeworks.github.io/deepseek-cli/bench/">
 <meta property="og:image" content="https://thevibeworks.github.io/deepseek-cli/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="deepseek-cli: the whole DeepSeek API from the terminal">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="DeepSeek V4-Pro benchmarks vs GPT, Claude, Kimi and GLM, and the kill line">
-<meta name="twitter:description" content="How deepseek-v4-pro (GA 0813) and v4-flash score against Kimi K3, GLM-5.2, Claude Opus 4.8 and Fable 5 on the agent suites, what the GA checkpoint changed, and the economics idea behind the DeepSeek kill line.">
+<meta name="twitter:title" content="DeepSeek V4.1 Flash benchmarks, the V4 launch table, and the kill line">
+<meta name="twitter:description" content="DeepSeek-V4.1-Flash (deepseek-flash) as DeepSeek&#x27;s changelog scores it, next to V4-Pro-0813 on the benchmarks both charts name; the dated V4 launch table against Kimi K3, GLM-5.2, Claude Opus 4.8 and Fable 5; and the economics idea behind the DeepSeek kill line.">
 <meta name="twitter:image" content="https://thevibeworks.github.io/deepseek-cli/og.png">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30,7 +30,7 @@
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
 <script>try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t}catch(e){}</script>
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"How does DeepSeek-V4-Pro score against other models on agent benchmarks?","acceptedAnswer":{"@type":"Answer","text":"On DeepSeek's own launch-day chart (2026-08-12), V4-Pro-0813 scores Terminal-Bench 2.1 87.9, DeepSWE 62.7, Toolathlon-Verified 74.1, CyberGym 83.3, HLE-with-tools 60.0 and AutomationBench 31.8. It sits in the same cluster as Kimi K3, Claude Fable 5 and Opus 4.8: within a point of Fable 5 on Terminal-Bench (88.0) and CyberGym (83.1), ahead of Opus 4.8 on several execution suites, but behind Kimi K3 on Terminal-Bench, DeepSWE, Toolathlon and DSBench-Hard. These are vendor numbers from one harness and are not yet independently reproduced."}},{"@type":"Question","name":"What did the V4-Pro GA (0813) checkpoint change over the preview?","acceptedAnswer":{"@type":"Answer","text":"The model ID and the rate card did not change; the checkpoint did. Against the April V4-Pro preview, DeepSeek's chart shows large agentic gains: DeepSWE 12.8 to 62.7, DSBench-Hard 31.1 to 67.2, CyberGym 52.7 to 83.3, Terminal-Bench 2.1 72.1 to 87.9, Toolathlon 55.9 to 74.1. Jumps that size point to agent post-training and better tool-error handling rather than a new base model, and none of them are independently verified yet."}},{"@type":"Question","name":"What is the DeepSeek kill line (斩杀线)?","acceptedAnswer":{"@type":"Answer","text":"The kill line is a community idea that DeepSeek's price-to-capability ratio sets a threshold that removes the reason to exist for any model that is both weaker and more expensive. On the card in force since 2026-08-16, V4-Pro is 7.6x cheaper than GPT-5.6 Sol on cache-miss input off-peak (3.8x at peak), 15x cheaper on output (7.6x peak) and 23x cheaper on cache-hit input (11x peak). The repricing narrowed all three: on the flat card that ran until then the figures were 11.5x, 34.5x and 138x. It does not kill the frontier: the strongest closed models still finish the hardest tasks in fewer turns. It kills the middle, where a model costs more and does less."}},{"@type":"Question","name":"Is DeepSeek-V4-Pro better than Claude or GPT for coding agents?","acceptedAnswer":{"@type":"Answer","text":"Per attempt, the strongest closed models remain more reliable on the hardest multi-step tasks and usually need less steering. Per dollar, V4-Pro changes the arithmetic: its cheap cached input makes repeated review, parallel workers and long tool loops affordable in a way per-token-stronger models are not. The practical answer is to route by role, run an internal bake-off, and measure successful-task cost, not per-token price."}}]}
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"How does DeepSeek-V4.1-Flash score?","acceptedAnswer":{"@type":"Answer","text":"On DeepSeek's changelog entry of 2026-09-10: Terminal-Bench 2.1 90.6, DeepSWE v1.1 74.2, GPQA Diamond 90.9, CyberGym 88.1, HLE 36.8 (39.1 on the text-only subset), HLE with tools 63.9, Agents' Last Exam 31.8, Codeforces rating 3471. Of the five benchmarks that DeepSeek's V4-Pro-0813 chart also names, Flash is ahead on four (Terminal-Bench 2.1, CyberGym, Agents' Last Exam, HLE with tools) and behind on HLE without tools. These are vendor numbers from two charts a month apart, not an independent head-to-head."}},{"@type":"Question","name":"Should I use deepseek-flash or deepseek-v4-pro?","acceptedAnswer":{"@type":"Answer","text":"deepseek-flash, unless your own measurements say otherwise. DeepSeek's 2026-09-10 release note says V4.1 Flash is ahead of V4-Pro on performance, cost, speed and total runtime, and its published scores back that on most shared benchmarks. It is also about 4x cheaper on uncached input and 3x on output, and it takes images, which pro does not. deepseek-v4-pro stays available at an unchanged price."}},{"@type":"Question","name":"How does DeepSeek-V4-Pro score against other models on agent benchmarks?","acceptedAnswer":{"@type":"Answer","text":"On DeepSeek's own launch-day chart (2026-08-12), V4-Pro-0813 scores Terminal-Bench 2.1 87.9, DeepSWE 62.7, Toolathlon-Verified 74.1, CyberGym 83.3, HLE-with-tools 60.0 and AutomationBench 31.8. It sits in the same cluster as Kimi K3, Claude Fable 5 and Opus 4.8: within a point of Fable 5 on Terminal-Bench (88.0) and CyberGym (83.1), ahead of Opus 4.8 on several execution suites, but behind Kimi K3 on Terminal-Bench, DeepSWE, Toolathlon and DSBench-Hard. These are vendor numbers from one harness and are not yet independently reproduced."}},{"@type":"Question","name":"What did the V4-Pro GA (0813) checkpoint change over the preview?","acceptedAnswer":{"@type":"Answer","text":"The model ID and the rate card did not change; the checkpoint did. Against the April V4-Pro preview, DeepSeek's chart shows large agentic gains: DeepSWE 12.8 to 62.7, DSBench-Hard 31.1 to 67.2, CyberGym 52.7 to 83.3, Terminal-Bench 2.1 72.1 to 87.9, Toolathlon 55.9 to 74.1. Jumps that size point to agent post-training and better tool-error handling rather than a new base model, and none of them are independently verified yet."}},{"@type":"Question","name":"What is the DeepSeek kill line (斩杀线)?","acceptedAnswer":{"@type":"Answer","text":"The kill line is a community idea that DeepSeek's price-to-capability ratio sets a threshold that removes the reason to exist for any model that is both weaker and more expensive. On the card in force since 2026-08-16, V4-Pro is 7.6x cheaper than GPT-5.6 Sol on cache-miss input off-peak (3.8x at peak), 15x cheaper on output (7.6x peak) and 23x cheaper on cache-hit input (11x peak). The repricing narrowed all three: on the flat card that ran until then the figures were 11.5x, 34.5x and 138x. It does not kill the frontier: the strongest closed models still finish the hardest tasks in fewer turns. It kills the middle, where a model costs more and does less."}},{"@type":"Question","name":"Is DeepSeek-V4-Pro better than Claude or GPT for coding agents?","acceptedAnswer":{"@type":"Answer","text":"Per attempt, the strongest closed models remain more reliable on the hardest multi-step tasks and usually need less steering. Per dollar, V4-Pro changes the arithmetic: its cheap cached input makes repeated review, parallel workers and long tool loops affordable in a way per-token-stronger models are not. The practical answer is to route by role, run an internal bake-off, and measure successful-task cost, not per-token price."}}]}
 </script>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"deepseek-cli","item":"https://thevibeworks.github.io/deepseek-cli/"},{"@type":"ListItem","position":2,"name":"bench","item":"https://thevibeworks.github.io/deepseek-cli/bench/"}]}
@@ -77,11 +77,47 @@
 <nav class="crumb" aria-label="Breadcrumb"><a href="../">deepseek-cli</a><span class="sep">/</span>bench</nav>
 
 <h1>Benchmarks</h1>
-<p class="lede">Where <code>deepseek-v4-pro</code> and <code>deepseek-v4-flash</code>
-sit against the field, what the 0813 checkpoint changed, and the economics
-argument the Chinese community calls the <span lang="zh">斩杀线</span>, the
-kill line. The numbers below are DeepSeek's own launch-day figures unless
-marked otherwise; read the caveats first.</p>
+<p class="lede"><code>deepseek-flash</code>, DeepSeek-V4.1-Flash since
+2026-09-10, is the default model here and the one this page recommends.
+Below: how DeepSeek scores it, the V4 launch table from August kept as
+dated history, and the economics argument the Chinese community calls the
+<span lang="zh">斩杀线</span>, the kill line. Every number is DeepSeek's own
+unless marked otherwise; read the caveats first.</p>
+
+<h2 id="v41-flash">2026-09-10 &middot; V4.1 Flash, as DeepSeek scores it</h2>
+<p>From the <a href="https://api-docs.deepseek.com/updates">changelog</a> entry of 2026-09-10 and
+the <a href="https://api-docs.deepseek.com/news/news260910">release note</a>, which says V4.1
+Flash is ahead of V4-Pro &ldquo;on performance, cost, speed &amp; total
+runtime&rdquo;. Where DeepSeek's V4-Pro-0813 chart names the same benchmark,
+its score sits alongside; nothing else is compared:</p>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Benchmark</th><th class="num">V4.1 Flash (2026-09-10)</th><th class="num">V4-Pro 0813 (2026-08-12)</th></tr></thead>
+<tbody>
+<tr><td>Terminal-Bench 2.1</td><td class="num">90.6</td><td class="num">87.9</td></tr>
+<tr><td>CyberGym</td><td class="num">88.1</td><td class="num">83.3</td></tr>
+<tr><td>Agents' Last Exam</td><td class="num">31.8</td><td class="num">25.7</td></tr>
+<tr><td>HLE, with tools</td><td class="num">63.9</td><td class="num">60.0</td></tr>
+<tr><td>HLE, no tools</td><td class="num">36.8 (39.1 text-only)</td><td class="num">42.7</td></tr>
+</tbody>
+</table>
+</div>
+<p>The rest of the changelog's list has no V4-Pro counterpart under the
+same name: DeepSWE v1.1 74.2, GPQA Diamond 90.9, Codeforces 3471, MathArena
+Apex 65.6, NL2Repo-Bench 65.4, SEC-Bench Pro 62.8, Automation-Bench 54.8,
+ProgramBench 20.3, Terminal-Bench 3.0 30.0 and 4.0 31.2. Two charts a month
+apart can differ in harness and settings, so read the right-hand column as
+context, not as a controlled head-to-head. On price there is nothing to
+qualify: flash is about 4&times; cheaper than pro on uncached input and
+3&times; on output, and it takes images, which pro does not.</p>
+
+
+<h2 id="table">The V4 launch table (2026-08-12)</h2>
+<!-- claim:historical -->
+<p>History: the V4 generation as it launched, before V4.1 Flash retired
+V4 Flash. Higher is better. HLE is shown as without-tools / with-tools. Every figure
+is from DeepSeek's GA chart of 2026-08-12; a dash means the vendor did not
+report it.</p>
 
 <div class="note warn">
 <span class="tag">read this before quoting a number</span>
@@ -104,11 +140,6 @@ and roughly eight months behind the frontier, below its self-reported
 position. No equivalent 0813 evaluation exists yet.</li>
 </ul>
 </div>
-
-<h2 id="table">The launch table</h2>
-<p>Higher is better. HLE is shown as without-tools / with-tools. Every figure
-is from DeepSeek's GA chart of 2026-08-12; a dash means the vendor did not
-report it.</p>
 <div class="tablewrap">
 <table>
 <thead><tr>
@@ -139,10 +170,12 @@ report it.</p>
 Terminal-Bench, DeepSWE, CyberGym and AutomationBench, and <strong>behind Kimi
 K3</strong> on Terminal-Bench, DeepSWE, Toolathlon and DSBench-Hard. It is in
 the cluster, not clear of it. On knowledge without tools (HLE) the closed
-models still lead. Flash trails Pro across the board but stays remarkably close
-for a fifth of the price, which is the whole point of the next two sections.</p>
+models still lead. V4 Flash trailed V4 Pro across the board at a fifth of the
+price; its successor, V4.1 Flash, is <a href="#v41-flash">scored above
+V4-Pro-0813</a> on most of the benchmarks both charts name.</p>
 
-<h2 id="delta">What GA changed</h2>
+<h2 id="delta">What V4-Pro's GA changed (2026-08-13)</h2>
+<!-- claim:historical -->
 <p>The model ID stayed <code>deepseek-v4-pro</code> and the
 <a href="../cost/">rate card</a> did not move. What moved is the
 checkpoint. Against the April preview, DeepSeek's own chart shows the gains
@@ -176,11 +209,11 @@ any model that is <em>both weaker and more expensive</em> falls below it and has
 no reason to be chosen. The lever is price, and the gap is not small:</p>
 <div class="tablewrap">
 <table>
-<thead><tr><th>Per 1M tokens</th><th class="num">flash</th><th class="num">v4-pro</th><th class="num">GPT-5.6 Sol</th><th class="num">pro is cheaper by</th></tr></thead>
+<thead><tr><th>Per 1M tokens</th><th class="num">flash</th><th class="num">v4-pro</th><th class="num">GPT-5.6 Sol</th><th class="num">flash is cheaper by</th><th class="num">pro is cheaper by</th></tr></thead>
 <tbody>
-<tr><td>input, cache miss</td><td class="num">$0.15 / $0.30</td><td class="num">$0.66 / $1.32</td><td class="num">$5.00</td><td class="num">7.6x / 3.8x</td></tr>
-<tr><td>input, cache hit</td><td class="num">$0.003 / $0.006</td><td class="num">$0.022 / $0.044</td><td class="num">$0.50</td><td class="num">23x / 11x</td></tr>
-<tr><td>output</td><td class="num">$0.60 / $1.20</td><td class="num">$1.98 / $3.96</td><td class="num">$30.00</td><td class="num">15x / 7.6x</td></tr>
+<tr><td>input, cache miss</td><td class="num">$0.15 / $0.30</td><td class="num">$0.66 / $1.32</td><td class="num">$5.00</td><td class="num">33x / 17x</td><td class="num">7.6x / 3.8x</td></tr>
+<tr><td>input, cache hit</td><td class="num">$0.003 / $0.006</td><td class="num">$0.022 / $0.044</td><td class="num">$0.50</td><td class="num">167x / 83x</td><td class="num">23x / 11x</td></tr>
+<tr><td>output</td><td class="num">$0.60 / $1.20</td><td class="num">$1.98 / $3.96</td><td class="num">$30.00</td><td class="num">50x / 25x</td><td class="num">15x / 7.6x</td></tr>
 </tbody>
 </table>
 </div>
@@ -190,9 +223,13 @@ V4.1) on the lower card of 2026-09-10. They are a conversion of the RMB
 card (pro: &yen;4.5 / &yen;0.15 / &yen;13.5 per 1M off-peak, double at peak)
 at one consistent rate. GPT-5.6 Sol prices are from OpenAI's own listing.
 The <a href="../pricing/">pricing page</a> has the full schedule.</p>
+<p>Since 2026-09-10 the line is drawn by flash, not pro: it is the cheaper
+model and, on DeepSeek's own numbers, the <a href="#v41-flash">higher-scoring
+one</a> on most shared benchmarks.</p>
 <div class="note warn">
 <span class="tag">the repricing moved this line</span>
-<p>These ratios were <strong>11.5x / 138x / 34.5x</strong> on the flat card
+<!-- claim:historical -->
+<p>Pro's ratios were <strong>11.5x / 138x / 34.5x</strong> on the flat card
 that ran until 2026-08-16. The cache-hit column is where the argument
 lived &ndash; a 138x edge is what made replayed context, parallel reviewers
 and long tool loops nearly free &ndash; and it is now 23x off-peak, 11x at
@@ -201,9 +238,8 @@ category, and any plan that was built on the old number should be
 re-costed rather than assumed.</p>
 </div>
 <p>The sober version matters as much as the slogan. The kill line is real for
-the <em>middle</em> of the market: a model that costs more than V4-Pro and
-scores below it on the table above is hard to justify, and that is most of the
-field. It is <strong>not</strong> real for the frontier. On the hardest
+the <em>middle</em> of the market: a model that costs more than DeepSeek's
+and scores below it is hard to justify, and that is most of the field. It is <strong>not</strong> real for the frontier. On the hardest
 multi-step work the strongest closed models still finish in fewer turns and
 need less steering, and per-attempt reliability is a thing you can measure in
 wall-clock and interventions, not just in dollars. DeepSeek does not have to win
@@ -214,13 +250,15 @@ the one task where getting it right the first time is the whole job.</p>
 <p>The economics only pay off if the workflow is built for them. Three moves,
 each of which this CLI is shaped to support:</p>
 <ul>
-<li><strong>Route by role.</strong> Use <code>deepseek-v4-pro</code> for
-planning, ambiguous changes, security review and recovery; let
-<code>deepseek-v4-flash</code> do bounded implementations and parallel work.
-<code>ds chat -m deepseek-v4-pro</code> and the
-<a href="../formats/">Anthropic remap</a> make the switch one flag.</li>
+<li><strong>Start on flash.</strong> <code>deepseek-flash</code> is the
+default everywhere in this CLI, and DeepSeek's 2026-09-10 note puts it ahead
+of V4-Pro on performance, cost and speed. Keep
+<code>deepseek-v4-pro</code> for a task where your own bake-off says it
+lands more often; <code>ds chat -m deepseek-v4-pro</code> is the one flag,
+and the <a href="../formats/">Anthropic remap</a> sends
+<code>claude-opus-*</code> there.</li>
 <li><strong>Structure prompts for the cache.</strong> A cached input token
-costs about 1/30th of an uncached one. Keep the system prompt, tool schemas,
+costs 1/50th of an uncached one on flash, 1/30th on pro. Keep the system prompt, tool schemas,
 repository map and durable instructions in an identical prefix and put the
 volatile part last; <code>ds usage</code> reports what the cache saved so you
 can see whether it is working. This is where the cache-hit column turns from
@@ -239,8 +277,10 @@ that has not been announced yet.</li>
 </ul>
 
 <h2 id="sources">Sources</h2>
-<p>The launch table and the preview deltas are transcribed from DeepSeek's
-official agent-benchmark chart, published on the
+<p>The V4.1 Flash scores are DeepSeek's changelog entry of 2026-09-10,
+also carried offline by <code>ds docs changelog</code>. The launch table and
+the preview deltas are transcribed from DeepSeek's official agent-benchmark
+chart, published on the
 <a href="https://api-docs.deepseek.com/quick_start/pricing">Models &amp; Pricing</a> page and
 circulated on 2026-08-12; the extended variant carrying the Kimi K3 and GLM-5.2
 columns was the widest copy available. Rate-card figures are DeepSeek's own and

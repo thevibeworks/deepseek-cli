@@ -31,7 +31,6 @@ type Limits struct {
 	DailyRequests     int
 	DailyInputTokens  int
 	DailyOutputTokens int
-	DailySearches     int
 
 	// DailyBudgetUSD is the circuit breaker: the total this service may
 	// spend across all users in one UTC day. This is the number that
@@ -49,7 +48,6 @@ type Account struct {
 	Requests     int     `json:"requests"`
 	InputTokens  int     `json:"input_tokens"`
 	OutputTokens int     `json:"output_tokens"`
-	Searches     int     `json:"searches"`
 	SpentUSD     float64 `json:"spent_usd"`
 }
 
@@ -73,22 +71,15 @@ type UserCaps struct {
 	Requests     int `json:"requests"`
 	InputTokens  int `json:"input_tokens"`
 	OutputTokens int `json:"output_tokens"`
-	// Searches rations requests that use DeepSeek's server-side web
-	// search. It exists because such a request costs roughly ten times an
-	// ordinary turn — the pages it reads are billed as input tokens — so
-	// the request count alone would let one caller take a large share of
-	// the day's budget while looking like a normal user.
-	Searches int `json:"searches"`
 }
 
 // Admission is what a request asks the ledger for before it is forwarded.
-// It is a struct rather than another positional argument because the two
-// fields answer different questions — how much money to hold, and which
-// per-user ration to spend — and a bare `true` at a call site would say
+// It is a struct rather than positional arguments because the two fields
+// answer different questions — how much money to hold, and whether the
+// money ceilings apply at all — and a bare `true` at a call site would say
 // neither.
 type Admission struct {
 	ReserveUSD float64
-	Search     bool
 	// Free means this request is bound to an upstream that costs the
 	// credit pool nothing, and may not fall back to one that does. It is
 	// the only thing that passes the service-wide money ceilings — which
@@ -107,7 +98,6 @@ const (
 	ReasonRequests     Reason = "daily_requests"
 	ReasonInputTokens  Reason = "daily_input_tokens"
 	ReasonOutputTokens Reason = "daily_output_tokens"
-	ReasonSearches     Reason = "daily_searches"
 	ReasonDailyBudget  Reason = "daily_budget"
 	ReasonCredits      Reason = "credits_exhausted"
 	ReasonRevoked      Reason = "revoked"
@@ -142,8 +132,6 @@ func (e *LimitError) Error() string {
 		return "you have used today's input-token allowance"
 	case ReasonOutputTokens:
 		return "you have used today's output-token allowance"
-	case ReasonSearches:
-		return "you have used today's web-search allowance"
 	default:
 		return fmt.Sprintf("daily %s limit reached", string(e.Reason))
 	}
@@ -585,17 +573,9 @@ func (l *Ledger) Admit(subject string, req Admission) error {
 		return &LimitError{Reason: ReasonInputTokens, ResetsAt: reset}
 	case a.OutputTokens >= l.limits.DailyOutputTokens:
 		return &LimitError{Reason: ReasonOutputTokens, ResetsAt: reset}
-	case req.Search && a.Searches >= l.limits.DailySearches:
-		return &LimitError{Reason: ReasonSearches, ResetsAt: reset}
 	}
 
 	a.Requests++
-	if req.Search {
-		// Counted at admission rather than at settlement, because the
-		// ration has to bind before the money is spent: a search that
-		// failed still cost us the pages DeepSeek read.
-		a.Searches++
-	}
 	l.reserved += reserveUSD
 	return nil
 }
@@ -612,9 +592,6 @@ func (l *Ledger) Refund(subject string, req Admission) {
 	if a, ok := l.accounts[subject]; ok {
 		if a.Requests > 0 {
 			a.Requests--
-		}
-		if req.Search && a.Searches > 0 {
-			a.Searches--
 		}
 	}
 	l.releaseLocked(req.ReserveUSD)
@@ -697,7 +674,6 @@ func (l *Ledger) Status(subject, tier string) Status {
 			Requests:     l.limits.DailyRequests,
 			InputTokens:  l.limits.DailyInputTokens,
 			OutputTokens: l.limits.DailyOutputTokens,
-			Searches:     l.limits.DailySearches,
 		},
 		ResetsAt:  midnight(l.now()),
 		Exhausted: l.priorSpend+l.daySpend >= l.limits.TotalBudgetUSD,

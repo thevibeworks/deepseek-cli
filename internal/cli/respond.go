@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -39,14 +40,13 @@ func newRespondCmd(o *Options) *cobra.Command {
 		Short:   "Response in the OpenAI Responses format (POST /responses)",
 		Long: strings.TrimSpace(`
 Send a request in OpenAI's Responses format — the wire format Codex
-speaks. Two things live here and nowhere else in the DeepSeek API:
-JSON Schema structured output, and web_search, a tool DeepSeek runs
-server-side.
+speaks. JSON Schema structured output lives here and nowhere else in
+the DeepSeek API.
 
 Both models are accepted since V4-Pro's official release
-(2026-08-12); the endpoint was flash-only before that.
+(2026-08-12); the endpoint was flash-only before that. DeepSeek removed
+the server-side web_search tool on 2026-09-10, with V4.1 Flash.
 
-  deepseek respond "what shipped in Go 1.26" --web-search
   deepseek respond "extract the versions" --schema @versions.json --json`),
 		Args: cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -66,7 +66,10 @@ Both models are accepted since V4-Pro's official release
 	fl.StringVar(&f.schemaName, "schema-name", "response", "name for the JSON Schema")
 	fl.StringArrayVar(&f.tools, "tool", nil, "tool definition as JSON or @file (repeatable)")
 	fl.StringVar(&f.toolChoice, "tool-choice", "", "none, auto, required, or a JSON tool-choice object")
-	fl.BoolVar(&f.webSearch, "web-search", false, "let the model search the web (runs on DeepSeek's servers)")
+	// Kept, hidden, so a script that still passes it gets the reason
+	// instead of "unknown flag".
+	fl.BoolVar(&f.webSearch, "web-search", false, "removed upstream on 2026-09-10")
+	_ = fl.MarkHidden("web-search")
 	fl.StringVar(&f.user, "user", "", "user identifier for cache and scheduling isolation")
 	fl.StringArrayVarP(&f.files, "file", "f", nil, "attach a file's contents to the prompt (repeatable)")
 	fl.BoolVar(&f.stream, "stream", true, "stream the answer (default off when --json or --jq is used)")
@@ -88,6 +91,13 @@ func runRespond(cmd *cobra.Command, o *Options, f *respondFlags, args []string) 
 	showReasoning := f.reasoning && o.stderrTTY
 	if cmd.Flags().Changed("reasoning") {
 		showReasoning = f.reasoning
+	}
+
+	// DeepSeek now ignores the tool, so sending it would answer from the
+	// model's memory while the caller believes it searched. Refuse before
+	// anything is read or spent.
+	if f.webSearch {
+		return errWebSearchRemoved
 	}
 
 	// This format accepts instructions alone, with no input at all.
@@ -125,7 +135,7 @@ func runRespond(cmd *cobra.Command, o *Options, f *respondFlags, args []string) 
 	if req.Text, err = buildTextConfig(f); err != nil {
 		return err
 	}
-	if req.Tools, err = loadResponsesTools(f.tools, f.webSearch); err != nil {
+	if req.Tools, err = loadResponsesTools(f.tools); err != nil {
 		return err
 	}
 	if f.toolChoice != "" {
@@ -214,8 +224,6 @@ func (o *Options) streamRespond(ctx context.Context, c *deepseek.Client, req *de
 				fmt.Fprint(o.stdout, ev.Delta)
 				wroteAnswer = true
 			}
-		case "response.web_search_call.searching":
-			fmt.Fprintln(o.stderr, o.dim("· searching the web"))
 		}
 		return nil
 	})
@@ -252,7 +260,14 @@ func buildTextConfig(f *respondFlags) (*deepseek.TextConfig, error) {
 	return nil, fmt.Errorf("--format takes text, json_object, or json_schema, not %q", f.format)
 }
 
-func loadResponsesTools(sources []string, webSearch bool) ([]deepseek.ResponsesTool, error) {
+// errWebSearchRemoved answers --web-search. The date and the source are in
+// the message because the flag worked until then, and "unknown flag" would
+// read as a bug in this tool.
+var errWebSearchRemoved = errors.New("--web-search: DeepSeek removed server-side web_search from the Responses API on 2026-09-10; " +
+	"the tool is now ignored, so no search would run. Search on your side and pass the results with --file or stdin " +
+	"(see: deepseek docs show guides/responses_api)")
+
+func loadResponsesTools(sources []string) ([]deepseek.ResponsesTool, error) {
 	tools, err := loadTools(sources)
 	if err != nil {
 		return nil, err
@@ -268,13 +283,10 @@ func loadResponsesTools(sources []string, webSearch bool) ([]deepseek.ResponsesT
 			Parameters:  t.Function.Parameters,
 		})
 	}
-	if webSearch {
-		out = append(out, deepseek.ResponsesTool{Type: "web_search"})
-	}
 	return out, nil
 }
 
-// printResponsesCalls reports function calls and web searches to stderr.
+// printResponsesCalls reports function calls to stderr.
 func (o *Options) printResponsesCalls(resp *deepseek.ResponsesResponse) {
 	if o.JSON || o.JQ != "" {
 		return
@@ -283,10 +295,6 @@ func (o *Options) printResponsesCalls(resp *deepseek.ResponsesResponse) {
 		switch item.Type {
 		case "function_call":
 			fmt.Fprintln(o.stderr, o.dim(fmt.Sprintf("tool_call %s %s(%s)", item.CallID, item.Name, item.Arguments)))
-		case "web_search_call":
-			if len(item.Action) > 0 {
-				fmt.Fprintln(o.stderr, o.dim("web_search "+string(item.Action)))
-			}
 		}
 	}
 }

@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Economics — freeseek</title>
-<meta name="description" content="What a token costs in August 2026: DeepSeek vs Claude and GPT list prices, with sources. The same agent task runs 30 to 700 times cheaper — and why cheap tokens are the point.">
-<meta name="keywords" content="deepseek api cost, deepseek vs claude price, deepseek vs gpt price, llm token pricing comparison, cheap llm api, deepseek-v4-flash pricing">
+<meta name="description" content="What a token costs: DeepSeek-V4.1-Flash (deepseek-flash) against Claude and GPT list prices, with sources and dates. The same agent task runs 17 to 400 times cheaper off-peak — and why cheap tokens are the point.">
+<meta name="keywords" content="deepseek api cost, deepseek vs claude price, deepseek vs gpt price, llm token pricing comparison, cheap llm api, deepseek-flash pricing, deepseek v4.1 flash price">
 <link rel="canonical" href="https://freeseek.1lm.io/economics">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/style.css">
@@ -19,15 +19,25 @@
 <main class="prose">
   <h1>Cheap tokens are the point</h1>
 
-  <p class="lede">This service resells nothing and marks up nothing, so its existence hangs on a single number: what a token costs. That number has quietly become one of the widest price spreads in software. As of August 2026, a million output tokens from <code>deepseek-v4-flash</code> cost $0.28. The same million from a frontier flagship cost $25 to $50 — $180 from the pro tiers. The models are not equivalent, but on everyday work they are far closer in capability than they are in price.</p>
+  <p class="lede">This service resells nothing and marks up nothing, so its existence hangs on a single number: what a token costs. That number has quietly become one of the widest price spreads in software. As of September 2026, a million output tokens from <code>deepseek-flash</code> (DeepSeek-V4.1-Flash) cost $0.60 off-peak and $1.20 at peak. The same million from a frontier flagship cost $25 to $50 — $180 from the pro tiers, at the list prices read on 2026-08-06. The models are not equivalent, but on everyday work they are far closer in capability than they are in price.</p>
 
   <h2>The rate cards</h2>
-  <p>Published list prices, USD per million tokens, checked against each vendor's own pricing page on 2026-08-06:</p>
+  <p>DeepSeek's card today, USD per million tokens, read from <a href="https://api-docs.deepseek.com/quick_start/pricing">its pricing page</a> on 2026-09-18. Peak is 01:00–04:00 and 06:00–10:00 UTC, Monday to Friday; every other hour is off-peak.</p>
+  <table>
+    <thead><tr><th scope="col">model</th><th scope="col">period</th><th scope="col">input</th><th scope="col">cached input</th><th scope="col">output</th></tr></thead>
+    <tbody>
+      <tr><td rowspan="2">deepseek-flash</td><td>off-peak</td><td>$0.15</td><td>$0.003</td><td>$0.60</td></tr>
+      <tr><td>peak</td><td>$0.30</td><td>$0.006</td><td>$1.20</td></tr>
+      <tr><td rowspan="2">deepseek-v4-pro</td><td>off-peak</td><td>$0.66</td><td>$0.022</td><td>$1.98</td></tr>
+      <tr><td>peak</td><td>$1.32</td><td>$0.044</td><td>$3.96</td></tr>
+    </tbody>
+  </table>
+  <p>The cross-vendor snapshot below was read on 2026-08-06, against each vendor's own pricing page. DeepSeek sold one flat card then, and its two rows are that card, kept as history: V4 Flash was retired on 2026-09-10 and the flat card ended on 2026-08-16.</p>
   <table>
     <thead><tr><th scope="col">model</th><th scope="col">input</th><th scope="col">cached input</th><th scope="col">output</th></tr></thead>
     <tbody>
-      <tr><td>deepseek-v4-flash</td><td>$0.14</td><td>$0.0028</td><td>$0.28</td></tr>
-      <tr><td>deepseek-v4-pro</td><td>$0.435</td><td>$0.003625</td><td>$0.87</td></tr>
+      <tr><td>deepseek-v4-flash (flat card, retired)</td><td>$0.14</td><td>$0.0028</td><td>$0.28</td></tr>
+      <tr><td>deepseek-v4-pro (flat card)</td><td>$0.435</td><td>$0.003625</td><td>$0.87</td></tr>
       <tr><td>GPT-5.2</td><td>$1.75</td><td>$0.175</td><td>$14.00</td></tr>
       <tr><td>Claude Sonnet 5*</td><td>$2.00</td><td>$0.20</td><td>$10.00</td></tr>
       <tr><td>GPT-5.4</td><td>$2.50</td><td>$0.25</td><td>$15.00</td></tr>
@@ -39,27 +49,28 @@
   </table>
   <p class="note">*Introductory pricing through 2026-08-31; $3 / $15 after. Sources: <a href="https://api-docs.deepseek.com/quick_start/pricing">DeepSeek</a>, <a href="https://platform.claude.com/docs/en/about-claude/pricing">Anthropic</a>, <a href="https://developers.openai.com/api/docs/pricing">OpenAI</a>. Prices change monthly; when this table and a vendor's page disagree, the vendor's page is right.</p>
 
-  <p>Read down the output column: flash to Fable 5 is 179×. The cached-input column is starker — $1.00 against $0.0028 is 357× — and DeepSeek's cache is automatic and free to write, where Anthropic bills cache writes at 1.25–2× the input rate.</p>
+  <p>Read today's flash card against that column: flash to Fable 5 is 83× on output off-peak, 42× at peak. The cached-input column is starker — $1.00 against $0.003 is 333× — and DeepSeek's cache is automatic and free to write, where Anthropic bills cache writes at 1.25–2× the input rate.</p>
 
   <h2>The same task</h2>
-  <p>Rate cards mislead without a workload, so take an ordinary agent exchange — the shape Anthropic itself uses as a worked example: 50k input tokens of which 40k are cache reads, 15k output tokens. Counting the same nominal tokens at each vendor's list prices:</p>
+  <p>Rate cards mislead without a workload, so take an ordinary agent exchange — the shape Anthropic itself uses as a worked example: 50k input tokens of which 40k are cache reads, 15k output tokens. Counting the same nominal tokens at <code>deepseek-flash</code>'s card today, off-peak, and at the other vendors' list prices of 2026-08-06:</p>
   <table>
     <thead><tr><th scope="col">model</th><th scope="col">that exchange costs</th><th scope="col">vs flash</th></tr></thead>
     <tbody>
-      <tr><td>deepseek-v4-flash</td><td>$0.0057</td><td>1×</td></tr>
-      <tr><td>Claude Sonnet 5</td><td>$0.18</td><td>31×</td></tr>
-      <tr><td>GPT-5.4</td><td>$0.26</td><td>46×</td></tr>
-      <tr><td>Claude Opus 5</td><td>$0.45</td><td>78×</td></tr>
-      <tr><td>GPT-5.5</td><td>$0.52</td><td>91×</td></tr>
-      <tr><td>Claude Fable 5</td><td>$0.89</td><td>156×</td></tr>
-      <tr><td>GPT-5.5-pro</td><td>$4.20</td><td>735×</td></tr>
+      <tr><td>deepseek-flash</td><td>$0.0106</td><td>1×</td></tr>
+      <tr><td>Claude Sonnet 5*</td><td>$0.18</td><td>17×</td></tr>
+      <tr><td>GPT-5.4</td><td>$0.26</td><td>25×</td></tr>
+      <tr><td>Claude Opus 5</td><td>$0.45</td><td>42×</td></tr>
+      <tr><td>GPT-5.5</td><td>$0.52</td><td>49×</td></tr>
+      <tr><td>Claude Fable 5</td><td>$0.89</td><td>84×</td></tr>
+      <tr><td>GPT-5.5-pro</td><td>$4.20</td><td>396×</td></tr>
     </tbody>
   </table>
-  <p>Not twenty percent cheaper. Thirty to a few hundred times cheaper, depending on the model and how much of the prompt caches.</p>
+  <p>Not twenty percent cheaper. Seventeen to a few hundred times cheaper off-peak, half that at peak, depending on the model and how much of the prompt caches. *Sonnet 5 at its introductory price; the table on the V4 flat card, which billed $0.0057 for this exchange, read 31× to 735×.</p>
 
   <p class="note">That table is still arithmetic on a rate card, which is the weakest kind of cost claim — it assumes every model spends the same tokens on the same work, and they do not. The section below is the stronger evidence: what independent benchmarks actually paid.</p>
 
   <h2>What the benchmarks actually paid</h2>
+  <p class="note">The figures in this section and the next measured V4 Flash and V4 Pro, read on 2026-08-07. V4 Flash was retired on 2026-09-10; <code>deepseek-flash</code> is V4.1 Flash, a different model at a different price, and none of these rows describe it. They stay as dated V4 measurements until independent ones exist for V4.1.</p>
   <p>Two leaderboards publish a dollar figure next to the score, measured from their own runs rather than multiplied out of a price list. <a href="https://artificialanalysis.ai/leaderboards/models">Artificial Analysis</a> reports cost per task — total spend to run its Intelligence Index divided by the number of tasks — alongside the index score itself:</p>
   <table>
     <thead><tr><th scope="col">model</th><th scope="col">intelligence index</th><th scope="col">cost per task</th></tr></thead>
@@ -95,19 +106,19 @@
   <ul>
     <li><strong>Against the flagship tier, the gap is real and enormous.</strong> One to two orders of magnitude per task, on published same-harness runs, confirmed by two independent measurers.</li>
     <li><strong>Against the cheap frontier tier, the gap mostly evaporates.</strong> The cheap tiers of the big labs now land within a factor of two of DeepSeek's per-task cost, sometimes with better scores.</li>
-    <li><strong>The top of the quality range is not for sale at this price.</strong> Flash's 52 sits ten-plus index points below Opus 5 and Fable 5, and Artificial Analysis pairs that $0.03 with a 37% score on Humanity's Last Exam and an 84% hallucination rate. Paying 76× more buys something; whether it buys enough for your task is your measurement to make, not ours.</li>
+    <li><strong>The top of the quality range was not for sale at this price.</strong> V4 Flash's 52 sat ten-plus index points below Opus 5 and Fable 5, and Artificial Analysis pairs that $0.03 with a 37% score on Humanity's Last Exam and an 84% hallucination rate. Paying 76× more buys something; whether it buys enough for your task is your measurement to make, not ours.</li>
   </ul>
   <p class="note">Every figure above was read on 2026-08-07 and they drift for two reasons at once: vendors reprice (DeepSeek's own cost-to-run fell from $1,071 to $176 for v4-pro after a price cut), and benchmarks reweight their indices. Treat the ratios as this month's, not as constants.</p>
 
   <h2>What this does not claim</h2>
-  <p>Three smaller caveats on top of the big one. Tokenizers differ, so identical text is not identical token counts across vendors — Anthropic notes its current tokenizer emits roughly 30% more tokens for the same input than its previous one. DeepSeek has announced peak-hour pricing at 2× the listed rates, with no effective date yet, which would halve the gap during working hours in Beijing. And a harness costs money too: one comparison held flash constant across four agent frameworks and watched cost per successful task swing 2.7× — $0.073 on the cheapest, $0.195 on Claude Code — so the tool you drive the model with can matter as much as the model.</p>
+  <p>Three smaller caveats on top of the big one. Tokenizers differ, so identical text is not identical token counts across vendors — Anthropic notes its current tokenizer emits roughly 30% more tokens for the same input than its previous one. DeepSeek bills peak hours at 2× the off-peak rates since 2026-08-16 (01:00–04:00 and 06:00–10:00 UTC, Monday to Friday), which halves the gap during working hours in Beijing. And a harness costs money too: one comparison held V4 Flash constant across four agent frameworks and watched cost per successful task swing 2.7× — $0.073 on the cheapest, $0.195 on Claude Code — so the tool you drive the model with can matter as much as the model.</p>
   <p>What survives all of that is still worth saying plainly: for the broad middle of real work — summarize, translate, refactor, answer, glue — the going rate differs by one to two orders of magnitude depending on whose API you call, and the cheapest credible option is no longer a toy.</p>
 
   <h2>Why it matters</h2>
-  <p>Chat is measured in thousands of tokens; agents are measured in millions. The moment a model works unattended — reading files, retrying, checking its own output — token consumption stops tracking human attention and starts tracking machine patience. An overnight agent run that emits ten million output tokens costs $2.80 at flash prices and $500 at Fable prices. One of those is "leave it running"; the other is a line item that gets a meeting. At frontier prices, autonomy is a luxury good. At flash prices, it is a background process.</p>
+  <p>Chat is measured in thousands of tokens; agents are measured in millions. The moment a model works unattended — reading files, retrying, checking its own output — token consumption stops tracking human attention and starts tracking machine patience. An overnight agent run that emits ten million output tokens costs $6 at flash's off-peak price and $500 at Fable prices. One of those is "leave it running"; the other is a line item that gets a meeting. At frontier prices, autonomy is a luxury good. At flash prices, it is a background process.</p>
   <p>Whatever AGI turns out to be, it will be made of tokens, and nobody runs civilization-scale inference at $50 per million. Every 10× drop in token price makes a class of applications viable that was silly the day before — the same way compute-per-dollar curves, not any single breakthrough, decided what software got built. Cheap tokens are not the budget option. They are the substrate.</p>
 
-  <p>This page is also the explanation of the <a href="/story">gateway you are reading it on</a>. At flash prices, a dollar buys roughly three thousand ordinary conversational turns; at frontier list prices, the same dollar buys about fifty. A free tier funded by donated keys and pocket money is arithmetic that only works at the bottom of that table — which is why it runs on <code>deepseek-v4-flash</code>, and why there is <a href="/vision">no paid tier to upsell you to</a>.</p>
+  <p>This page is also the explanation of the <a href="/story">gateway you are reading it on</a>. At flash prices, a dollar buys roughly nineteen hundred ordinary conversational turns off-peak, half that at peak; at frontier list prices, the same dollar buys about fifty. A free tier funded by donated keys and pocket money is arithmetic that only works at the bottom of that table — which is why it runs on <code>deepseek-flash</code>, and why there is <a href="/vision">no paid tier to upsell you to</a>.</p>
 </main>
 <footer class="footer">
   <p>A community credit pool run by <a href="https://github.com/thevibeworks/deepseek-cli">thevibeworks/deepseek-cli</a>. No uptime guarantee. <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></p>

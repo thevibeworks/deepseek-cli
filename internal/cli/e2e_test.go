@@ -372,18 +372,20 @@ func TestRespondSchemaImpliesJSONSchemaFormat(t *testing.T) {
 	}
 }
 
-func TestRespondWebSearchAddsTheServerSideTool(t *testing.T) {
-	got := runCLI(t, serve(`{"id":"r1","object":"response","status":"completed","model":"deepseek-v4-flash","output":[],"usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2}}`),
+// DeepSeek removed server-side web_search on 2026-09-10 and now ignores
+// the tool. The flag must fail with the reason and send nothing, rather
+// than bill a request that answers from memory as if it had searched.
+func TestRespondWebSearchIsRefusedWithTheReason(t *testing.T) {
+	got := runCLI(t, serve(`{"id":"r1","object":"response","status":"completed","model":"deepseek-flash","output":[],"usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2}}`),
 		"respond", "hi", "--web-search", "--stream=false")
-	if got.err != nil {
-		t.Fatal(got.err)
+	if got.err == nil {
+		t.Fatal("--web-search succeeded; the tool no longer runs upstream")
 	}
-	tools, _ := got.requests[0]["tools"].([]any)
-	if len(tools) != 1 {
-		t.Fatalf("sent %d tools", len(tools))
+	if !strings.Contains(got.err.Error(), "removed") || !strings.Contains(got.err.Error(), "2026-09-10") {
+		t.Errorf("the error does not say it was removed upstream, and when: %v", got.err)
 	}
-	if tool, _ := tools[0].(map[string]any); tool["type"] != "web_search" {
-		t.Errorf("tool = %v", tools[0])
+	if len(got.requests) != 0 {
+		t.Errorf("sent %d requests; a refused flag must send nothing", len(got.requests))
 	}
 }
 
