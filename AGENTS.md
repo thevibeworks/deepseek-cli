@@ -88,12 +88,17 @@ deepseek fim "def f():" --suffix "    return x"
 Reach for `anthropic` or `respond` when the task is specifically about
 those wire formats. For a plain answer, use `chat`.
 
-Only `respond` has JSON Schema output and server-side web search:
+Only `respond` has JSON Schema output:
 
 ```bash
 deepseek respond "Berlin" -s "Return city and country." --schema @city.json
-deepseek respond "what shipped in Go 1.26" --web-search
 ```
+
+There is no server-side web search any more. DeepSeek removed the
+Responses API's `web_search` tool on 2026-09-10 and now ignores it, so
+`respond --web-search` exits 1 with that reason and sends nothing. To
+ground an answer, search yourself and pass the results with `--file` or
+stdin.
 
 ### Account and cost
 
@@ -165,15 +170,12 @@ deepseek free off            # forget the enrolment on this machine
 ```
 
 Free-tier limits, per UTC day: 30 requests, 60K input tokens, 20K output
-tokens, 3 web searches, 4K output per call, 128KB per request body,
-flash only. A request for pro is **refused, not downgraded**. `models` and `status` cost no quota; everything that can
-generate a token does.
-
-`respond --web-search` works on the free tier and spends one of the three
-daily searches. It is rationed that tightly because DeepSeek reads whole
-pages into the prompt — one measured search request billed 40K input
-tokens, about ten ordinary turns — so treat it as a few lookups a day, not
-a research loop. Other server-side tools are still refused.
+tokens, 4K output per call, 128KB per request body, `deepseek-flash`
+only (the retired names `deepseek-v4-flash` and
+`deepseek-v4-flash-vision-exp` are the same model). A request for pro is
+**refused, not downgraded**. `models` and `status` cost no quota;
+everything that can generate a token does. Server-side tools are refused,
+`web_search` with the reason that DeepSeek removed it.
 
 Errors from the gateway carry `"type":"free_tier_*"` and a message that
 already contains the next step — do not append DeepSeek's own advice to

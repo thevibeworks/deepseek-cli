@@ -99,8 +99,8 @@ about a second of CPU and nothing else &ndash; no account, no email, no card.</p
     <li><span>per day</span> 30 requests &middot; 60k input &middot; 20k output tokens</li>
     <li><span>privacy</span> prompts are relayed to DeepSeek and are not stored or
         logged by the gateway; only token counts and cost are recorded</li>
-    <li><span>when it runs out</span> the quota resets at 00:00 UTC, and the
-        <a href="../install/">CLI with your own key</a> has no limits at all</li>
+    <li><span>when it runs out</span> <span>the quota resets at 00:00 UTC, and the
+        <a href="../install/">CLI with your own key</a> has no limits at all</span></li>
   </ul>
   <button id="pg-enrolBtn" class="pg-primary" type="button">Enrol this browser</button>
   <p id="pg-enrolStatus" class="pg-status" hidden></p>
@@ -142,16 +142,6 @@ about a second of CPU and nothing else &ndash; no account, no email, no card.</p
       <option value="fim">fim &ndash; fill in the middle</option>
     </select>
     <p id="pg-formatNote" class="pg-note"></p>
-
-    <div id="pg-searchField" hidden>
-      <label class="pg-check" for="pg-search">
-        <input id="pg-search" type="checkbox">
-        web search
-      </label>
-      <p class="pg-note">DeepSeek searches and reads pages server-side. Costs
-      one of the free tier's three daily searches, because the pages it reads
-      are billed as input tokens &ndash; about ten ordinary turns' worth.</p>
-    </div>
 
     <label for="pg-think">thinking</label>
     <select id="pg-think">

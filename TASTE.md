@@ -75,8 +75,9 @@ return genuinely different objects — `choices[].message` versus
 with opposite cache conventions. A unified command has two ways out and
 both are bad: normalize, and `--json` lies about what the API sent; or
 leak, and one command emits three shapes depending on a flag. Meanwhile
-format-specific parameters (`web_search` and JSON Schema only exist on
-Responses, `prefix` only on beta chat) have to hide behind conditional
+format-specific parameters (`web_search` — until DeepSeek removed it on
+2026-09-10 — and JSON Schema only exist on Responses, `prefix` only on
+beta chat) have to hide behind conditional
 validation. One verb, four behaviours, and the user still has to know
 which format they are in — the surface got smaller while the task got
 harder.
@@ -472,3 +473,23 @@ the ration are both sized to a single measurement and should be re-measured
 when the tool changes. If a search request is ever observed above 256k
 input tokens in production, that is the signal to raise the allowance
 rather than to quietly accept the overshoot.
+
+**Expired 2026-09-18, by upstream.** DeepSeek removed `web_search` from
+the Responses API on 2026-09-10, with V4.1 Flash: the guide now lists it
+among the built-in tools that are *ignored*, and its streaming events are
+gone. A probe on 2026-09-18 confirmed it — the tool was accepted and
+echoed, no search ran, and the request billed 21 input tokens where the
+measured search above billed 40,260. The ration and the allowance
+therefore priced searches that could no longer happen, and the flag sent
+a request that answered from the model's memory to a caller who believed
+it had searched.
+
+What replaced it: the gateway refuses the tool with a 400 that says why,
+`respond --web-search` exits 1 with the same reason and sends nothing,
+and `DailySearches` and `searchInputAllowance` are deleted. The flag is
+kept, hidden, so a script that still passes it learns the reason instead
+of reading "unknown flag" as a bug here. Refusing rather than stripping
+the tool and forwarding is the same judgement as refusing pro rather than
+downgrading it: a caller who asked for something must not be handed less
+without being told. If DeepSeek brings a server-side search back, this
+entry and the one above are the arithmetic to redo, not to restore.

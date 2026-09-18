@@ -76,7 +76,7 @@ behaves exactly as it did before this existed.
   DSGATE_ADDR                listen address                   (:8787)
   DSGATE_STATE_DIR           journal, secret, revocations     (./state)
   DSGATE_SECRET              token signing secret, hex        (generated and persisted)
-  DSGATE_MODEL               the only model served            (deepseek-v4-flash)
+  DSGATE_MODEL               the only model served            (deepseek-flash)
   DSGATE_ANNOUNCE            public URL, shown to clients
 
 Per-user daily limits:
@@ -84,7 +84,6 @@ Per-user daily limits:
   DSGATE_ANON_DAILY_REQUESTS       (30)
   DSGATE_ANON_DAILY_INPUT_TOKENS   (60000)
   DSGATE_ANON_DAILY_OUTPUT_TOKENS  (20000)
-  DSGATE_ANON_DAILY_SEARCHES       (3)      server-side web searches per user
   DSGATE_ANON_MAX_TOKENS           (4096)    per-request output cap
   DSGATE_MAX_BODY_BYTES            (131072)  per-request body cap
   DSGATE_REQUESTS_PER_MINUTE       (20)      per-address burst
@@ -152,7 +151,6 @@ func run() error {
 		DailyRequests:     envInt("DSGATE_ANON_DAILY_REQUESTS", 30),
 		DailyInputTokens:  envInt("DSGATE_ANON_DAILY_INPUT_TOKENS", 60000),
 		DailyOutputTokens: envInt("DSGATE_ANON_DAILY_OUTPUT_TOKENS", 20000),
-		DailySearches:     envInt("DSGATE_ANON_DAILY_SEARCHES", 3),
 		DailyBudgetUSD:    envFloat("DSGATE_DAILY_BUDGET_USD", 1.00),
 		TotalBudgetUSD:    envFloat("DSGATE_TOTAL_BUDGET_USD", 20.00),
 	}
@@ -180,7 +178,7 @@ func run() error {
 		UpstreamBaseURL:          env("DSGATE_UPSTREAM_BASE_URL", "https://api.deepseek.com"),
 		UpstreamKeys:             keys,
 		KeyStatePath:             filepath.Join(stateDir, "donated-keys.json"),
-		Model:                    env("DSGATE_MODEL", "deepseek-v4-flash"),
+		Model:                    env("DSGATE_MODEL", "deepseek-flash"),
 		FreeBaseURL:              env("DSGATE_FREE_BASE_URL", "https://opencode.ai/zen/v1"),
 		FreeKeys:                 freeKeys,
 		FreeModel:                env("DSGATE_FREE_MODEL", "deepseek-v4-flash-free"),

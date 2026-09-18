@@ -111,7 +111,7 @@ func TestTheCLIEnrolsAndChatsThroughTheGateway(t *testing.T) {
 		t.Errorf("enrolment did not report success: %s", stderr)
 	}
 	// The disclosure is the consent. It has to actually be printed.
-	for _, want := range []string{"relays your prompts", "deepseek-v4-flash", "per day"} {
+	for _, want := range []string{"relays your prompts", "deepseek-flash", "per day"} {
 		if !strings.Contains(stderr, want) {
 			t.Errorf("enrolment output is missing %q:\n%s", want, stderr)
 		}

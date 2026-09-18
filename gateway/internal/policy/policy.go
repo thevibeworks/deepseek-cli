@@ -88,12 +88,6 @@ type Decision struct {
 	// estimate if the response turns out to be unmeterable.
 	MaxTokens int
 	Stream    bool
-	// Search is set when the request asks for DeepSeek's server-side web
-	// search. It travels because such a request costs a multiple of an
-	// ordinary one: the server injects the pages it read as input tokens,
-	// so neither the body's size nor MaxTokens predicts the bill. The
-	// reservation and the per-user ration both key off this.
-	Search bool
 }
 
 // Reject is a request refused before it cost anything.
@@ -137,7 +131,7 @@ func Apply(route Route, body []byte, subject string, lim Limits) (*Decision, err
 	if err := forbidFanOut(obj); err != nil {
 		return nil, err
 	}
-	if err := checkServerTools(obj, route.Format, d); err != nil {
+	if err := checkServerTools(obj, route.Format); err != nil {
 		return nil, err
 	}
 	setIdentity(obj, route.Format, subject)
@@ -193,31 +187,46 @@ func decodeObject(body []byte) (map[string]any, error) {
 // It refuses rather than silently downgrading. A user who asked for pro
 // and got flash without being told would compare the answer against pro's
 // reputation and conclude the model is worse than it is.
+//
+// Both sides are resolved, so a retired flash name on either end — a
+// client still asking for deepseek-v4-flash, or an operator whose
+// DSGATE_MODEL predates the rename — means the one model upstream serves
+// under all of those names.
 func checkModel(obj map[string]any, free string) error {
 	asked, _ := obj["model"].(string)
-	if asked == "" || asked == free {
-		return nil
-	}
-	if resolve(asked) == free {
-		// A Claude name the Anthropic endpoint maps onto flash anyway.
+	if asked == "" || resolve(asked) == resolve(free) {
 		return nil
 	}
 	return &Reject{
-		Message: fmt.Sprintf("the free tier serves %s only, not %q", free, asked),
-		Hint:    "bring your own key for " + strings.TrimSpace(strings.Replace(asked, free, "", 1)) + ": https://platform.deepseek.com/api_keys",
+		Message: fmt.Sprintf("the free tier serves %s only, not %q", resolve(free), asked),
+		Hint:    "bring your own key for " + asked + ": https://platform.deepseek.com/api_keys",
 	}
 }
 
-// resolve mirrors the CLI's model resolution: the Anthropic endpoint
-// accepts Claude names and remaps them server-side.
+// Canonical is the name upstream serves a model under today. The gateway
+// uses it wherever it compares against what upstream reports — the
+// /models list only carries the new names.
+func Canonical(model string) string { return resolve(model) }
+
+// resolve mirrors upstream's model resolution, as the Anthropic API guide
+// states it (read 2026-09-18): claude-opus* runs as deepseek-v4-pro, and
+// every other name the endpoint does not know — claude-sonnet*,
+// claude-haiku*, anything else — runs as deepseek-flash. The two names
+// retired on 2026-09-10 are served and billed as deepseek-flash on every
+// format.
+//
+// The OpenAI formats reject an unknown name upstream instead of mapping
+// it; the gateway never forwards one, because Apply pins the model.
 func resolve(model string) string {
 	switch {
-	case model == "deepseek-v4-flash" || model == "deepseek-v4-pro":
+	case model == "deepseek-flash" || model == "deepseek-v4-pro":
 		return model
+	case model == "deepseek-v4-flash" || model == "deepseek-v4-flash-vision-exp":
+		return "deepseek-flash"
 	case strings.HasPrefix(model, "claude-opus"):
 		return "deepseek-v4-pro"
 	default:
-		return "deepseek-v4-flash"
+		return "deepseek-flash"
 	}
 }
 
@@ -261,27 +270,22 @@ func forbidFanOut(obj map[string]any) error {
 
 // checkServerTools decides which tools that run on DeepSeek's side the
 // free tier will carry. Client tools ("function") only declare a schema
-// and cost nothing extra. Only the Responses format offers server-side
-// ones at all.
+// and cost nothing extra. Only the Responses format ever offered
+// server-side ones.
 //
-// web_search is allowed, and the reason is a measurement rather than a
-// guess. Against the live API on 2026-08-07, one search request made 11
-// server-side calls (searches, page opens, an in-page find) and reported
-// 40,260 input tokens, 32,000 of them cache hits — and the account
-// balance moved by nothing beyond those tokens. So DeepSeek charges no
-// per-search fee: the whole cost of a search arrives as input tokens in
-// the usage object, which is exactly what this gateway already meters.
-// Eleven searches at a frontier vendor's $10-per-1,000 rate would have
-// been $0.11 and unmistakable in the balance; it was not there.
-//
-// What that measurement does change is the reservation. A search
-// request's input is chosen by the server, not by the caller, so the
-// request body no longer bounds it — see meter.Estimate.
+// None are carried. web_search was, from 2026-08-07, and was rationed
+// because one search billed ~40K input tokens. DeepSeek removed it from
+// the Responses API with V4.1 Flash on 2026-09-10: the guide now lists
+// web_search among the built-in tools that are ignored, and a probe on
+// 2026-09-18 billed 21 input tokens where a search used to bill ~40K. A
+// request carrying it is refused with that reason rather than forwarded,
+// because forwarding it would answer from the model's memory while the
+// caller believes it searched.
 //
 // Every other server-side tool stays refused: an unknown tool is unknown
 // work at an unknown price, and the honest default for spending someone
 // else's donated credit is no.
-func checkServerTools(obj map[string]any, f Format, d *Decision) error {
+func checkServerTools(obj map[string]any, f Format) error {
 	if f != FormatResponses {
 		return nil
 	}
@@ -292,19 +296,25 @@ func checkServerTools(obj map[string]any, f Format, d *Decision) error {
 		switch {
 		case kind == "" || kind == "function":
 		case isWebSearch(kind):
-			d.Search = true
+			return &Reject{
+				Message: webSearchRemoved,
+				Hint:    "drop the web_search tool; to ground an answer, search on your side and put the results in the prompt",
+			}
 		default:
 			return &Reject{
 				Message: fmt.Sprintf("the free tier does not serve server-side tools (%q)", kind),
-				Hint:    "web_search works here; for anything else bring your own key: https://platform.deepseek.com/api_keys",
+				Hint:    "declare function tools and run them yourself, or bring your own key: https://platform.deepseek.com/api_keys",
 			}
 		}
 	}
 	return nil
 }
 
-// isWebSearch matches the tool DeepSeek documents under two names, the
-// bare one and the dated one their Responses API also accepts.
+// webSearchRemoved is the refusal for a web_search tool.
+const webSearchRemoved = "DeepSeek removed server-side web_search from the Responses API on 2026-09-10; it would be ignored, not run"
+
+// isWebSearch matches the tool under both names DeepSeek documented, the
+// bare one and the dated one.
 func isWebSearch(kind string) bool {
 	return kind == "web_search" || strings.HasPrefix(kind, "web_search_")
 }

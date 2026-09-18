@@ -32,7 +32,7 @@ func withFree(free *upstream) func(*Config, *quota.Limits) {
 }
 
 func chatBody() string {
-	return `{"model":"deepseek-v4-flash","messages":[{"role":"user","content":"hi"}]}`
+	return `{"model":"deepseek-flash","messages":[{"role":"user","content":"hi"}]}`
 }
 
 // The whole point: a chat request the free lane accepts never reaches the
@@ -62,7 +62,7 @@ func TestFreeLaneServesChatForNothing(t *testing.T) {
 	if got.Headers.Get("Authorization") != "Bearer "+freeKey {
 		t.Error("the free lane was not authenticated with its own key")
 	}
-	// The client asked for deepseek-v4-flash and the allowlist approved
+	// The client asked for deepseek-flash and the allowlist approved
 	// that name; only the lane knows the alias.
 	if m, _ := got.Body["model"].(string); m != "deepseek-v4-flash-free" {
 		t.Errorf("model reaching the free upstream = %q, want the alias", m)
@@ -104,7 +104,7 @@ func TestFreeLaneFallsBackOnRefusal(t *testing.T) {
 			if paid.count() != 1 {
 				t.Fatalf("paid upstream saw %d requests, want 1", paid.count())
 			}
-			if m, _ := paid.last(t).Body["model"].(string); m != "deepseek-v4-flash" {
+			if m, _ := paid.last(t).Body["model"].(string); m != "deepseek-flash" {
 				t.Errorf("model reaching the paid upstream = %q; the alias leaked", m)
 			}
 			if h.ledger.Today().SpentUSD <= 0 {
@@ -120,7 +120,7 @@ func TestFreeLaneOnlyCarriesChat(t *testing.T) {
 	cases := []struct{ name, path, body string }{
 		{"anthropic", "/v1/anthropic/v1/messages", `{"model":"deepseek-v4-flash","max_tokens":16,"messages":[{"role":"user","content":"hi"}]}`},
 		{"fim", "/v1/completions", `{"model":"deepseek-v4-flash","prompt":"def f():"}`},
-		{"search", "/v1/responses", `{"model":"deepseek-v4-flash","input":"hi","tools":[{"type":"web_search"}]}`},
+		{"responses", "/v1/responses", `{"model":"deepseek-flash","input":"hi"}`},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

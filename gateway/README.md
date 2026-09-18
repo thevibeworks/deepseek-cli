@@ -37,9 +37,10 @@ What it changes about a request, and nothing else:
 
 | | |
 |---|---|
-| `model` | pinned to flash; a pro request is **refused**, not downgraded |
+| `model` | pinned to `deepseek-flash`; the retired flash names are the same model; a pro request is **refused**, not downgraded |
 | `max_tokens` | clamped to the free-tier ceiling |
 | `n`, `best_of` | refused above 1 — they multiply the cost of one admitted request |
+| server-side tools | refused; `web_search` with the reason: DeepSeek removed it on 2026-09-10 and now ignores it |
 | user identity | overwritten with the token's subject |
 
 That last one is not a nicety. DeepSeek documents `user_id` as the
@@ -63,15 +64,25 @@ Measured against Zen on 2026-08-12, which is why the lane is this narrow:
 |---|---|
 | refusal rate | ~20% of sequential requests, `429 FreeUsageLimitError` |
 | `/chat/completions` | works; usage reported streamed and buffered |
-| `/responses` | answers, but rejects a server-side `web_search` tool |
+| `/responses` | answers, but rejected a server-side `web_search` tool |
 | `/anthropic/v1/messages`, `/beta/completions`, `/user/balance` | 404 |
 | the model's name there | `deepseek-v4-flash-free`, aliased at the last moment |
 | privacy | Zen says free-lane data **may be used to improve the model** |
 
 So it carries `chat` and nothing else. FIM, the Anthropic and Responses
-formats, web search and the model list all go straight to DeepSeek, and
-the caller's contract does not change: they ask for `deepseek-v4-flash`,
-by that name, on every route.
+formats and the model list all go straight to DeepSeek, and the caller's
+contract does not change: they ask for `deepseek-flash`, by that name, on
+every route.
+
+**Measured 2026-09-18: the lane carries nothing right now.** Zen still
+lists `deepseek-v4-flash-free`, but answers every request with
+`Model is unavailable` — V4 Flash was retired upstream on 2026-09-10 and
+Zen has no free V4.1 model. Every chat request therefore pays one refused
+round trip and still lands on the DeepSeek key, and its prompt still
+reaches Zen on the way. Leave `OPENCODE_API_KEY` unset until Zen serves a
+free `deepseek-flash`, and check that the model it serves is V4.1 before
+turning it back on: the gateway renames the model on the way out, so
+callers would be told `deepseek-flash` whatever Zen actually runs.
 
 The interesting consequence is what happens when the money runs out.
 A request that the free lane can serve is admitted **past** the daily

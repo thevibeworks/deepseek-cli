@@ -85,7 +85,7 @@ func TestPricingAfterV41ShowsTheNewFlashCard(t *testing.T) {
 	}
 
 	text := formatPricing(now)
-	for _, want := range []string{"since 2026-09-10 11:00 UTC", "$0.15", "$0.6", "deepseek-v4-flash-vision-exp bill as deepseek-flash"} {
+	for _, want := range []string{"since 2026-09-10 04:00 UTC", "$0.15", "$0.6", "deepseek-v4-flash-vision-exp bill as deepseek-flash"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("text output is missing %q:\n%s", want, text)
 		}

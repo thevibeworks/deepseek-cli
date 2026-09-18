@@ -184,7 +184,7 @@ func TestEstimateExceedsATypicalRealCharge(t *testing.T) {
 	const body = 4000
 	const maxTokens = 4096
 
-	est := Estimate("deepseek-v4-flash", body, maxTokens, false)
+	est := Estimate("deepseek-v4-flash", body, maxTokens)
 	real := Cost("deepseek-v4-flash", Usage{InputTokens: body / 3, OutputTokens: 800, Found: true})
 	if est <= real {
 		t.Errorf("estimate %v is not above a realistic charge %v; unbillable would be cheaper than billable", est, real)
@@ -220,13 +220,13 @@ func TestEstimateCeilingCoversTheNextPeriod(t *testing.T) {
 	const model = "deepseek-v4-flash"
 	justBeforePeak := time.Date(2026, 8, 17, 5, 30, 0, 0, time.UTC)
 	insidePeak := time.Date(2026, 8, 17, 6, 5, 0, 0, time.UTC)
-	if est, peak := EstimateAt(model, 400, 1000, false, justBeforePeak), EstimateAt(model, 400, 1000, false, insidePeak); est < peak {
+	if est, peak := EstimateAt(model, 400, 1000, justBeforePeak), EstimateAt(model, 400, 1000, insidePeak); est < peak {
 		t.Errorf("admitted at 05:30 UTC the reservation %v is under the peak-priced %v it could settle at", est, peak)
 	}
 
 	justBeforeFlip := RepriceAt.Add(-10 * time.Minute)
-	afterFlip := EstimateAt(model, 400, 1000, false, RepriceAt)
-	if est := EstimateAt(model, 400, 1000, false, justBeforeFlip); est < afterFlip {
+	afterFlip := EstimateAt(model, 400, 1000, RepriceAt)
+	if est := EstimateAt(model, 400, 1000, justBeforeFlip); est < afterFlip {
 		t.Errorf("admitted before the flip the reservation %v is under the post-flip %v", est, afterFlip)
 	}
 
@@ -234,7 +234,7 @@ func TestEstimateCeilingCoversTheNextPeriod(t *testing.T) {
 	// not at a permanent doubling.
 	quiet := time.Date(2026, 8, 17, 12, 0, 0, 0, time.UTC)
 	offPeak := costWith(cardFor(ratesV4OffPeak, model), Usage{InputTokens: 401, OutputTokens: 1000 + reasoningAllowance})
-	if est := EstimateAt(model, 400, 1000, false, quiet); math.Abs(est-offPeak) > 1e-12 {
+	if est := EstimateAt(model, 400, 1000, quiet); math.Abs(est-offPeak) > 1e-12 {
 		t.Errorf("quiet off-peak reservation %v, want the off-peak card's %v", est, offPeak)
 	}
 }
@@ -273,24 +273,4 @@ func itoa(n int) string {
 		n /= 10
 	}
 	return string(b)
-}
-
-// A search request's input is chosen by DeepSeek, not by the caller: the
-// pages it reads are billed as input tokens that never passed through the
-// body. So the reservation cannot be derived from the body alone, and a
-// search must hold materially more than the same bytes without one.
-func TestSearchReservesBeyondTheBody(t *testing.T) {
-	const model = "deepseek-v4-flash"
-	plain := Estimate(model, 400, 1000, false)
-	search := Estimate(model, 400, 1000, true)
-
-	if search <= plain {
-		t.Fatalf("a search reserved %v, no more than the %v an ordinary request holds", search, plain)
-	}
-	// The measured case on 2026-08-07 was 40k input tokens; the reservation
-	// has to cover that with room, or the ceiling leaks on every search.
-	measured := Cost(model, Usage{InputTokens: 40_260, CacheHitTokens: 32_000, OutputTokens: 3_100})
-	if search < measured {
-		t.Errorf("reservation %v is under the %v a real measured search cost", search, measured)
-	}
 }

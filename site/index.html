@@ -133,7 +133,7 @@ answer.</p>
 this project. No account, no API key.</span>
 
 <span class="c">  gateway   https://freeseek.1lm.io
-  model     deepseek-v4-flash
+  model     deepseek-flash
   per day   30 requests &middot; 60k input &middot; 20k output tokens
   privacy   prompts are relayed, not stored; only token counts are recorded</span>
 
@@ -264,7 +264,7 @@ Full reference on the <a href="./commands/">commands page</a>.</p>
 <tbody>
 <tr><td><code>chat</code></td><td><code>POST /chat/completions</code></td><td>The default. OpenAI format, the one most tools speak.</td></tr>
 <tr><td><code>anthropic</code></td><td><code>POST /anthropic/v1/messages</code></td><td>What Claude Code and the Anthropic SDKs speak.</td></tr>
-<tr><td><code>respond</code></td><td><code>POST /responses</code></td><td>What Codex speaks. JSON Schema output and server-side web search live only here.</td></tr>
+<tr><td><code>respond</code></td><td><code>POST /responses</code></td><td>What Codex speaks. JSON Schema output lives only here.</td></tr>
 <tr><td><code>fim</code></td><td><code>POST /beta/completions</code></td><td>Fill in the middle &ndash; the shape editors use for inline completion.</td></tr>
 <tr><td><code>models</code></td><td><code>GET /models</code></td><td>Available models, joined with the published rate card.</td></tr>
 <tr><td><code>balance</code></td><td><code>GET /user/balance</code></td><td>What is left, per currency.</td></tr>

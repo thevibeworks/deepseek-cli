@@ -295,13 +295,14 @@ func TestNextChangeCrossesTheWeekend(t *testing.T) {
 }
 
 func TestV41FlashCardSwitchesOnItsInstant(t *testing.T) {
-	// 2026-09-10: the Flash card dropped with V4.1, Pro's did not. 11:00
-	// UTC is off-peak on a Thursday, so the flip lands on the off-peak
-	// rows of both cards.
+	// 2026-09-10: the Flash card dropped with V4.1, Pro's did not. 04:00
+	// UTC on that Thursday is also the end of the 01:00-04:00 peak window,
+	// so the instant before the flip is V4 at peak and the flip itself is
+	// V4.1 off-peak: two changes land at once, and both must be seen.
 	u := Usage{InputTokens: 2_000_000, CacheHitTokens: 1_000_000, CacheMissTokens: 1_000_000, OutputTokens: 1_000_000}
 
 	before, _ := CostAt(ModelFlash, u, V41At.Add(-time.Nanosecond))
-	if want := 0.007 + 0.22 + 0.66; math.Abs(before-want) > 1e-9 {
+	if want := 2 * (0.007 + 0.22 + 0.66); math.Abs(before-want) > 1e-9 {
 		t.Errorf("one instant before V4.1: got %v, want the V4 card's %v", before, want)
 	}
 	after, _ := CostAt(ModelFlash, u, V41At)
@@ -342,8 +343,9 @@ func TestRetiredFlashNamesBillAsFlashInEveryEra(t *testing.T) {
 }
 
 func TestNextChangeSeesTheCardChange(t *testing.T) {
-	// 10:00 to 11:00 UTC on 2026-09-10 is off-peak on both sides of the
-	// flip, so only the card changes; a label-only walk would sail past it.
+	// 04:00 UTC on 2026-09-10 ends a peak window and changes the card at
+	// once. From 03:30 the next change is that instant either way; from
+	// 04:30, off-peak on the new card, it is the 06:00 window.
 	at := V41At.Add(-30 * time.Minute)
 	if got := NextChange(at); !got.Equal(V41At) {
 		t.Errorf("NextChange(%v) = %v, want the card change at %v", at, got, V41At)

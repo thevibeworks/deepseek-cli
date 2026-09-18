@@ -144,17 +144,19 @@ and pro did not change:</p>
 <p>The retired names <code>deepseek-v4-flash</code> and
 <code>deepseek-v4-flash-vision-exp</code> still work: V4.1 Flash serves them,
 at the <code>deepseek-flash</code> price.</p>
-<p>DeepSeek dated the cut and published no time, so <strong>the instant the
-CLI switches cards is inferred</strong>: 11:00 UTC on 2026-09-10. Our docs
-mirror fetched the old card at 04:50 UTC that day and the new one at 11:27
-UTC; 11:00 is the last whole hour between the two, so an estimate for a call
-made in that gap can overstate what it cost and never understate it.</p>
+<p>The CLI switches cards at <strong>04:00 UTC on 2026-09-10</strong>, the
+instant DeepSeek's <a href="https://api-docs.deepseek.com/news/news260910">release
+note</a> gives: &ldquo;New pricing takes effect at 04:00 UTC on Sept 10,
+2026.&rdquo; The pricing page itself carries no time, and until 2026-09-18 we
+used an inferred 11:00 UTC, bracketed by our docs mirror fetching the old card
+at 04:50 UTC and the new one at 11:27 UTC.</p>
 <p>The <a href="../cost/#cache">context cache</a> stays the biggest
 lever: a cached input token costs 1/50th of a miss on flash and 1/30th on
 pro. Prompt structure still dominates a bill &ndash; it is worth up to
 50&times;, where the hour of the day is worth 2&times;.</p>
 
 <h2 id="before">What it replaced</h2>
+<!-- claim:historical -->
 <p>Two superseded cards. They are here because the
 <a href="../cost/#ledger">ledger</a> keeps token counts rather than
 dollars, so every call reprices under the card it was actually billed

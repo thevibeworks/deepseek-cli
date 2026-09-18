@@ -4,17 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>freeseek — free DeepSeek API, no key, no account</title>
-<meta name="description" content="Free DeepSeek API access with no key and no account. An OpenAI-compatible community gateway to deepseek-v4-flash — solve a one-second proof-of-work puzzle and start building.">
-<meta name="keywords" content="free deepseek api, deepseek api free, deepseek cli, free deepseek api key, deepseek api without key, ds api, deepseek v4 flash, openai compatible deepseek, deepseek free tier, keyless deepseek">
+<meta name="description" content="Free DeepSeek API access with no key and no account. An OpenAI-compatible community gateway to deepseek-flash (DeepSeek-V4.1-Flash) — solve a one-second proof-of-work puzzle and start building.">
+<meta name="keywords" content="free deepseek api, deepseek api free, deepseek cli, free deepseek api key, deepseek api without key, ds api, deepseek-flash, deepseek v4.1 flash, openai compatible deepseek, deepseek free tier, keyless deepseek">
 <link rel="canonical" href="https://freeseek.1lm.io/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="freeseek">
 <meta property="og:title" content="freeseek — free DeepSeek API, no key, no account">
-<meta property="og:description" content="OpenAI-compatible community gateway to deepseek-v4-flash. No key, no account — a one-second proof-of-work puzzle is the only gate.">
+<meta property="og:description" content="OpenAI-compatible community gateway to deepseek-flash (DeepSeek-V4.1-Flash). No key, no account — a one-second proof-of-work puzzle is the only gate.">
 <meta property="og:url" content="https://freeseek.1lm.io/">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="freeseek — free DeepSeek API, no key, no account">
-<meta name="twitter:description" content="OpenAI-compatible community gateway to deepseek-v4-flash. No key, no account — a one-second proof-of-work puzzle is the only gate.">
+<meta name="twitter:description" content="OpenAI-compatible community gateway to deepseek-flash (DeepSeek-V4.1-Flash). No key, no account — a one-second proof-of-work puzzle is the only gate.">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <script>(function(){try{var t=localStorage.getItem("theme");if(t==="dark"||t==="light"){document.documentElement.dataset.theme=t;}}catch(e){}})();</script>
 <link rel="stylesheet" href="style.css">
@@ -52,7 +52,7 @@
 <section class="hero" aria-labelledby="hero-h">
   <h1 id="hero-h">Free DeepSeek API. No key. No account.</h1>
   <p class="hero-sub">A community-run, OpenAI-compatible gateway to
-  <strong>deepseek-v4-flash</strong>. Your client solves a one-second
+  <strong>deepseek-flash</strong>, DeepSeek-V4.1-Flash. Your client solves a one-second
   proof-of-work puzzle — that is the whole signup.</p>
   <div class="codeblock">
     <button id="copy-btn" type="button" aria-label="copy commands to clipboard">copy</button>
@@ -229,13 +229,11 @@ deepseek chat "why is the sky blue"</code></pre>
     <li><span id="lim-req">30</span> requests</li>
     <li><span id="lim-in">60k</span> input tokens</li>
     <li><span id="lim-out">20k</span> output tokens</li>
-    <li><span id="lim-search">3</span> web searches</li>
   </ul>
-  <p class="fineprint">Server-side <code>web_search</code> works here:
-  <code>deepseek respond "…" --web-search</code>, or the <code>web_search</code>
-  tool on <code>/responses</code> from any OpenAI client. It has its own small
-  ration because one search reads whole pages into the prompt and costs about
-  what ten ordinary turns cost — see <a href="/economics">economics</a>.</p>
+  <p class="fineprint">Server-side <code>web_search</code> is gone: DeepSeek
+  removed it from the Responses API on 2026-09-10, with V4.1 Flash, and now
+  ignores the tool. A request that carries it is refused here with that
+  reason rather than answered from memory as if it had searched.</p>
 </section>
 
 </main>

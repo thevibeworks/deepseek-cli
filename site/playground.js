@@ -137,7 +137,6 @@
         };
         if (s.system) body.instructions = s.system;
         if (s.temperature !== null) body.temperature = s.temperature;
-        if (s.search) body.tools = [{ type: 'web_search' }];
         applyThinking(body, s);
         return body;
       },
@@ -231,8 +230,7 @@
   ['enrol', 'enrolBtn', 'enrolStatus', 'app', 'log', 'composer', 'prompt',
    'send', 'stop', 'usage', 'quota', 'command', 'copy', 'format', 'formatNote',
    'think', 'effort', 'maxTokens', 'temperature', 'system', 'clear', 'reset',
-   'gateway', 'fimFields', 'suffix', 'chatFields', 'error',
-   'search', 'searchField'
+   'gateway', 'fimFields', 'suffix', 'chatFields', 'error'
   ].forEach(function (id) { el[id] = document.getElementById('pg-' + id); });
 
   if (!el.app) return; // not the playground page
@@ -263,7 +261,6 @@
       maxTokens: isNaN(maxTokens) ? 1024 : Math.max(1, Math.min(4096, maxTokens)),
       temperature: isNaN(temp) ? null : temp,
       system: el.system.value.trim(),
-      search: !!(el.search && el.search.checked),
       prefix: el.prompt.value,
       suffix: el.suffix.value,
     };
@@ -288,7 +285,6 @@
       if (c.maxTokens) el.maxTokens.value = c.maxTokens;
       if (c.temperature !== null && c.temperature !== undefined) el.temperature.value = c.temperature;
       if (c.system) el.system.value = c.system;
-      if (c.search && el.search) el.search.checked = true;
     } catch (e) {}
   }
 
@@ -312,14 +308,12 @@
     if (s.effort) parts.push('--effort ' + s.effort);
     if (s.maxTokens !== 1024) parts.push('--max-tokens ' + s.maxTokens);
     if (s.temperature !== null) parts.push('--temperature ' + s.temperature);
-    if (s.search && f.command === 'respond') parts.push('--web-search');
     if (history.length > 1 && !f.fim) parts.push('--session playground');
 
     el.command.textContent = wrap(parts);
     el.formatNote.textContent = f.note;
     el.fimFields.hidden = !f.fim;
     el.chatFields.hidden = !!f.fim;
-    if (el.searchField) el.searchField.hidden = f.command !== 'respond';
   }
 
   function quote(s) {
@@ -820,7 +814,7 @@
   el.prompt.addEventListener('input', renderCommand);
   el.suffix.addEventListener('input', renderCommand);
 
-  ['format', 'think', 'effort', 'maxTokens', 'temperature', 'system', 'search'].forEach(function (id) {
+  ['format', 'think', 'effort', 'maxTokens', 'temperature', 'system'].forEach(function (id) {
     if (!el[id]) return;
     el[id].addEventListener('change', saveControls);
     el[id].addEventListener('input', renderCommand);
