@@ -233,7 +233,7 @@ func TestEstimateCeilingCoversTheNextPeriod(t *testing.T) {
 	// And far from any boundary, off-peak reserves at the off-peak card,
 	// not at a permanent doubling.
 	quiet := time.Date(2026, 8, 17, 12, 0, 0, 0, time.UTC)
-	offPeak := costWith(cardFor(ratesOffPeak, model), Usage{InputTokens: 401, OutputTokens: 1000 + reasoningAllowance})
+	offPeak := costWith(cardFor(ratesV4OffPeak, model), Usage{InputTokens: 401, OutputTokens: 1000 + reasoningAllowance})
 	if est := EstimateAt(model, 400, 1000, false, quiet); math.Abs(est-offPeak) > 1e-12 {
 		t.Errorf("quiet off-peak reservation %v, want the off-peak card's %v", est, offPeak)
 	}

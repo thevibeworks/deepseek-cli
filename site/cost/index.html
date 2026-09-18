@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>What DeepSeek actually costs: cache math and a local usage ledger</title>
-<meta name="description" content="DeepSeek&#x27;s context cache makes a cached input token 50x cheaper than an uncached one. How the deepseek CLI prices every call, what the local usage ledger records, and the caveats on every figure it prints.">
-<meta name="keywords" content="deepseek pricing, deepseek api cost, deepseek context cache, deepseek cache hit tokens, deepseek token cost calculator, deepseek v4 flash price, deepseek usage tracking">
+<meta name="description" content="DeepSeek&#x27;s context cache makes a cached input token 50x cheaper than an uncached one on flash and 30x on pro. How the deepseek CLI prices every call, what the local usage ledger records, and the caveats on every figure it prints.">
+<meta name="keywords" content="deepseek pricing, deepseek api cost, deepseek context cache, deepseek cache hit tokens, deepseek token cost calculator, deepseek flash price, deepseek v4.1 flash price, deepseek usage tracking">
 <meta name="author" content="thevibeworks">
 <meta name="theme-color" content="#fbfaf7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
@@ -13,7 +13,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="deepseek-cli">
 <meta property="og:title" content="What DeepSeek actually costs: cache math and a local usage ledger">
-<meta property="og:description" content="DeepSeek&#x27;s context cache makes a cached input token 50x cheaper than an uncached one. How the deepseek CLI prices every call, what the local usage ledger records, and the caveats on every figure it prints.">
+<meta property="og:description" content="DeepSeek&#x27;s context cache makes a cached input token 50x cheaper than an uncached one on flash and 30x on pro. How the deepseek CLI prices every call, what the local usage ledger records, and the caveats on every figure it prints.">
 <meta property="og:url" content="https://thevibeworks.github.io/deepseek-cli/cost/">
 <meta property="og:image" content="https://thevibeworks.github.io/deepseek-cli/og.png">
 <meta property="og:image:width" content="1200">
@@ -21,7 +21,7 @@
 <meta property="og:image:alt" content="deepseek-cli: the whole DeepSeek API from the terminal">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="What DeepSeek actually costs: cache math and a local usage ledger">
-<meta name="twitter:description" content="DeepSeek&#x27;s context cache makes a cached input token 50x cheaper than an uncached one. How the deepseek CLI prices every call, what the local usage ledger records, and the caveats on every figure it prints.">
+<meta name="twitter:description" content="DeepSeek&#x27;s context cache makes a cached input token 50x cheaper than an uncached one on flash and 30x on pro. How the deepseek CLI prices every call, what the local usage ledger records, and the caveats on every figure it prints.">
 <meta name="twitter:image" content="https://thevibeworks.github.io/deepseek-cli/og.png">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -87,7 +87,7 @@
 
 <h1>Cost</h1>
 <p class="lede">DeepSeek's headline feature is a disk-backed context cache that
-makes a repeated prompt prefix roughly thirty times cheaper. Since
+makes a repeated prompt prefix thirty to fifty times cheaper. Since
 2026-08-16 a second lever sits on top of it: the hour of the day, worth 2&times;.
 Neither is visible unless something is counting &ndash; so this counts.</p>
 
@@ -101,22 +101,23 @@ names the period you are in right now:</p>
 <table>
 <thead><tr><th>Model</th><th>Period</th><th class="num">Input (cached)</th><th class="num">Input (miss)</th><th class="num">Output</th></tr></thead>
 <tbody>
-<tr><td rowspan="2"><code>deepseek-v4-flash</code></td><td>off-peak</td><td class="num">$0.007</td><td class="num">$0.22</td><td class="num">$0.66</td></tr>
-<tr><td>peak</td><td class="num">$0.014</td><td class="num">$0.44</td><td class="num">$1.32</td></tr>
-<tr><td rowspan="2"><code>deepseek-v4-flash-vision-exp</code></td><td>off-peak</td><td class="num">$0.007</td><td class="num">$0.22</td><td class="num">$0.66</td></tr>
-<tr><td>peak</td><td class="num">$0.014</td><td class="num">$0.44</td><td class="num">$1.32</td></tr>
+<tr><td rowspan="2"><code>deepseek-flash</code></td><td>off-peak</td><td class="num">$0.003</td><td class="num">$0.15</td><td class="num">$0.60</td></tr>
+<tr><td>peak</td><td class="num">$0.006</td><td class="num">$0.30</td><td class="num">$1.20</td></tr>
 <tr><td rowspan="2"><code>deepseek-v4-pro</code></td><td>off-peak</td><td class="num">$0.022</td><td class="num">$0.66</td><td class="num">$1.98</td></tr>
 <tr><td>peak</td><td class="num">$0.044</td><td class="num">$1.32</td><td class="num">$3.96</td></tr>
 </tbody>
 </table>
 </div>
-<p><code>ds models</code> prints the card in force next to the live model
+<p>The retired names <code>deepseek-v4-flash</code> and
+<code>deepseek-v4-flash-vision-exp</code> still work: V4.1 Flash serves them,
+at the <code>deepseek-flash</code> price. <code>ds models</code> prints the card in force next to the live model
 list, so the price is on screen when you pick, and <code>ds pricing</code>
 prints the full schedule with the period you are in right now.</p>
 
 <h2 id="cache">What the cache is worth</h2>
-<p>On flash, a cache hit costs <strong>1/31st</strong> of a miss per token.
-The same 2,900-token prompt, sent twice:</p>
+<p>On flash, a cache hit costs <strong>1/50th</strong> of a miss per token;
+on pro, 1/30th. The same 2,900-token prompt, sent twice, on the V4 flash
+card of the day, where the ratio was 1/31st:</p>
 <div class="term">
 <div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="title">measured 2026-08-17, off-peak</span></div>
 <pre><code><span class="p">$</span> ds chat <span class="w">"..."</span> <span class="k">--system</span> @prefix.txt
@@ -131,7 +132,8 @@ The same 2,900-token prompt, sent twice:</p>
 same prefix again. It is 15&times; and not 31&times; because the 3% that
 changed &ndash; the tail of the prompt, and the question itself &ndash;
 still bills at the miss rate: the realised saving is always the rate ratio
-times how much of the prompt you kept identical. Hence the practical rule:
+times how much of the prompt you kept identical. On today's flash card the
+same call drops about 20&times;. Hence the practical rule:
 <strong>put the stable part of a prompt first</strong> &ndash; same system
 prompt, same files, in the same order &ndash; and let the variable part come
 last.</p>
@@ -157,7 +159,7 @@ exactly constant: 89&minus;10 = 115&minus;36 = 79.</p>
 
 <div class="tablewrap">
 <table>
-<thead><tr><th><code>--effort</code></th><th class="num">flash</th><th class="num">pro</th><th>thinking</th></tr></thead>
+<thead><tr><th><code>--effort</code></th><th class="num">V4 flash</th><th class="num">pro</th><th>thinking</th></tr></thead>
 <tbody>
 <tr><td><code>none</code></td><td class="num">+0</td><td class="num">+0</td><td>off entirely</td></tr>
 <tr><td><code>minimal</code>, <code>low</code></td><td class="num"><strong>+0</strong></td><td class="num"><strong>+0</strong></td><td>on</td></tr>
@@ -166,6 +168,11 @@ exactly constant: 89&minus;10 = 115&minus;36 = 79.</p>
 </tbody>
 </table>
 </div>
+<p>The flash column is V4 Flash, which was retired on 2026-09-10.
+<code>deepseek-flash</code>, and the retired names that now route to it,
+have not been re-measured: a single probe on 2026-09-18 read +26 at
+<code>high</code>, not +79. Treat the column as history until the table
+is re-run.</p>
 
 <p>Two of those levels are in no DeepSeek documentation at all.
 <code>none</code> is documented only for the Responses API, but the chat

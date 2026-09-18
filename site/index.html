@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>deepseek-cli: the whole DeepSeek API from the terminal</title>
 <meta name="description" content="A single Go binary for every DeepSeek API: chat completions in OpenAI, Anthropic and Responses formats, FIM, models and balance, with multi-turn that survives the reasoning round-trip and per-call cost accounting.">
-<meta name="keywords" content="deepseek cli, deepseek api, deepseek command line, deepseek-v4-flash, deepseek-v4-pro, deepseek anthropic api, deepseek responses api, deepseek context cache, deepseek pricing, llm cli">
+<meta name="keywords" content="deepseek cli, deepseek api, deepseek command line, deepseek-flash, deepseek-v4-pro, deepseek-v4-flash, deepseek anthropic api, deepseek responses api, deepseek context cache, deepseek pricing, llm cli">
 <meta name="author" content="thevibeworks">
 <meta name="theme-color" content="#fbfaf7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
@@ -103,7 +103,7 @@ what each call cost.</p>
 <img src="https://img.shields.io/badge/API%20coverage-6%2F6%20endpoints-00ff41?labelColor=0d0d0d" alt="API coverage: 6 of 6 endpoints" width="188" height="20" loading="lazy">
 <img src="https://img.shields.io/badge/tests-302%20%C2%B7%2070%25%20covered-00ff41?labelColor=0d0d0d" alt="302 tests, 70 percent covered" width="166" height="20" loading="lazy">
 <img src="https://img.shields.io/badge/DeepSeek%20API%20docs-2026--08--05-bf00ff?labelColor=0d0d0d" alt="Built against the DeepSeek API docs of 2026-08-05" width="196" height="20" loading="lazy">
-<img src="https://img.shields.io/badge/models-v4--flash%20%7C%20v4--pro-00c2e9?labelColor=0d0d0d" alt="Models: deepseek-v4-flash and deepseek-v4-pro" width="164" height="20" loading="lazy">
+<img src="https://img.shields.io/badge/models-flash%20%7C%20v4--pro-00c2e9?labelColor=0d0d0d" alt="Models: deepseek-flash and deepseek-v4-pro" width="134" height="20" loading="lazy">
 </p>
 
 <div class="cta">
@@ -218,7 +218,7 @@ or one specific endpoint.</p>
 <div class="term-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="title">ds check</span></div>
 <pre><code><span class="c">https://api.deepseek.com</span>
 
-<span class="p">ok</span>    GET /models                  141ms  deepseek-v4-flash, deepseek-v4-pro
+<span class="p">ok</span>    GET /models                  141ms  deepseek-flash, deepseek-v4-pro
 <span class="p">ok</span>    GET /user/balance            126ms  18.48 CNY
 <span class="p">ok</span>    POST /chat/completions       651ms  5 in / 1 out
 <span class="p">ok</span>    POST /anthropic/v1/messages  590ms  5 in / 1 out
@@ -292,9 +292,10 @@ awareness, no loop. It sends a request and shows you the response.</li>
 <li><strong>Costs are estimates.</strong> Computed from DeepSeek's published
 USD rate card, not from your invoice. Token counts are exact, and they are what
 gets stored, so old calls can be repriced when the card changes.</li>
-<li><strong>Text only.</strong> DeepSeek rejects image, document and
-search-result content blocks in every format &ndash; that is the API, not a
-gap here.</li>
+<li><strong>Text only.</strong> The CLI sends text. Since 2026-09-10
+<code>deepseek-flash</code> also takes images through chat completions and
+Responses, and <code>deepseek-v4-pro</code> does not; the CLI has no flag
+that sends one.</li>
 </ul>
 <nav class="pager" aria-label="Pagination">
 <span></span>

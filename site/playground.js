@@ -27,19 +27,28 @@
     controls: 'dsplay.controls',
   };
 
-  // Published rate card, per million tokens, off-peak. Mirrors the CLI's
-  // internal/deepseek/pricing.go; the figures shown here are labelled
-  // estimates for the same reason they are there.
+  // Published rate card, per million tokens, off-peak: deepseek-flash on
+  // the V4.1 card of 2026-09-10. Mirrors the CLI's
+  // internal/deepseek/pricing.go, whose tests fail if these drift from
+  // its newest Flash card; the figures shown here are labelled estimates
+  // for the same reason they are there. Only today's card is needed:
+  // this page prices calls as they happen and keeps no history.
   //
-  // Since 2026-08-16 16:00 UTC the card is time-of-day: 01:00-04:00 and
-  // 06:00-10:00 UTC bill at twice these rates. A cost estimate that
-  // ignored the clock would be half the truth for seven hours a day, so
-  // this reads it, exactly as the CLI does.
-  var RATES = { cacheHit: 0.007, cacheMiss: 0.22, output: 0.66 };
+  // The card is time-of-day: 01:00-04:00 and 06:00-10:00 UTC, Monday to
+  // Friday, bill at twice these rates, and a Beijing Saturday or Sunday
+  // is off-peak all day. A cost estimate that ignored the clock would be
+  // half the truth for seven hours a weekday, so this reads it, exactly
+  // as the CLI does.
+  var RATES = { cacheHit: 0.003, cacheMiss: 0.15, output: 0.6 };
   var PEAK_WINDOWS = [[60, 240], [360, 600]];
   var PEAK_MULTIPLIER = 2;
+  var BEIJING_OFFSET_MS = 8 * 3600000;
 
   function peakMultiplier(now) {
+    // The weekend is read on the vendor's clock, so it starts at 16:00
+    // UTC on Friday. Beijing is UTC+8 with no daylight saving.
+    var weekday = new Date(now.getTime() + BEIJING_OFFSET_MS).getUTCDay();
+    if (weekday === 0 || weekday === 6) return 1;
     var m = now.getUTCHours() * 60 + now.getUTCMinutes();
     for (var i = 0; i < PEAK_WINDOWS.length; i++) {
       if (m >= PEAK_WINDOWS[i][0] && m < PEAK_WINDOWS[i][1]) return PEAK_MULTIPLIER;
@@ -248,7 +257,7 @@
     var temp = el.temperature.value === '' ? null : parseFloat(el.temperature.value);
     return {
       format: el.format.value,
-      model: 'deepseek-v4-flash',
+      model: 'deepseek-flash',
       think: el.think.value,
       effort: el.effort.value || '',
       maxTokens: isNaN(maxTokens) ? 1024 : Math.max(1, Math.min(4096, maxTokens)),

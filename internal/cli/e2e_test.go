@@ -405,18 +405,19 @@ func TestFIMSendsPromptAndSuffix(t *testing.T) {
 }
 
 func TestModelsJoinsThePublishedRateCard(t *testing.T) {
-	got := runCLI(t, serve(`{"object":"list","data":[{"id":"deepseek-v4-flash","object":"model","owned_by":"deepseek"}]}`), "models")
+	got := runCLI(t, serve(`{"object":"list","data":[{"id":"deepseek-flash","object":"model","owned_by":"deepseek"}]}`), "models")
 	if got.err != nil {
 		t.Fatal(got.err)
 	}
-	if !strings.Contains(got.stdout, "deepseek-v4-flash") {
+	if !strings.Contains(got.stdout, "deepseek-flash") {
 		t.Errorf("stdout = %q", got.stdout)
 	}
-	// Which figure depends on the hour: flash cache-miss input is $0.22
-	// off-peak and $0.44 peak. Both are published numbers, so asserting
-	// on either keeps this a real check without making it a time bomb
-	// that fails whenever the suite runs inside a peak window.
-	if !strings.Contains(got.stdout, "0.22") && !strings.Contains(got.stdout, "0.44") {
+	// Which figure depends on the hour: flash cache-miss input is $0.15
+	// off-peak and $0.3 peak on the V4.1 card. Both are published
+	// numbers, so asserting on either keeps this a real check without
+	// making it a time bomb that fails whenever the suite runs inside a
+	// peak window.
+	if !strings.Contains(got.stdout, "$0.15") && !strings.Contains(got.stdout, "$0.3 ") {
 		t.Errorf("the price should sit next to the model, got %q", got.stdout)
 	}
 }
@@ -490,7 +491,7 @@ func TestLedgerRecordsTheCallAndUsageReportsIt(t *testing.T) {
 	exec("chat", "hi", "--stream=false")
 	report := exec("usage", "--since", "all")
 
-	if !strings.Contains(report, "deepseek-v4-flash") {
+	if !strings.Contains(report, "deepseek-flash") {
 		t.Errorf("usage did not report the call: %s", report)
 	}
 	// 64 of 100 prompt tokens came from cache.

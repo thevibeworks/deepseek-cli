@@ -44,8 +44,15 @@ func TestMoneyKeepsSmallFiguresLegible(t *testing.T) {
 func TestShortModelShowsAnthropicRemapping(t *testing.T) {
 	// When the endpoint silently swaps the model, the status line has to
 	// show both names or the cost looks unattributable.
-	if got := shortModel("deepseek-v4-flash"); got != "flash" {
+	if got := shortModel(deepseek.ModelFlash); got != "flash" {
 		t.Errorf("got %q, want %q", got, "flash")
+	}
+	if got := shortModel(deepseek.ModelPro); got != "pro" {
+		t.Errorf("got %q, want %q", got, "pro")
+	}
+	// A retired name is served by its successor since 2026-09-10.
+	if got := shortModel("deepseek-v4-flash"); got != "deepseek-v4-flash→flash" {
+		t.Errorf("got %q, want both names", got)
 	}
 	if got := shortModel("claude-opus-4-1"); got != "claude-opus-4-1→pro" {
 		t.Errorf("got %q, want both names", got)

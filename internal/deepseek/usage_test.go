@@ -294,17 +294,65 @@ func TestNextChangeCrossesTheWeekend(t *testing.T) {
 	}
 }
 
-func TestVisionModelIsPricedAtFlashRates(t *testing.T) {
-	// Released 2026-08-21, priced identically to Flash on every bucket in
-	// both published currencies. Absent from the card it would meter at zero.
-	at := time.Date(2026, 8, 26, 12, 0, 0, 0, time.UTC) // Wednesday, off-peak
-	vision, ok := PriceAt(ModelFlashVision, at)
-	if !ok {
-		t.Fatal("deepseek-v4-flash-vision-exp has no published rate")
+func TestV41FlashCardSwitchesOnItsInstant(t *testing.T) {
+	// 2026-09-10: the Flash card dropped with V4.1, Pro's did not. 11:00
+	// UTC is off-peak on a Thursday, so the flip lands on the off-peak
+	// rows of both cards.
+	u := Usage{InputTokens: 2_000_000, CacheHitTokens: 1_000_000, CacheMissTokens: 1_000_000, OutputTokens: 1_000_000}
+
+	before, _ := CostAt(ModelFlash, u, V41At.Add(-time.Nanosecond))
+	if want := 0.007 + 0.22 + 0.66; math.Abs(before-want) > 1e-9 {
+		t.Errorf("one instant before V4.1: got %v, want the V4 card's %v", before, want)
 	}
-	flash, _ := PriceAt(ModelFlash, at)
-	if vision != flash {
-		t.Errorf("vision %+v != flash %+v", vision, flash)
+	after, _ := CostAt(ModelFlash, u, V41At)
+	if want := 0.003 + 0.15 + 0.6; math.Abs(after-want) > 1e-9 {
+		t.Errorf("at V4.1: got %v, want the V4.1 card's %v", after, want)
+	}
+
+	// Peak is still exactly double, on the new card.
+	peak := time.Date(2026, 9, 14, 2, 0, 0, 0, time.UTC) // Monday, 01:00-04:00 UTC
+	p, _ := PriceAt(ModelFlash, peak)
+	if (p != Price{CacheHitInput: 0.006, CacheMissInput: 0.3, Output: 1.2}) {
+		t.Errorf("flash at peak on the V4.1 card = %+v, want 0.006/0.3/1.2", p)
+	}
+
+	for _, at := range []time.Time{V41At.Add(-time.Nanosecond), V41At, peak} {
+		pro, _ := CostAt(ModelPro, Usage{OutputTokens: 1_000_000}, at)
+		want := 1.98 * PeriodAt(at).Multiplier
+		if math.Abs(pro-want) > 1e-9 {
+			t.Errorf("pro output at %v = %v, want %v: V4.1 did not reprice pro", at, pro, want)
+		}
+	}
+}
+
+func TestRetiredFlashNamesBillAsFlashInEveryEra(t *testing.T) {
+	// deepseek-v4-flash and deepseek-v4-flash-vision-exp are served by
+	// V4.1 Flash since 2026-09-10 and billed at the Flash price; before it
+	// they WERE flash (vision priced identically from its release). Either
+	// way the right answer is the flash card of the instant.
+	for _, at := range []time.Time{atFlat, atOffPeak, atPeak, V41At, V41At.Add(24 * time.Hour)} {
+		flash, _ := PriceAt(ModelFlash, at)
+		for _, name := range []string{ModelFlashV4, ModelFlashVision} {
+			got, ok := PriceAt(name, at)
+			if !ok || got != flash {
+				t.Errorf("%s at %v = %+v (ok=%v), want flash's %+v", name, at, got, ok, flash)
+			}
+		}
+	}
+}
+
+func TestNextChangeSeesTheCardChange(t *testing.T) {
+	// 10:00 to 11:00 UTC on 2026-09-10 is off-peak on both sides of the
+	// flip, so only the card changes; a label-only walk would sail past it.
+	at := V41At.Add(-30 * time.Minute)
+	if got := NextChange(at); !got.Equal(V41At) {
+		t.Errorf("NextChange(%v) = %v, want the card change at %v", at, got, V41At)
+	}
+	if got := CardSince(V41At.Add(time.Hour)); !got.Equal(V41At) {
+		t.Errorf("CardSince after V4.1 = %v, want %v", got, V41At)
+	}
+	if got := CardSince(atOffPeak); !got.Equal(RepriceAt) {
+		t.Errorf("CardSince in the V4 era = %v, want %v", got, RepriceAt)
 	}
 }
 
@@ -333,6 +381,8 @@ func TestResolveModel(t *testing.T) {
 	cases := map[string]string{
 		ModelFlash:          ModelFlash,
 		ModelPro:            ModelPro,
+		ModelFlashV4:        ModelFlash, // retired 2026-09-10, served by V4.1 Flash
+		ModelFlashVision:    ModelFlash,
 		"claude-opus-4-1":   ModelPro,
 		"claude-sonnet-4-5": ModelFlash,
 		"claude-haiku-4-5":  ModelFlash,

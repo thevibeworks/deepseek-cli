@@ -50,16 +50,18 @@ answer alone.
 
 | Want | Use |
 | --- | --- |
-| Cheap, fast, most work | default (`deepseek-v4-flash`) |
+| Cheap, fast, most work | default (`deepseek-flash`) |
 | Hardest reasoning | `--model deepseek-v4-pro --effort max` |
 | Short factual answer | `--think off` — no reasoning, no template |
 | Cheap reasoning | `--effort low` — still reasons, but adds **no** input template on flash |
 | Long answer | `--max-tokens N` |
 
 Thinking is on by default. The template it adds to the input depends on
-the effort, measured live rather than documented:
+the effort, measured live rather than documented, on V4 Flash before it
+was retired on 2026-09-10 (`deepseek-flash` is not re-measured; one probe
+read +26 at `high`):
 
-| `--effort` | flash | pro |
+| `--effort` | V4 flash | pro |
 | --- | --- | --- |
 | `none` | +0, thinking off | +0, thinking off |
 | `minimal`, `low` | +0 | +0 |
@@ -117,12 +119,13 @@ deepseek balance          # what is left, per currency
 deepseek usage --since 7d # what this CLI has spent
 ```
 
-Cached input tokens cost about 30× less than uncached ones, so put the
+Cached input tokens cost 50× less than uncached ones on flash and 30×
+on pro, so put the
 stable part of a prompt first — same system prompt, same files, in the
 same order across calls. `deepseek usage` reports what the cache saved.
 
 Since 2026-08-16 the rate card is time-of-day: peak hours 01:00–04:00
-and 06:00–10:00 UTC bill at twice the off-peak rate. `deepseek pricing`
+and 06:00–10:00 UTC, Monday to Friday, bill at twice the off-peak rate. `deepseek pricing`
 names the period in force right now, offline. Batch work that can wait
 should run off-peak; never quote a price without naming the period.
 

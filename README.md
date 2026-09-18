@@ -14,7 +14,7 @@
   <a href="#development"><img src="https://img.shields.io/badge/tests-302%20%C2%B7%2070%25%20covered-brightgreen" alt="302 tests, 70% statement coverage"></a>
   <br>
   <a href="https://api-docs.deepseek.com"><img src="https://img.shields.io/badge/DeepSeek%20API%20docs-2026--08--05-8a2be2" alt="Implemented against the DeepSeek API docs of 2026-08-05"></a>
-  <a href="https://api-docs.deepseek.com/quick_start/pricing"><img src="https://img.shields.io/badge/models-v4--flash%20%7C%20v4--pro-0ea5e9" alt="Models: deepseek-v4-flash and deepseek-v4-pro"></a>
+  <a href="https://api-docs.deepseek.com/quick_start/pricing"><img src="https://img.shields.io/badge/models-flash%20%7C%20v4--pro-0ea5e9" alt="Models: deepseek-flash and deepseek-v4-pro"></a>
   <a href="https://go.dev"><img src="https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go&logoColor=white" alt="Go"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT License"></a>
 </p>
@@ -54,7 +54,7 @@ It also does three things `curl` will not:
   on every later request. `--continue` handles that; without tools it
   strips the same field, because replaying it there just burns tokens.
 - **Prices every call.** DeepSeek's disk KV-cache makes a cached input
-  token **~30× cheaper** than an uncached one, and since 2026-08-16 the
+  token **30–50× cheaper** than an uncached one, and since 2026-08-16 the
   hour of the day doubles the bill on top. Both splits are invisible
   unless something reads `prompt_cache_hit_tokens`, knows the schedule
   and does the arithmetic. This does, on every call, and keeps a local
@@ -171,7 +171,7 @@ is the key, the balance, the network, a proxy, or one endpoint:
 $ deepseek check
 https://api.deepseek.com
 
-ok    GET /models                  141ms  deepseek-v4-flash, deepseek-v4-pro
+ok    GET /models                  141ms  deepseek-flash, deepseek-v4-pro
 ok    GET /user/balance            126ms  18.48 CNY
 ok    POST /chat/completions       651ms  5 in / 1 out
 ok    POST /anthropic/v1/messages  590ms  5 in / 1 out
@@ -376,8 +376,8 @@ context cache saved ~$0.23 (1.7M of 2.2M prompt tokens replayed)
 costs are estimates from the published USD rate card, not billed amounts
 ```
 
-That last line is the point. Cached input costs $0.007/M against
-$0.22/M for a miss in an off-peak hour — structuring prompts so the
+That last line is the point. On flash, cached input costs $0.003/M
+against $0.15/M for a miss in an off-peak hour — structuring prompts so the
 stable part comes first is worth real money, and this is how you see
 whether it worked.
 
@@ -470,7 +470,7 @@ rather than hides:
   the same number at every level — and at low effort it is not there at
   all, while the model still reasons:
 
-  | `--effort` | flash | pro |
+  | `--effort` | V4 flash | pro |
   | --- | --- | --- |
   | `none` | +0 (thinking off) | +0 (thinking off) |
   | `minimal`, `low` | **+0** | **+0** |
@@ -478,12 +478,15 @@ rather than hides:
   | `max` | +92 | +79 |
 
   Measured against the live API on 2026-08-05 at two prompt lengths,
-  twice each. `deepseek tokens -e low` will show you the same thing for
+  twice each, on V4 Flash. That model was retired on 2026-09-10 and
+  `deepseek-flash` has not been re-measured: one probe on 2026-09-18
+  read +26 at `high`. `deepseek tokens -e low` will show you the same thing for
   your own text. Two of those levels — `none` and `minimal` — appear in
   no DeepSeek documentation at all; `none` disables thinking exactly as
   `--think off` does.
-- **Text only.** DeepSeek rejects image, document and search-result
-  content blocks in every format.
+- **Text only, from this CLI.** Since 2026-09-10 `deepseek-flash` takes
+  images through chat and Responses, and pro does not; the CLI has no
+  flag that sends one.
 - **The Responses endpoint takes both models** since V4-Pro's official
   release (2026-08-12); it refused pro before that.
 - **FIM caps output at 4K tokens** and ignores thinking entirely.

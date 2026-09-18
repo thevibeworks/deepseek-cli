@@ -87,7 +87,8 @@ gateway-check: gateway-test
 # cost estimates, gateway/internal/meter/meter.go for the gateway's
 # budget — because they are separate modules and neither can import the
 # other. Drift would mean the gateway believed it had spent a different
-# amount than it had. This is what catches that.
+# amount than it had. This is what catches that, for the numbers and for
+# the dated instants that switch between them.
 .PHONY: price-check
 price-check:
 	@pattern='CacheHitInput: [0-9.]+, CacheMissInput: [0-9.]+, Output: [0-9.]+'; \
@@ -100,7 +101,15 @@ price-check:
 	   echo "FAIL: the CLI and gateway rate cards have drifted"; \
 	   echo "  cli:     $$cli"; echo "  gateway: $$gw"; exit 1; \
 	 fi; \
-	 echo "rate cards match:"; echo "$$cli" | sed 's/^/  /'
+	 echo "rate cards match:"; echo "$$cli" | sed 's/^/  /'; \
+	 when='time\.Date\([^)]*\)'; \
+	 cli=$$(grep -oE "$$when" internal/deepseek/pricing.go | sort); \
+	 gw=$$(grep -oE "$$when" gateway/internal/meter/meter.go | sort); \
+	 if [ "$$cli" != "$$gw" ]; then \
+	   echo "FAIL: the CLI and gateway switch cards at different instants"; \
+	   echo "  cli:     $$cli"; echo "  gateway: $$gw"; exit 1; \
+	 fi; \
+	 echo "and switch at the same instants:"; echo "$$cli" | sed 's/^/  /'
 
 # The site is generated HTML plus one page that is an application. The
 # generator has its own --check; these cover the parts it cannot see —

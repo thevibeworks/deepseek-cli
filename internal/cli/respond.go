@@ -55,7 +55,7 @@ Both models are accepted since V4-Pro's official release
 	}
 
 	fl := cmd.Flags()
-	fl.StringVarP(&f.model, "model", "m", deepseek.ModelFlash, "model: deepseek-v4-flash or deepseek-v4-pro")
+	fl.StringVarP(&f.model, "model", "m", deepseek.ModelFlash, "model: deepseek-flash or deepseek-v4-pro")
 	fl.StringVarP(&f.instructions, "instructions", "s", "", "system-level instructions, or @file")
 	fl.StringVarP(&f.effort, "effort", "e", "", "reasoning effort: none, low, high, or max (none disables thinking)")
 	fl.IntVar(&f.maxTokens, "max-tokens", 0, "cap generated tokens, reasoning included")

@@ -72,34 +72,84 @@ var RepriceAt = time.Date(2026, time.August, 16, 16, 0, 0, 0, time.UTC)
 // 2026-08-17 or Saturday 2026-08-22 really did bill peak.
 var WeekendOffPeakAt = time.Date(2026, time.August, 22, 16, 0, 0, 0, time.UTC)
 
+// V41At is when the Flash card dropped with the DeepSeek-V4.1-Flash
+// release. The changelog dates the release 2026-09-10 and says only that
+// "API prices have been reduced accordingly"; the pricing page carries
+// the new card and no effective instant. Pro's card did not move.
+//
+// The instant is INFERRED, not published. Our docs mirror fetched the
+// pricing page at 04:50 UTC on 2026-09-10 and got the old card, and at
+// 11:27 UTC the same day and got the new one. 11:00 UTC is the last whole
+// hour inside that bracket, which errs toward the old, dearer card: an
+// estimate for a call in the bracket can overstate what it cost, never
+// understate it. Move it if DeepSeek publishes the real instant.
+var V41At = time.Date(2026, time.September, 10, 11, 0, 0, 0, time.UTC)
+
 // beijing is the vendor's clock. China has observed no daylight saving
 // since 1991, so a fixed offset is exact and needs no tzdata.
 var beijing = time.FixedZone("CST", 8*60*60)
 
+// The cards are keyed by ModelFlash and ModelPro as the two tiers, and
+// ResolveModel maps every name the API accepts onto one of them. Each
+// card is what that tier cost in its era, so ModelFlash's flat row is
+// what deepseek-v4-flash cost then.
+//
+// Superseded cards stay because the ledger stores token counts rather
+// than dollars, and a call must reprice under the card it was actually
+// billed at.
+
 // pricesFlat is the card published 2026-08-02, in force before RepriceAt.
-// That instant has passed, so nothing live prices against it any more; it
-// stays because the ledger stores token counts rather than dollars, and a
-// call made before the flip must still reprice under the card it was
-// actually billed at.
 var pricesFlat = map[string]Price{
 	ModelFlash: {CacheHitInput: 0.0028, CacheMissInput: 0.14, Output: 0.28},
 	ModelPro:   {CacheHitInput: 0.003625, CacheMissInput: 0.435, Output: 0.87},
 }
 
-// pricesOffPeak is the base card from RepriceAt on. During PeakWindows
-// every billing item costs PeakMultiplier times these numbers; DeepSeek
-// publishes the peak figures rather than the rule, and they are exactly
-// double, so the multiplier is data, not interpretation.
-var pricesOffPeak = map[string]Price{
-	ModelFlash:       {CacheHitInput: 0.007, CacheMissInput: 0.22, Output: 0.66},
-	ModelFlashVision: {CacheHitInput: 0.007, CacheMissInput: 0.22, Output: 0.66},
-	ModelPro:         {CacheHitInput: 0.022, CacheMissInput: 0.66, Output: 1.98},
+// pricesV4OffPeak is the base card from RepriceAt until V41At. During
+// PeakWindows every billing item costs PeakMultiplier times these
+// numbers; DeepSeek publishes the peak figures rather than the rule, and
+// they are exactly double, so the multiplier is data, not interpretation.
+var pricesV4OffPeak = map[string]Price{
+	ModelFlash: {CacheHitInput: 0.007, CacheMissInput: 0.22, Output: 0.66},
+	ModelPro:   {CacheHitInput: 0.022, CacheMissInput: 0.66, Output: 1.98},
+}
+
+// pricesV41OffPeak is the base card from V41At on: Flash cut on every
+// item, Pro unchanged. Same peak rule.
+var pricesV41OffPeak = map[string]Price{
+	ModelFlash: {CacheHitInput: 0.003, CacheMissInput: 0.15, Output: 0.6},
+	ModelPro:   {CacheHitInput: 0.022, CacheMissInput: 0.66, Output: 1.98},
 }
 
 // Models are the priced models, in the order the rate card lists them.
-// One list so a new model reaches every table at once: the vision variant
-// was published upstream and absent here, which meters it at zero.
-var Models = []string{ModelFlash, ModelFlashVision, ModelPro}
+// One list so a new model reaches every table at once. The retired names
+// are not listed: they bill as ModelFlash, and the card says so once.
+var Models = []string{ModelFlash, ModelPro}
+
+// cardAt is the base card of the era in force at t.
+func cardAt(t time.Time) map[string]Price {
+	switch {
+	case t.Before(RepriceAt):
+		return pricesFlat
+	case t.Before(V41At):
+		return pricesV4OffPeak
+	default:
+		return pricesV41OffPeak
+	}
+}
+
+// CardSince is the instant the base card in force at t took effect, and
+// the zero time for the flat card, which has no start this schedule
+// knows of.
+func CardSince(t time.Time) time.Time {
+	switch {
+	case t.Before(RepriceAt):
+		return time.Time{}
+	case t.Before(V41At):
+		return RepriceAt
+	default:
+		return V41At
+	}
+}
 
 // PeakMultiplier scales the off-peak card during PeakWindows.
 const PeakMultiplier = 2.0
@@ -160,7 +210,7 @@ func isBeijingWeekend(t time.Time) bool {
 
 // NextChange is the next instant after t at which the price of a call
 // changes: the repricing instant while the flat card is in force, then
-// the nearest peak-window boundary of the UTC day.
+// the nearest peak-window boundary or card change.
 func NextChange(t time.Time) time.Time {
 	if t.Before(RepriceAt) {
 		return RepriceAt
@@ -169,12 +219,13 @@ func NextChange(t time.Time) time.Time {
 	// turnover at 16:00 UTC, and the policy start dates — lands on a UTC
 	// hour, so walking hours finds the next change exactly. Scanning a
 	// week of them covers the longest run of one period, Friday 10:00
-	// UTC to Monday 01:00 UTC, with room to spare.
+	// UTC to Monday 01:00 UTC, with room to spare. A new card is a change
+	// even when the period's label is not.
 	u := t.UTC()
-	here := PeriodAt(u).Label
+	here, since := PeriodAt(u).Label, CardSince(u)
 	at := u.Truncate(time.Hour).Add(time.Hour)
 	for i := 0; i < 8*24; i++ {
-		if PeriodAt(at).Label != here {
+		if PeriodAt(at).Label != here || !CardSince(at).Equal(since) {
 			return at
 		}
 		at = at.Add(time.Hour)
@@ -182,14 +233,18 @@ func NextChange(t time.Time) time.Time {
 	return at
 }
 
+// BasePriceAt is a model's base card in the era in force at t, before
+// any peak multiplier: the off-peak row once time-of-day billing began,
+// the flat row before it.
+func BasePriceAt(model string, t time.Time) (Price, bool) {
+	p, ok := cardAt(t)[ResolveModel(model)]
+	return p, ok
+}
+
 // PriceAt returns the effective rate card for a model at one instant:
 // that era's base card, scaled by the period's multiplier.
 func PriceAt(model string, t time.Time) (Price, bool) {
-	cards := pricesFlat
-	if !t.Before(RepriceAt) {
-		cards = pricesOffPeak
-	}
-	p, ok := cards[ResolveModel(model)]
+	p, ok := BasePriceAt(model, t)
 	if !ok {
 		return Price{}, false
 	}
@@ -213,11 +268,14 @@ func PriceFor(model string) (Price, bool) {
 //
 // The Anthropic-format endpoint accepts Claude model names and remaps
 // them: claude-opus* becomes pro, claude-haiku*/claude-sonnet* become
-// flash, and anything else unrecognised falls back to flash.
+// flash, and anything else unrecognised falls back to flash. The retired
+// V4 Flash names are served and billed as flash.
 func ResolveModel(model string) string {
 	switch {
 	case model == ModelFlash || model == ModelPro:
 		return model
+	case model == ModelFlashV4 || model == ModelFlashVision:
+		return ModelFlash
 	case hasPrefix(model, "claude-opus"):
 		return ModelPro
 	case hasPrefix(model, "claude-haiku"), hasPrefix(model, "claude-sonnet"):

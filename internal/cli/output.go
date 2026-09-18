@@ -152,13 +152,23 @@ func (o *Options) stats(api, requested string, u deepseek.Usage, dur time.Durati
 // is always in --json and in the ledger; this is for the human glance.
 func shortModel(model string) string {
 	resolved := deepseek.ResolveModel(model)
-	short := strings.TrimPrefix(resolved, "deepseek-v4-")
+	short := trimModelPrefix(resolved)
 	if resolved != model {
-		// The Anthropic endpoint remapped a Claude name; show both so the
-		// cost is traceable to the model that actually ran.
+		// The Anthropic endpoint remapped a Claude name, or a retired name
+		// was served by its successor; show both so the cost is traceable
+		// to the model that actually ran.
 		return model + "→" + short
 	}
 	return short
+}
+
+// trimModelPrefix drops the vendor prefix, and the generation where the
+// name carries one: deepseek-v4-pro reads pro, deepseek-flash reads flash.
+func trimModelPrefix(model string) string {
+	if short, ok := strings.CutPrefix(model, "deepseek-v4-"); ok {
+		return short
+	}
+	return strings.TrimPrefix(model, "deepseek-")
 }
 
 // humanTokens renders a token count compactly: 940, 1.2k, 34k, 1.1M.

@@ -62,13 +62,15 @@ check('the embedded schedule is the upstream ground truth',
   JSON.stringify(schedule) === JSON.stringify(truth),
   JSON.stringify(schedule));
 
-// The visible tables carry the same story: every number of both cards.
-// The card in force leads; the flat card stays on the page because the
-// ledger reprices history under it.
+// The visible tables carry the same story: every number of every card.
+// The card in force leads (V4.1 Flash, 2026-09-10); the V4 flash rows and
+// the flat card stay on the page because the ledger reprices history
+// under them.
 for (const figure of [
   '$0.0028', '$0.14', '$0.28', '$0.003625', '$0.435', '$0.87',
   '$0.007', '$0.22', '$0.66', '$0.014', '$0.44', '$1.32',
   '$0.022', '$1.98', '$0.044', '$3.96',
+  '$0.003<', '$0.15<', '$0.60<', '$0.006<', '$0.30<', '$1.20<',
 ]) {
   check(`the page carries ${figure}`, page.includes(figure));
 }

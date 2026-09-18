@@ -55,29 +55,57 @@ var RepriceAt = time.Date(2026, time.August, 16, 16, 0, 0, 0, time.UTC)
 // The drift here runs the other way to the repricing's: over-charging our
 // own budget is safe for the credit pool but it is still wrong, and it
 // makes /economics report a cost-per-task the account never paid. The
-// same date gates the CLI's copy; `make price-check` guards the numbers,
-// and this comment is the only thing guarding the clock.
+// same date gates the CLI's copy; `make price-check` guards the numbers
+// and, since the V4.1 cut added a third instant, the dates too.
 var weekendOffPeakAt = time.Date(2026, time.August, 22, 16, 0, 0, 0, time.UTC)
+
+// v41At is when the Flash card dropped with the DeepSeek-V4.1-Flash
+// release of 2026-09-10; Pro's card did not move. The instant is
+// INFERRED, as in the CLI's copy (internal/deepseek/pricing.go, V41At,
+// which records how): upstream published a date and no time. A cut
+// cannot drain the pool the way the repricing could, but it can make
+// /economics report a cost nobody paid.
+var v41At = time.Date(2026, time.September, 10, 11, 0, 0, 0, time.UTC)
 
 // beijing is the vendor's clock; no daylight saving since 1991.
 var beijing = time.FixedZone("CST", 8*60*60)
 
+// The cards are keyed by tier, not by model name. The API has accepted
+// three flash names (deepseek-v4-flash, deepseek-v4-flash-vision-exp,
+// deepseek-flash) and bills them all as flash, so cardFor maps a name
+// onto its tier and each card says what that tier cost in its era.
+const (
+	flashTier = "flash"
+	proTier   = "pro"
+)
+
 // ratesFlat is the card published 2026-08-02, in force before RepriceAt.
 var ratesFlat = map[string]Price{
-	"deepseek-v4-flash": {CacheHitInput: 0.0028, CacheMissInput: 0.14, Output: 0.28},
-	"deepseek-v4-pro":   {CacheHitInput: 0.003625, CacheMissInput: 0.435, Output: 0.87},
+	flashTier: {CacheHitInput: 0.0028, CacheMissInput: 0.14, Output: 0.28},
+	proTier:   {CacheHitInput: 0.003625, CacheMissInput: 0.435, Output: 0.87},
 }
 
-// ratesOffPeak is the base card from RepriceAt on; during peakWindows
-// every billing item costs peakMultiplier times these numbers.
-var ratesOffPeak = map[string]Price{
-	"deepseek-v4-flash": {CacheHitInput: 0.007, CacheMissInput: 0.22, Output: 0.66},
-	// Released 2026-08-21, after the switchover, so it has no flat row
-	// above. Priced identically to flash. Carried here even though the
-	// policy allowlist does not admit it, so that a metering gap can never
-	// be the reason it gets served for free.
-	"deepseek-v4-flash-vision-exp": {CacheHitInput: 0.007, CacheMissInput: 0.22, Output: 0.66},
-	"deepseek-v4-pro":              {CacheHitInput: 0.022, CacheMissInput: 0.66, Output: 1.98},
+// ratesV4OffPeak is the base card from RepriceAt until v41At; during
+// peakWindows every billing item costs peakMultiplier times these numbers.
+var ratesV4OffPeak = map[string]Price{
+	flashTier: {CacheHitInput: 0.007, CacheMissInput: 0.22, Output: 0.66},
+	proTier:   {CacheHitInput: 0.022, CacheMissInput: 0.66, Output: 1.98},
+}
+
+// ratesV41OffPeak is the base card from v41At on: Flash cut on every
+// item, Pro unchanged. Same peak rule.
+var ratesV41OffPeak = map[string]Price{
+	flashTier: {CacheHitInput: 0.003, CacheMissInput: 0.15, Output: 0.6},
+	proTier:   {CacheHitInput: 0.022, CacheMissInput: 0.66, Output: 1.98},
+}
+
+// offPeakCardAt is the time-of-day base card in force at t, which must
+// not be before RepriceAt.
+func offPeakCardAt(t time.Time) map[string]Price {
+	if t.Before(v41At) {
+		return ratesV4OffPeak
+	}
+	return ratesV41OffPeak
 }
 
 const peakMultiplier = 2.0
@@ -126,7 +154,7 @@ func PriceAt(model string, t time.Time) Price {
 	if t.Before(RepriceAt) {
 		return cardFor(ratesFlat, model)
 	}
-	p := cardFor(ratesOffPeak, model)
+	p := cardFor(offPeakCardAt(t), model)
 	if inPeak(t) {
 		p = scale(p, peakMultiplier)
 	}
@@ -134,16 +162,13 @@ func PriceAt(model string, t time.Time) Price {
 }
 
 func cardFor(cards map[string]Price, model string) Price {
-	if p, ok := cards[model]; ok {
-		return p
-	}
 	switch {
 	case strings.Contains(model, "pro") || model == "":
-		return cards["deepseek-v4-pro"]
+		return cards[proTier]
 	case strings.Contains(model, "flash"):
-		return cards["deepseek-v4-flash"]
+		return cards[flashTier]
 	default:
-		return cards["deepseek-v4-pro"]
+		return cards[proTier]
 	}
 }
 
@@ -228,10 +253,21 @@ func ceilingAt(model string, t time.Time) Price {
 	if t.Add(inFlight).Before(RepriceAt) {
 		return cardFor(ratesFlat, model)
 	}
+	// The base card is the admission instant's. The one change since
+	// the repricing, v41At, was a cut, so a request admitted before it is
+	// already reserved at the dearer card; a card that ever goes UP needs
+	// the same look-ahead the flip gets above.
 	if !t.Before(RepriceAt) && !peakTouches(t, inFlight) {
-		return cardFor(ratesOffPeak, model)
+		return cardFor(offPeakCardAt(t), model)
 	}
-	return scale(cardFor(ratesOffPeak, model), peakMultiplier)
+	return scale(cardFor(offPeakCardAt(maxTime(t, RepriceAt)), model), peakMultiplier)
+}
+
+func maxTime(a, b time.Time) time.Time {
+	if a.After(b) {
+		return a
+	}
+	return b
 }
 
 // peakTouches reports whether any instant of [t, t+d] falls in a peak

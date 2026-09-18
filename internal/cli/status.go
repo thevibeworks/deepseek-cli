@@ -116,7 +116,7 @@ func formatStatus(res *statusResult) string {
 func shortModels(ids []string) []string {
 	out := make([]string, len(ids))
 	for i, id := range ids {
-		out[i] = strings.TrimPrefix(id, "deepseek-v4-")
+		out[i] = trimModelPrefix(id)
 	}
 	return out
 }
