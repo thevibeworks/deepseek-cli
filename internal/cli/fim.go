@@ -48,7 +48,7 @@ non-thinking mode regardless of any effort setting.
 	}
 
 	fl := cmd.Flags()
-	fl.StringVarP(&f.model, "model", "m", deepseek.ModelPro, "model: deepseek-v4-pro or deepseek-v4-flash")
+	fl.StringVarP(&f.model, "model", "m", deepseek.ModelPro, "model: deepseek-v4-pro or deepseek-flash")
 	fl.StringVar(&f.prefix, "prefix", "", "text before the gap, or @file (defaults to the positional argument or stdin)")
 	fl.StringVar(&f.suffix, "suffix", "", "text after the gap, or @file")
 	fl.IntVar(&f.maxTokens, "max-tokens", 0, "cap generated tokens (the endpoint's own ceiling is 4096)")

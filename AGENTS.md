@@ -66,7 +66,7 @@ Key flags:
 
 | Flag | Effect |
 | --- | --- |
-| `-m, --model` | `deepseek-v4-flash` (default) or `deepseek-v4-pro` |
+| `-m, --model` | `deepseek-flash` (default) or `deepseek-v4-pro` |
 | `--think on\|off` | thinking mode; default is the API's own, which is on |
 | `-e, --effort low\|high\|max` | reasoning effort |
 | `--max-tokens N` | cap generated tokens |
@@ -106,7 +106,10 @@ deepseek pricing --json          # the schedule and the billing period right now
 ```
 
 Pricing has been time-of-day since 2026-08-16 16:00 UTC: peak hours
-01:00–04:00 and 06:00–10:00 UTC bill at twice the off-peak rate. Never
+01:00–04:00 and 06:00–10:00 UTC, Monday to Friday, bill at twice the
+off-peak rate. Since 2026-09-10 flash is `deepseek-flash` (V4.1) on a
+lower card; the retired names `deepseek-v4-flash` and
+`deepseek-v4-flash-vision-exp` still work and bill as flash. Never
 quote a DeepSeek price without saying which period it is — `pricing`
 computes the current one locally, no network, nothing spent, from the
 same schedule the cost estimates use.
@@ -163,8 +166,7 @@ deepseek free off            # forget the enrolment on this machine
 
 Free-tier limits, per UTC day: 30 requests, 60K input tokens, 20K output
 tokens, 3 web searches, 4K output per call, 128KB per request body,
-`deepseek-v4-flash` only. A request for pro is **refused, not
-downgraded**. `models` and `status` cost no quota; everything that can
+flash only. A request for pro is **refused, not downgraded**. `models` and `status` cost no quota; everything that can
 generate a token does.
 
 `respond --web-search` works on the free tier and spends one of the three
@@ -265,21 +267,24 @@ Every call prints a usage line to stderr and appends to
   for a quiet run.
 - Costs are estimates from the published USD rate card, not billed
   amounts. Token counts are exact.
-- Cached input tokens cost about 30× less than uncached ones. Put the
-  stable part of a prompt first — the same system prompt and files across
+- Cached input tokens cost 50× less than uncached ones on flash, 30× on
+  pro. Put the stable part of a prompt first — the same system prompt and files across
   calls — and `deepseek usage` will show the saving. Prompt structure is
   still the biggest lever on a bill; the hour of the day comes second,
   and it is worth at most 2×.
 
 ## Cautions
 
-- **Text only.** Images, documents and search-result blocks are rejected
-  by the API in every format.
+- **Text only, from this CLI.** Since 2026-09-10 `deepseek-flash` takes
+  images through chat and Responses, and pro does not; the CLI has no
+  flag that sends one.
 - **The thinking surcharge depends on effort**, and not as documented.
   The template added to your input is fixed per level, constant across
-  prompt length, measured live on 2026-08-05:
+  prompt length, measured live on 2026-08-05 on V4 Flash (retired
+  2026-09-10; `deepseek-flash` is not re-measured, and one probe read +26
+  at `high`):
 
-  | `--effort` | flash | pro |
+  | `--effort` | V4 flash | pro |
   | --- | --- | --- |
   | `none` | +0, thinking off | +0, thinking off |
   | `minimal`, `low` | +0 | +0 |

@@ -26,13 +26,25 @@ import (
 const DefaultBaseURL = "https://api.deepseek.com"
 
 // Models. DeepSeek exposes exactly two; everything else the API accepts
-// (Claude model names on the Anthropic endpoint) is mapped server-side.
+// (Claude model names on the Anthropic endpoint, retired model names) is
+// mapped server-side.
+//
+// ModelFlash is a floating alias: since 2026-09-10 it serves
+// DeepSeek-V4.1-Flash, and whichever Flash comes next will answer to it
+// too. That is the name upstream tells callers to use.
 const (
-	ModelFlash = "deepseek-v4-flash"
+	ModelFlash = "deepseek-flash"
 	ModelPro   = "deepseek-v4-pro"
-	// ModelFlashVision is the experimental multimodal variant released
-	// 2026-08-21. It takes image input and bills at exactly the Flash
-	// rates; it does not support FIM completion.
+)
+
+// Retired names. The models behind them were retired on 2026-09-10; the
+// API still accepts both, serves them with V4.1 Flash and bills them at
+// the Flash price, so they resolve to ModelFlash. Kept as constants
+// because ledger rows written before that date carry them.
+const (
+	ModelFlashV4 = "deepseek-v4-flash"
+	// ModelFlashVision was the experimental multimodal variant of
+	// 2026-08-21. V4.1 Flash takes images natively.
 	ModelFlashVision = "deepseek-v4-flash-vision-exp"
 )
 

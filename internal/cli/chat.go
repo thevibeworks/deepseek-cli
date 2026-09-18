@@ -64,7 +64,7 @@ under reasoning_content.
 	}
 
 	fl := cmd.Flags()
-	fl.StringVarP(&f.model, "model", "m", deepseek.ModelFlash, "model: deepseek-v4-flash or deepseek-v4-pro")
+	fl.StringVarP(&f.model, "model", "m", deepseek.ModelFlash, "model: deepseek-flash or deepseek-v4-pro")
 	fl.StringVarP(&f.system, "system", "s", "", "system prompt, or @file")
 	fl.StringVar(&f.think, "think", "", "thinking mode: on or off (default: the API's own default, on)")
 	fl.StringVarP(&f.effort, "effort", "e", "", "reasoning effort: low, high, max (pro promotes low to high)")

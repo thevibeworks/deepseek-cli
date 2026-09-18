@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>DeepSeek API pricing: the schedule, the peak hours, and the period right now</title>
-<meta name="description" content="DeepSeek has billed peak/off-peak since 16:00 UTC on 2026-08-16: peak hours 01:00-04:00 and 06:00-10:00 UTC, Monday to Friday, at twice the off-peak rate, with weekends off-peak all day since 2026-08-22. The full schedule, the numbers per model in both periods, the flat card it replaced, and a strip that reads your clock and names the billing period you are in right now.">
-<meta name="keywords" content="deepseek pricing, deepseek api pricing, deepseek price increase 2026, deepseek repricing, deepseek peak hours, deepseek off-peak pricing, deepseek peak off-peak billing, deepseek api cost, deepseek v4 flash price, deepseek v4 pro price, deepseek pricing 2026-08-16, deepseek new rate card, deepseek token price, deepseek weekend off-peak, deepseek peak weekdays only, deepseek v4 flash vision exp price">
+<meta name="description" content="DeepSeek has billed peak/off-peak since 16:00 UTC on 2026-08-16: peak hours 01:00-04:00 and 06:00-10:00 UTC, Monday to Friday, at twice the off-peak rate, with weekends off-peak all day since 2026-08-22. Since the V4.1 Flash release of 2026-09-10, deepseek-flash costs $0.003 / $0.15 / $0.60 per 1M off-peak. The full schedule, the numbers per model in both periods, the cards they replaced, and a strip that reads your clock and names the billing period you are in right now.">
+<meta name="keywords" content="deepseek pricing, deepseek api pricing, deepseek price increase 2026, deepseek repricing, deepseek peak hours, deepseek off-peak pricing, deepseek peak off-peak billing, deepseek api cost, deepseek v4 flash price, deepseek v4 pro price, deepseek pricing 2026-08-16, deepseek new rate card, deepseek token price, deepseek weekend off-peak, deepseek peak weekdays only, deepseek v4 flash vision exp price, deepseek flash price, deepseek v4.1 flash price, deepseek price cut 2026-09-10">
 <meta name="author" content="thevibeworks">
 <meta name="theme-color" content="#fbfaf7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
@@ -13,7 +13,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="deepseek-cli">
 <meta property="og:title" content="DeepSeek API pricing: the schedule, the peak hours, and the period right now">
-<meta property="og:description" content="DeepSeek has billed peak/off-peak since 16:00 UTC on 2026-08-16: peak hours 01:00-04:00 and 06:00-10:00 UTC, Monday to Friday, at twice the off-peak rate, with weekends off-peak all day since 2026-08-22. The full schedule, the numbers per model in both periods, the flat card it replaced, and a strip that reads your clock and names the billing period you are in right now.">
+<meta property="og:description" content="DeepSeek has billed peak/off-peak since 16:00 UTC on 2026-08-16: peak hours 01:00-04:00 and 06:00-10:00 UTC, Monday to Friday, at twice the off-peak rate, with weekends off-peak all day since 2026-08-22. Since the V4.1 Flash release of 2026-09-10, deepseek-flash costs $0.003 / $0.15 / $0.60 per 1M off-peak. The full schedule, the numbers per model in both periods, the cards they replaced, and a strip that reads your clock and names the billing period you are in right now.">
 <meta property="og:url" content="https://thevibeworks.github.io/deepseek-cli/pricing/">
 <meta property="og:image" content="https://thevibeworks.github.io/deepseek-cli/og.png">
 <meta property="og:image:width" content="1200">
@@ -21,7 +21,7 @@
 <meta property="og:image:alt" content="deepseek-cli: the whole DeepSeek API from the terminal">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="DeepSeek API pricing: the schedule, the peak hours, and the period right now">
-<meta name="twitter:description" content="DeepSeek has billed peak/off-peak since 16:00 UTC on 2026-08-16: peak hours 01:00-04:00 and 06:00-10:00 UTC, Monday to Friday, at twice the off-peak rate, with weekends off-peak all day since 2026-08-22. The full schedule, the numbers per model in both periods, the flat card it replaced, and a strip that reads your clock and names the billing period you are in right now.">
+<meta name="twitter:description" content="DeepSeek has billed peak/off-peak since 16:00 UTC on 2026-08-16: peak hours 01:00-04:00 and 06:00-10:00 UTC, Monday to Friday, at twice the off-peak rate, with weekends off-peak all day since 2026-08-22. Since the V4.1 Flash release of 2026-09-10, deepseek-flash costs $0.003 / $0.15 / $0.60 per 1M off-peak. The full schedule, the numbers per model in both periods, the cards they replaced, and a strip that reads your clock and names the billing period you are in right now.">
 <meta name="twitter:image" content="https://thevibeworks.github.io/deepseek-cli/og.png">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30,7 +30,7 @@
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
 <script>try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t}catch(e){}</script>
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What does the DeepSeek API cost right now?","acceptedAnswer":{"@type":"Answer","text":"It depends on the hour and the day. Per 1M tokens (cache hit / cache miss / output): deepseek-v4-flash is $0.007 / $0.22 / $0.66 off-peak and $0.014 / $0.44 / $1.32 peak; deepseek-v4-pro is $0.022 / $0.66 / $1.98 off-peak and $0.044 / $1.32 / $3.96 peak. Peak hours are 01:00-04:00 and 06:00-10:00 UTC, Monday to Friday; every other hour, and the whole weekend, is off-peak at half the peak rate. deepseek-v4-flash-vision-exp bills at exactly the deepseek-v4-flash rates."}},{"@type":"Question","name":"What are DeepSeek's peak hours?","acceptedAnswer":{"@type":"Answer","text":"01:00-04:00 and 06:00-10:00 UTC, Monday to Friday. The boundaries are defined in UTC; in Beijing time (UTC+8) they read 09:00-12:00 and 14:00-18:00. Every other hour is off-peak, at half the peak rate. Since 16:00 UTC on 2026-08-22 weekends bill off-peak all day, on the Beijing calendar, so the weekend starts at 16:00 UTC on Friday and peak is 35 hours a week rather than 49."}},{"@type":"Question","name":"When did DeepSeek's peak/off-peak pricing start?","acceptedAnswer":{"@type":"Answer","text":"At 16:00 UTC on August 16, 2026, which is midnight in Beijing. Before that instant every hour billed at the flat card published 2026-08-02; from it, DeepSeek bills peak/off-peak on a new, higher card."}},{"@type":"Question","name":"How much did DeepSeek raise its API prices?","acceptedAnswer":{"@type":"Answer","text":"Against the flat card it replaced, deepseek-v4-pro peak is 3x on cache-miss input ($0.435 to $1.32 per 1M), 4.6x on output ($0.87 to $3.96) and 12x on cache-hit input ($0.003625 to $0.044). Off-peak is half of each of those, so the smallest increase at any hour is still 1.5x on cache-miss input. The rise is steepest where the old card was cheapest."}},{"@type":"Question","name":"Is DeepSeek's off-peak price the same as the old price?","acceptedAnswer":{"@type":"Answer","text":"No. Off-peak is half of peak, but on a new, higher base card: a flash cache-miss input token went from $0.14 to $0.22 per 1M off-peak and $0.44 peak. Even the cheapest hour now costs more than any hour did before the switch."}},{"@type":"Question","name":"How do I check the current DeepSeek billing period from the terminal?","acceptedAnswer":{"@type":"Answer","text":"Run `deepseek pricing`. It prints the period in effect (flat, off-peak or peak) with your local, UTC and Beijing time, when the period next changes, and both rate cards, all computed locally from the same schedule the CLI's cost estimates use. `deepseek pricing --json` emits the same as JSON."}}]}
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What does the DeepSeek API cost right now?","acceptedAnswer":{"@type":"Answer","text":"It depends on the hour and the day. Per 1M tokens (cache hit / cache miss / output): deepseek-flash is $0.003 / $0.15 / $0.60 off-peak and $0.006 / $0.30 / $1.20 peak; deepseek-v4-pro is $0.022 / $0.66 / $1.98 off-peak and $0.044 / $1.32 / $3.96 peak. Peak hours are 01:00-04:00 and 06:00-10:00 UTC, Monday to Friday; every other hour, and the whole weekend, is off-peak at half the peak rate. The retired names deepseek-v4-flash and deepseek-v4-flash-vision-exp are served by V4.1 Flash and bill at the deepseek-flash rates."}},{"@type":"Question","name":"What are DeepSeek's peak hours?","acceptedAnswer":{"@type":"Answer","text":"01:00-04:00 and 06:00-10:00 UTC, Monday to Friday. The boundaries are defined in UTC; in Beijing time (UTC+8) they read 09:00-12:00 and 14:00-18:00. Every other hour is off-peak, at half the peak rate. Since 16:00 UTC on 2026-08-22 weekends bill off-peak all day, on the Beijing calendar, so the weekend starts at 16:00 UTC on Friday and peak is 35 hours a week rather than 49."}},{"@type":"Question","name":"When did DeepSeek's peak/off-peak pricing start?","acceptedAnswer":{"@type":"Answer","text":"At 16:00 UTC on August 16, 2026, which is midnight in Beijing. Before that instant every hour billed at the flat card published 2026-08-02; from it, DeepSeek bills peak/off-peak on a new, higher card."}},{"@type":"Question","name":"How much did DeepSeek raise its API prices?","acceptedAnswer":{"@type":"Answer","text":"Against the flat card it replaced, deepseek-v4-pro peak is 3x on cache-miss input ($0.435 to $1.32 per 1M), 4.6x on output ($0.87 to $3.96) and 12x on cache-hit input ($0.003625 to $0.044). Off-peak is half of each of those, so the smallest increase at any hour is still 1.5x on cache-miss input. The rise is steepest where the old card was cheapest."}},{"@type":"Question","name":"Did DeepSeek cut prices with V4.1 Flash?","acceptedAnswer":{"@type":"Answer","text":"Yes, on Flash only. From the V4.1 Flash release of 2026-09-10, deepseek-flash costs $0.003 / $0.15 / $0.60 per 1M tokens off-peak (cache hit / cache miss / output), down from $0.007 / $0.22 / $0.66 for deepseek-v4-flash: 57% less on cached input, 32% on uncached input, 9% on output. Peak is still double. deepseek-v4-pro did not change. DeepSeek published the date but no time; the deepseek CLI switches cards at 11:00 UTC that day, an inferred instant."}},{"@type":"Question","name":"Is DeepSeek's off-peak price the same as the old price?","acceptedAnswer":{"@type":"Answer","text":"No. Off-peak is half of peak, but on a higher base than the flat card of 2026-08-02. Even after the V4.1 Flash cut, a flash cache-miss input token costs $0.15 per 1M off-peak against the flat card's $0.14, and output $0.60 against $0.28: the cheapest hour still costs more than any hour did before the switch."}},{"@type":"Question","name":"How do I check the current DeepSeek billing period from the terminal?","acceptedAnswer":{"@type":"Answer","text":"Run `deepseek pricing`. It prints the period in effect (flat, off-peak or peak) with your local, UTC and Beijing time, when the period next changes, and both rate cards, all computed locally from the same schedule the CLI's cost estimates use. `deepseek pricing --json` emits the same as JSON."}}]}
 </script>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"deepseek-cli","item":"https://thevibeworks.github.io/deepseek-cli/"},{"@type":"ListItem","position":2,"name":"pricing","item":"https://thevibeworks.github.io/deepseek-cli/pricing/"}]}
@@ -79,8 +79,8 @@
 <h1>Pricing</h1>
 <p class="lede">Since 16:00 UTC on 2026-08-16, what a DeepSeek token costs
 depends on the hour you spend it in &ndash; and, since 2026-08-22, on the
-day of the week too. This page carries the schedule, both
-rate cards, and a strip that reads your clock &ndash; the same data the
+day of the week too. Since 2026-09-10 Flash costs less at every hour. This
+page carries the schedule, every card, and a strip that reads your clock &ndash; the same data the
 CLI's estimates switch on, so the page and <code>ds pricing</code> can
 never disagree.</p>
 
@@ -126,33 +126,53 @@ the Internet Archive</a>. If you are holding batch work for a cheap hour,
 hold it for Saturday instead.</p>
 
 <h2 id="after">The card</h2>
-<p>USD per 1M tokens, in force since 2026-08-16 16:00 UTC. Off-peak is half
-of peak by construction, but on a higher base than the flat card it
-replaced &ndash; even the cheapest hour now costs more than any hour did
-before. A flash cache-miss input token went from $0.14 to $0.22 per 1M
-off-peak, and to $0.44 in peak hours:</p>
+<p>USD per 1M tokens, in force since the V4.1 Flash release of 2026-09-10.
+Off-peak is half of peak by construction. Flash got cheaper on every item
+&ndash; 57% on cached input, 32% on uncached input, 9% on output &ndash;
+and pro did not change:</p>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Model</th><th>Period</th><th class="num">Input (cached)</th><th class="num">Input (miss)</th><th class="num">Output</th></tr></thead>
+<tbody>
+<tr><td rowspan="2"><code>deepseek-flash</code></td><td>off-peak</td><td class="num">$0.003</td><td class="num">$0.15</td><td class="num">$0.60</td></tr>
+<tr><td>peak</td><td class="num">$0.006</td><td class="num">$0.30</td><td class="num">$1.20</td></tr>
+<tr><td rowspan="2"><code>deepseek-v4-pro</code></td><td>off-peak</td><td class="num">$0.022</td><td class="num">$0.66</td><td class="num">$1.98</td></tr>
+<tr><td>peak</td><td class="num">$0.044</td><td class="num">$1.32</td><td class="num">$3.96</td></tr>
+</tbody>
+</table>
+</div>
+<p>The retired names <code>deepseek-v4-flash</code> and
+<code>deepseek-v4-flash-vision-exp</code> still work: V4.1 Flash serves them,
+at the <code>deepseek-flash</code> price.</p>
+<p>DeepSeek dated the cut and published no time, so <strong>the instant the
+CLI switches cards is inferred</strong>: 11:00 UTC on 2026-09-10. Our docs
+mirror fetched the old card at 04:50 UTC that day and the new one at 11:27
+UTC; 11:00 is the last whole hour between the two, so an estimate for a call
+made in that gap can overstate what it cost and never understate it.</p>
+<p>The <a href="../cost/#cache">context cache</a> stays the biggest
+lever: a cached input token costs 1/50th of a miss on flash and 1/30th on
+pro. Prompt structure still dominates a bill &ndash; it is worth up to
+50&times;, where the hour of the day is worth 2&times;.</p>
+
+<h2 id="before">What it replaced</h2>
+<p>Two superseded cards. They are here because the
+<a href="../cost/#ledger">ledger</a> keeps token counts rather than
+dollars, so every call reprices under the card it was actually billed
+at.</p>
+<p>From 2026-08-16 16:00 UTC to the V4.1 cut, flash was
+<code>deepseek-v4-flash</code> on a card more than twice as dear on cached input; pro's
+rows were the same as today's:</p>
 <div class="tablewrap">
 <table>
 <thead><tr><th>Model</th><th>Period</th><th class="num">Input (cached)</th><th class="num">Input (miss)</th><th class="num">Output</th></tr></thead>
 <tbody>
 <tr><td rowspan="2"><code>deepseek-v4-flash</code></td><td>off-peak</td><td class="num">$0.007</td><td class="num">$0.22</td><td class="num">$0.66</td></tr>
 <tr><td>peak</td><td class="num">$0.014</td><td class="num">$0.44</td><td class="num">$1.32</td></tr>
-<tr><td rowspan="2"><code>deepseek-v4-pro</code></td><td>off-peak</td><td class="num">$0.022</td><td class="num">$0.66</td><td class="num">$1.98</td></tr>
-<tr><td>peak</td><td class="num">$0.044</td><td class="num">$1.32</td><td class="num">$3.96</td></tr>
 </tbody>
 </table>
 </div>
-<p>The <a href="../cost/#cache">context cache</a> stays the biggest
-lever: a cached input token costs about 1/30th of a miss, against 1/50th
-(flash) and 1/120th (pro) on the card this replaced. Prompt structure
-still dominates a bill &ndash; it is worth up to 30&times;, where the hour
-of the day is worth 2&times;.</p>
-
-<h2 id="before">What it replaced</h2>
-<p>The flat card published 2026-08-02, billed at every hour until the
-switch. It is here because the <a href="../cost/#ledger">ledger</a>
-keeps token counts rather than dollars, so a call made before 2026-08-16
-16:00 UTC still reprices under the card it was actually billed at:</p>
+<p>Before that, the flat card published 2026-08-02 billed at every hour
+until 2026-08-16 16:00 UTC:</p>
 <div class="tablewrap">
 <table>
 <thead><tr><th>Model</th><th class="num">Input (cached)</th><th class="num">Input (miss)</th><th class="num">Output</th></tr></thead>
@@ -163,8 +183,9 @@ keeps token counts rather than dollars, so a call made before 2026-08-16
 </table>
 </div>
 <p>Peak output on pro is 4.6&times; that card; peak cached input is
-12&times; it. The published increase is steepest exactly where the old card
-was cheapest.</p>
+12&times; it. The published increase was steepest exactly where the old
+card was cheapest, and the V4.1 cut has not brought flash back under it
+at any hour.</p>
 
 <h2 id="cli">The same answer in the terminal</h2>
 <pre><code>ds pricing            # period right now, local + UTC + Beijing, both cards
@@ -172,7 +193,7 @@ ds pricing --json     # the same, as JSON for scripts</code></pre>
 <p>Computed locally from the same schedule &ndash; no network call, nothing
 spent. The <a href="../cost/">cost estimates</a> price each call with
 the card in force at the moment it was made, which is what lets one ledger
-span both eras. The <a href="../cost/#ledger">ledger</a> stores exact
+span every era. The <a href="../cost/#ledger">ledger</a> stores exact
 token counts rather than dollar amounts, so historical calls can always be
 repriced under whatever card was, or becomes, real.</p>
 
@@ -186,7 +207,8 @@ this page and the estimates trace to one upstream.</p>
 <p>They are also checked against the bill. A 188,542-token cache-miss call
 to pro, made off-peak on 2026-08-17, settled at <strong>0.84 CNY</strong>
 &ndash; 4.46 CNY per 1M against the published off-peak 4.5, where the old
-flat card would have made it 3.0. The page and the billing system agree.</p>
+flat card would have made it 3.0. The page and the billing system agree.
+The V4.1 Flash card has not been checked against a bill yet.</p>
 
 <script id="price-schedule" type="application/json">[{"label":"flat","start":null,"end":null,"multiplier":1.0,"effective":"2026-08-02T00:00:00Z"},{"label":"off-peak","start":null,"end":null,"multiplier":1.0,"effective":"2026-08-16T16:00:00Z"},{"label":"peak","start":60,"end":240,"multiplier":2.0,"effective":"2026-08-16T16:00:00Z"},{"label":"peak","start":360,"end":600,"multiplier":2.0,"effective":"2026-08-16T16:00:00Z"},{"label":"off-peak","start":null,"end":null,"multiplier":1.0,"effective":"2026-08-22T16:00:00Z"},{"label":"peak","start":60,"end":240,"multiplier":2.0,"days":[1,2,3,4,5],"effective":"2026-08-22T16:00:00Z"},{"label":"peak","start":360,"end":600,"multiplier":2.0,"days":[1,2,3,4,5],"effective":"2026-08-22T16:00:00Z"}]</script>
 <nav class="pager" aria-label="Pagination">

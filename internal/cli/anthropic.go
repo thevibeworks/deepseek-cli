@@ -48,7 +48,7 @@ check how your DeepSeek key behaves for those tools before pointing them
 at it.
 
 Claude model names are accepted and remapped server-side: claude-opus* to
-deepseek-v4-pro, claude-sonnet*/claude-haiku* to deepseek-v4-flash, and
+deepseek-v4-pro, claude-sonnet*/claude-haiku* to deepseek-flash, and
 anything unrecognised to flash. The usage line shows both names so the
 cost is traceable to the model that actually ran.
 

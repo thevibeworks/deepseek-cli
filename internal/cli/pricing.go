@@ -34,11 +34,13 @@ type pricingResult struct {
 	NextChange string  `json:"next_change"`
 
 	RepriceAt      string   `json:"reprice_at"`
+	CardSince      string   `json:"card_since"`
 	PeakWindowsUTC []string `json:"peak_windows_utc"`
 	PeakMultiplier float64  `json:"peak_multiplier"`
 
 	// Current is the card in effect at now_utc; OffPeak and Peak are the
-	// dated cards that apply from reprice_at.
+	// full time-of-day card in force since card_since (before reprice_at,
+	// the dated card that is coming).
 	Current map[string]pricingPrice `json:"current"`
 	OffPeak map[string]pricingPrice `json:"off_peak"`
 	Peak    map[string]pricingPrice `json:"peak"`
@@ -53,12 +55,14 @@ func newPricingCmd(o *Options) *cobra.Command {
 		Long: strings.TrimSpace(`
 Answer what a token costs at this instant, and when that changes.
 
-DeepSeek's repricing of 2026-08-13 is dated: until 16:00 UTC on
-2026-08-16 every hour bills at the flat card of 2026-08-02, and from
-that instant billing is peak/off-peak on a new, higher card — peak hours
-01:00-04:00 and 06:00-10:00 UTC on weekdays at twice the off-peak
-rate. Since 2026-08-22 weekends bill off-peak all day, on the Beijing
-calendar, so peak is 35 hours a week rather than 49.
+Billing has been peak/off-peak since 16:00 UTC on 2026-08-16 (before
+it, every hour billed at the flat card of 2026-08-02): peak hours
+01:00-04:00 and 06:00-10:00 UTC on weekdays, at twice the off-peak rate.
+Since 2026-08-22 weekends bill off-peak all day, on the Beijing
+calendar, so peak is 35 hours a week rather than 49. Since the V4.1
+Flash release of 2026-09-10 the Flash card is lower; Pro's is unchanged.
+The retired names deepseek-v4-flash and deepseek-v4-flash-vision-exp
+bill as deepseek-flash.
 
 This command reads no network and spends nothing: the schedule is the
 same one the cost estimates use, so what it prints is what the usage
@@ -82,6 +86,7 @@ func pricingAt(now time.Time) *pricingResult {
 		Multiplier:     period.Multiplier,
 		NextChange:     deepseek.NextChange(now).Format(time.RFC3339),
 		RepriceAt:      deepseek.RepriceAt.Format(time.RFC3339),
+		CardSince:      deepseek.CardSince(fullCardAt(now)).Format(time.RFC3339),
 		PeakMultiplier: deepseek.PeakMultiplier,
 		Current:        map[string]pricingPrice{},
 		OffPeak:        map[string]pricingPrice{},
@@ -96,7 +101,7 @@ func pricingAt(now time.Time) *pricingResult {
 		if p, ok := deepseek.PriceAt(m, now); ok {
 			res.Current[m] = pricingPrice{p.CacheHitInput, p.CacheMissInput, p.Output}
 		}
-		if p, ok := deepseek.PriceAt(m, deepseek.RepriceAt); ok {
+		if p, ok := deepseek.BasePriceAt(m, fullCardAt(now)); ok {
 			res.OffPeak[m] = pricingPrice{p.CacheHitInput, p.CacheMissInput, p.Output}
 			res.Peak[m] = pricingPrice{
 				p.CacheHitInput * deepseek.PeakMultiplier,
@@ -146,17 +151,18 @@ func formatPricing(now time.Time) string {
 	for _, win := range deepseek.PeakWindows {
 		windows = append(windows, fmtMinutes(win.Start)+"-"+fmtMinutes(win.End))
 	}
+	since := deepseek.CardSince(fullCardAt(now)).Format("2006-01-02 15:04 UTC")
 	if now.Before(deepseek.RepriceAt) {
 		fmt.Fprintf(&b, "\nfrom %s — peak hours %s UTC, Mon-Fri; all other hours, and all weekend, off-peak at half of peak:\n",
-			deepseek.RepriceAt.Format("2006-01-02 15:04 UTC"), strings.Join(windows, " and "))
+			since, strings.Join(windows, " and "))
 	} else {
-		fmt.Fprintf(&b, "\nthe full card — peak hours %s UTC, Mon-Fri; all other hours, and all weekend, off-peak at half of peak:\n",
-			strings.Join(windows, " and "))
+		fmt.Fprintf(&b, "\nthe full card, since %s — peak hours %s UTC, Mon-Fri; all other hours, and all weekend, off-peak at half of peak:\n",
+			since, strings.Join(windows, " and "))
 	}
 	w = tabwriter.NewWriter(&b, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(w, "MODEL\tPERIOD\tIN (CACHED)\tIN (MISS)\tOUT")
 	for _, m := range deepseek.Models {
-		p, ok := deepseek.PriceAt(m, deepseek.RepriceAt)
+		p, ok := deepseek.BasePriceAt(m, fullCardAt(now))
 		if !ok {
 			continue
 		}
@@ -166,8 +172,19 @@ func formatPricing(now time.Time) string {
 	}
 	w.Flush()
 
+	fmt.Fprintf(&b, "\nthe retired names %s and %s bill as %s.", deepseek.ModelFlashV4, deepseek.ModelFlashVision, deepseek.ModelFlash)
 	fmt.Fprint(&b, "\ncost estimates switch cards on the effective instant automatically.\nupstream copy, offline: deepseek docs show quick_start/pricing")
 	return b.String()
+}
+
+// fullCardAt is the instant whose era supplies the full time-of-day card
+// shown beside the current price: now, or the repricing instant while the
+// flat card is still in force, so a reader sees the card that is coming.
+func fullCardAt(now time.Time) time.Time {
+	if now.Before(deepseek.RepriceAt) {
+		return deepseek.RepriceAt
+	}
+	return now
 }
 
 func fmtMinutes(m int) string {
