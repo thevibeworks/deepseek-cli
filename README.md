@@ -15,7 +15,7 @@
   <br>
   <a href="https://api-docs.deepseek.com"><img src="https://img.shields.io/badge/DeepSeek%20API%20docs-2026--08--05-8a2be2" alt="Implemented against the DeepSeek API docs of 2026-08-05"></a>
   <a href="https://api-docs.deepseek.com/quick_start/pricing"><img src="https://img.shields.io/badge/models-flash%20%7C%20v4--pro-0ea5e9" alt="Models: deepseek-flash and deepseek-v4-pro"></a>
-  <a href="https://go.dev"><img src="https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go&logoColor=white" alt="Go"></a>
+  <a href="https://go.dev"><img src="https://img.shields.io/badge/Go-1.26.5+-00ADD8?logo=go&logoColor=white" alt="Go"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT License"></a>
 </p>
 
